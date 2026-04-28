@@ -7,12 +7,6 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/dashboard/${user.id}`, {
-    headers: { Cookie: '' },
-    cache: 'no-store',
-  });
-
-  // Fetch server-side via supabase directly for SSR
   const today = new Date().toISOString().split('T')[0];
 
   const [todayPlansRes, upcomingTestsRes, recentAttemptsRes] = await Promise.all([
