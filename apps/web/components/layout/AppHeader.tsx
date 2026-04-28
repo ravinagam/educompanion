@@ -44,13 +44,18 @@ export function AppHeader({ user }: Props) {
           </Avatar>
           <span className="hidden md:block text-sm font-medium text-gray-700">{user.name}</span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem className="flex items-center gap-2">
+        <DropdownMenuContent align="end" className="w-52">
+          <div className="px-3 py-2">
+            <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+            <p className="text-xs text-gray-400">Class {user.grade} · {user.board}</p>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => router.push('/profile')} className="flex items-center gap-2 cursor-pointer">
             <User className="h-4 w-4" />
-            <span>Class {user.grade} · {user.board}</span>
+            My Profile
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-red-600">
+          <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-red-600 cursor-pointer">
             <LogOut className="h-4 w-4" />
             Sign Out
           </DropdownMenuItem>

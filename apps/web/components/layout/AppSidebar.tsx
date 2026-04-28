@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Upload, CalendarCheck, BookOpen,
-  FlaskConical, Layers, BookMarked, UserCircle
+  FlaskConical, Layers, BookMarked
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 
@@ -14,7 +14,6 @@ const nav = [
   { label: 'Upload Material', href: '/upload', icon: Upload },
   { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
   { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
-  { label: 'My Profile', href: '/profile', icon: UserCircle },
 ];
 
 interface Props { user: User }
