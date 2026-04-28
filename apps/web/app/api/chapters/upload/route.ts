@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!subject) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
 
     // Upload file to Supabase Storage
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const storagePath = `${user.id}/${subjectId}/${Date.now()}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
     // Use after() so Next.js guarantees this runs after the response is sent,
     // even across hot-reloads in dev. void+IIFE is not reliable in Next.js 15+.
     const capturedId = chapter.id as string;
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     const capturedMime = MIME_FROM_EXT[ext] ?? file.type;
     const capturedName = file.name;
     after(async () => {
