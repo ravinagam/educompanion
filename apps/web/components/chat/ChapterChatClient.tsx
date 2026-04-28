@@ -64,7 +64,7 @@ export function ChapterChatClient({ chapter, subjectName }: Props) {
     <div className="flex flex-col max-w-2xl mx-auto h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 px-5 py-4 text-white shadow-md mb-4 shrink-0">
-        <Link href="/chapters" className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
+        <Link href={`/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
           <ArrowLeft className="h-3 w-3" /> My Saved Chapters
         </Link>
         <div className="flex items-center gap-3">

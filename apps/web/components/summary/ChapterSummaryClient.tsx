@@ -48,7 +48,7 @@ export function ChapterSummaryClient({ chapter, subjectName, initialSummary }: P
     <div className="max-w-2xl mx-auto space-y-5">
       {/* Header */}
       <div className="rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 px-5 py-4 text-white shadow-md">
-        <Link href="/chapters" className="text-amber-100 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
+        <Link href={`/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-amber-100 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
           <ArrowLeft className="h-3 w-3" /> My Saved Chapters
         </Link>
         <div className="flex items-center justify-between gap-3">
