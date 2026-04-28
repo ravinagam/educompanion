@@ -1,5 +1,0 @@
-{
-  "functions": {
-    "api/chapters/**": { "maxDuration": 60 }
-  }
-}
