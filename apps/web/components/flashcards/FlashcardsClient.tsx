@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Layers, RotateCcw, ThumbsUp, ThumbsDown,
-  Loader2, ArrowLeft, Check, RefreshCw
+  Loader2, ArrowLeft, Check, RefreshCw, CheckCircle2
 } from 'lucide-react';
 
 interface FlashcardProgress {
