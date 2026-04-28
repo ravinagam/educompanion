@@ -8,7 +8,9 @@ const ADMIN_EMAIL = 'ravi.nagam.kiran@gmail.com';
 export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) redirect('/dashboard');
+
+  // Not logged in, or logged in as a student → admin login page
+  if (!user || user.email !== ADMIN_EMAIL) redirect('/admin/login');
 
   const admin = createAdminClient();
 

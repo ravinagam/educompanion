@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface Chapter { id: string; name: string; upload_status: string }
 interface Subject { id: string; name: string; chapters: Chapter[] }
@@ -94,14 +97,25 @@ function UserRow({ user }: { user: User }) {
 
 export function AdminDashboard({ users, feedback }: Props) {
   const [tab, setTab] = useState<'users' | 'feedback'>('users');
+  const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
+
+  async function signOut() {
+    await createClient().auth.signOut();
+    router.push('/admin/login');
+  }
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 px-6 py-5 text-white shadow-md">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-300 text-sm mt-0.5">EduCompanion overview</p>
+      <div className="rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 px-6 py-5 text-white shadow-md flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <p className="text-gray-300 text-sm mt-0.5">EduCompanion overview</p>
+        </div>
+        <Button onClick={signOut} variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10 gap-1.5">
+          <LogOut className="h-4 w-4" /> Sign out
+        </Button>
       </div>
 
       {/* Stats */}
