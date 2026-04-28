@@ -78,8 +78,9 @@ export async function buildStudyPlan(
   // ── Group chapters by subject ─────────────────────────────────────────────
   const configMap = new Map(subjectConfig.map(s => [s.subject_id, s.daily_minutes]));
 
+  const typedChapters = chapters as ChapterRow[];
   const chsBySubject = new Map<string, ChapterRow[]>();
-  for (const ch of chapters as ChapterRow[]) {
+  for (const ch of typedChapters) {
     if (!chsBySubject.has(ch.subject_id)) chsBySubject.set(ch.subject_id, []);
     chsBySubject.get(ch.subject_id)!.push(ch);
   }
