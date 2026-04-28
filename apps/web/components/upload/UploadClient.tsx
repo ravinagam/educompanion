@@ -99,7 +99,7 @@ export function UploadClient({ subjects }: Props) {
               It will be ready in 15–30 seconds.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <Link href="/chapters">
+              <Link href={`/chapters?subject=${encodeURIComponent(subjects.find(s => s.id === selectedSubjectId)?.name ?? '')}`}>
                 <Button className="w-full sm:w-auto gap-2 bg-emerald-600 hover:bg-emerald-700">
                   <BookOpen className="h-4 w-4" />
                   View My Saved Chapters
