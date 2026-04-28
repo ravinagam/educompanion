@@ -30,7 +30,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith('/auth');
   const isApiRoute = pathname.startsWith('/api');
-  const isPublicRoute = isAuthRoute || isApiRoute;
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isPublicRoute = isAuthRoute || isApiRoute || isAdminRoute;
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
@@ -38,7 +39,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !isAdminRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
