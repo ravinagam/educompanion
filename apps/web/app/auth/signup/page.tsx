@@ -29,6 +29,8 @@ export default function SignupPage() {
     password: '',
     grade: '' as string,
     board: '' as string,
+    contact_email: '',
+    phone_number: '',
   });
 
   async function handleSignup(e: React.FormEvent) {
@@ -58,6 +60,8 @@ export default function SignupPage() {
           username: form.username,
           grade: Number(form.grade),
           board: form.board,
+          contact_email: form.contact_email.trim() || null,
+          phone_number: form.phone_number.trim() || null,
         },
       },
     });
@@ -154,6 +158,26 @@ export default function SignupPage() {
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                   required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="contact_email">Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="contact_email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={form.contact_email}
+                  onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="phone_number">Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="phone_number"
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={form.phone_number}
+                  onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>

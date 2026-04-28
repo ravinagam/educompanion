@@ -13,6 +13,7 @@ interface Subject { id: string; name: string; chapters: Chapter[] }
 interface User {
   id: string; name: string; email: string;
   grade: number; board: string; created_at: string;
+  contact_email: string | null; phone_number: string | null;
   subjects: Subject[];
 }
 interface Feedback {
@@ -72,6 +73,11 @@ function UserRow({ user }: { user: User }) {
 
       {expanded && (
         <div className="bg-gray-50 border-t border-gray-100 px-4 py-3 space-y-2">
+          {/* Contact details */}
+          <div className="flex gap-4 text-xs text-gray-500 pb-1 border-b border-gray-200">
+            <span>📧 {user.contact_email || <span className="italic text-gray-300">no email</span>}</span>
+            <span>📱 {user.phone_number || <span className="italic text-gray-300">no phone</span>}</span>
+          </div>
           {user.subjects.length === 0 ? (
             <p className="text-xs text-gray-400">No subjects yet</p>
           ) : user.subjects.map(subj => (

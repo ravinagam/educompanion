@@ -17,7 +17,7 @@ export default async function AdminPage() {
   const [usersRes, feedbackRes] = await Promise.all([
     admin
       .from('users')
-      .select('id, name, email, grade, board, created_at, subjects(id, name, chapters(id, name, upload_status))')
+      .select('id, name, email, grade, board, created_at, contact_email, phone_number, subjects(id, name, chapters(id, name, upload_status))')
       .order('created_at', { ascending: false }),
     admin
       .from('feedback')

@@ -67,6 +67,8 @@ export default function OnboardingPage() {
         email: user.email ?? '',
         grade: userGrade,
         board: meta.board ?? 'CBSE',
+        contact_email: meta.contact_email ?? null,
+        phone_number: meta.phone_number ?? null,
         onboarding_done: true,
       }, { onConflict: 'id' });
 
