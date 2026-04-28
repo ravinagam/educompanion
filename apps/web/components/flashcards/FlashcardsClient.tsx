@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,6 +38,13 @@ interface Props {
 export function FlashcardsClient({ chapter, subjectName, flashcards: initialCards, mastery: initialMastery }: Props) {
   const router = useRouter();
   const [flashcards, setFlashcards] = useState(initialCards);
+
+  // Sync when router.refresh() delivers new initialCards after generation
+  useEffect(() => {
+    if (flashcards.length === 0 && initialCards.length > 0) {
+      setFlashcards(initialCards);
+    }
+  }, [initialCards]); // eslint-disable-line react-hooks/exhaustive-deps
   const [mastery, setMastery] = useState(initialMastery);
   const [current, setCurrent] = useState(0);
   const [flipped, setFlipped] = useState(false);
