@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -163,7 +163,20 @@ function ChapterCard({
 
 export function SavedChaptersClient({ subjects }: Props) {
   const router = useRouter();
-  const [activeSubjectIdx, setActiveSubjectIdx] = useState(0);
+  const searchParams = useSearchParams();
+  const [activeSubjectIdx, setActiveSubjectIdx] = useState(() => {
+    const subjectParam = searchParams.get('subject');
+    if (!subjectParam) return 0;
+    const idx = subjects.findIndex(s => s.name === subjectParam);
+    return idx >= 0 ? idx : 0;
+  });
+
+  useEffect(() => {
+    const subjectParam = searchParams.get('subject');
+    if (!subjectParam) return;
+    const idx = subjects.findIndex(s => s.name === subjectParam);
+    if (idx >= 0) setActiveSubjectIdx(idx);
+  }, [searchParams, subjects]);
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
 

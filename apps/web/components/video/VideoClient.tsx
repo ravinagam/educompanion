@@ -505,7 +505,7 @@ export function VideoClient({ chapter, subjectName, videoScript: initialScript }
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <Link href={`/upload?subject=${encodeURIComponent(subjectName)}`} className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3">
+        <Link href={`/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3">
           <ArrowLeft className="h-3 w-3" /> Back to Chapters
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">{subjectName} - {chapter.name}</h1>
