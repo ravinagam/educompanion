@@ -123,6 +123,33 @@ export function DashboardClient({ todayPlans, upcomingTests, recentAttempts }: P
         </CardContent>
       </Card>
 
+      {/* Quick Actions */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2 text-gray-700">
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { href: '/upload', icon: BookOpen, label: 'Upload Chapter', bg: 'bg-gradient-to-br from-blue-500 to-cyan-500', shadow: 'shadow-blue-200' },
+              { href: '/tests', icon: CalendarCheck, label: 'New Study Plan', bg: 'bg-gradient-to-br from-violet-500 to-purple-600', shadow: 'shadow-violet-200' },
+              { href: '/chapters', icon: BookMarked, label: 'My Chapters', bg: 'bg-gradient-to-br from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200' },
+              { href: '/chapters', icon: Trophy, label: 'Take a Quiz', bg: 'bg-gradient-to-br from-amber-400 to-orange-500', shadow: 'shadow-amber-200' },
+            ].map(({ href, icon: Icon, label, bg, shadow }) => (
+              <Link key={href + label} href={href}>
+                <div className={`flex flex-col items-center gap-2 p-4 rounded-xl cursor-pointer text-white shadow-md ${shadow} ${bg} hover:opacity-90 transition-opacity`}>
+                  <Icon className="h-6 w-6" />
+                  <span className="text-xs font-semibold text-center leading-tight">{label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Upcoming Tests */}
         <Card className="border-0 shadow-md overflow-hidden">
@@ -203,32 +230,6 @@ export function DashboardClient({ todayPlans, upcomingTests, recentAttempts }: P
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2 text-gray-700">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { href: '/upload', icon: BookOpen, label: 'Upload Chapter', bg: 'bg-gradient-to-br from-blue-500 to-cyan-500', shadow: 'shadow-blue-200' },
-              { href: '/tests', icon: CalendarCheck, label: 'New Study Plan', bg: 'bg-gradient-to-br from-violet-500 to-purple-600', shadow: 'shadow-violet-200' },
-              { href: '/chapters', icon: BookMarked, label: 'My Chapters', bg: 'bg-gradient-to-br from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200' },
-              { href: '/tests', icon: Trophy, label: 'Take a Quiz', bg: 'bg-gradient-to-br from-amber-400 to-orange-500', shadow: 'shadow-amber-200' },
-            ].map(({ href, icon: Icon, label, bg, shadow }) => (
-              <Link key={href + label} href={href}>
-                <div className={`flex flex-col items-center gap-2 p-4 rounded-xl cursor-pointer text-white shadow-md ${shadow} ${bg} hover:opacity-90 transition-opacity`}>
-                  <Icon className="h-6 w-6" />
-                  <span className="text-xs font-semibold text-center leading-tight">{label}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
