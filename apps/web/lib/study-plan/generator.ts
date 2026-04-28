@@ -21,28 +21,20 @@ interface TopicQueue {
   chapter_name: string;
   topics: string[];
   cursor: number;
-  minutes_per_topic: number;
+  minutesPerTopic: number;
 }
 
 const DEFAULT_DAILY_MINUTES = 30;
 
-/**
- * Delete existing plan rows and rebuild a multi-subject, section-aware
- * study schedule starting from tomorrow up to the test date.
- *
- * Each day gets one session block per selected subject, each block
- * consuming exactly `daily_minutes` from that subject's topic queue.
- */
 export async function buildStudyPlan(
   testId: string,
   chapterIds: string[],
   testDate: string,
   subjectConfig: SubjectConfig[],
-  planStartDate?: string        // ISO date string; defaults to today if omitted
+  planStartDate?: string
 ): Promise<void> {
   const admin = createAdminClient();
 
-  // ── Date setup ──────────────────────────────────────────────────────────────
   // Parse as LOCAL date to avoid UTC midnight shifting the date by one day in
   // timezones east of UTC (e.g. IST: new Date('2026-05-04') = May 3 at 18:30 UTC)
   function parseLocalDate(iso: string): Date {
@@ -64,33 +56,29 @@ export async function buildStudyPlan(
     Math.ceil((deadline.getTime() - startDate.getTime()) / 86_400_000)
   );
 
-  // ── Fetch chapters with subject info ─────────────────────────────────────
-  const { data: chapters } = await admin
+  const { data: rawChapters } = await admin
     .from('chapters')
     .select('id, name, content_text, complexity_score, subject_id, subjects(name)')
     .in('id', chapterIds);
 
-  if (!chapters?.length) return;
+  if (!rawChapters?.length) return;
 
-  // ── Wipe old plan ─────────────────────────────────────────────────────────
+  const chapters = rawChapters as unknown as ChapterRow[];
+
   await admin.from('study_plans').delete().eq('test_id', testId);
 
-  // ── Group chapters by subject ─────────────────────────────────────────────
   const configMap = new Map(subjectConfig.map(s => [s.subject_id, s.daily_minutes]));
 
-  const typedChapters = chapters as ChapterRow[];
   const chsBySubject = new Map<string, ChapterRow[]>();
-  for (const ch of typedChapters) {
+  for (const ch of chapters) {
     if (!chsBySubject.has(ch.subject_id)) chsBySubject.set(ch.subject_id, []);
     chsBySubject.get(ch.subject_id)!.push(ch);
   }
 
-  // ── Build per-subject topic queues ────────────────────────────────────────
   const subjectQueues = new Map<string, TopicQueue[]>();
 
   for (const [subjId, chs] of chsBySubject) {
     const dailyMin = configMap.get(subjId) ?? DEFAULT_DAILY_MINUTES;
-    // Aim for ~5 topics per daily session; each topic ≈ dailyMin/5 min
     const targetTopicsPerSession = 5;
     const queue: TopicQueue[] = [];
 
@@ -111,13 +99,12 @@ export async function buildStudyPlan(
         Math.round(dailyMin / Math.min(topics.length, targetTopicsPerSession))
       );
 
-      queue.push({ chapter_id: ch.id, chapter_name: ch.name, topics, cursor: 0, minutesPerTopic: minutesPerTopic } as unknown as TopicQueue);
+      queue.push({ chapter_id: ch.id, chapter_name: ch.name, topics, cursor: 0, minutesPerTopic });
     }
 
     subjectQueues.set(subjId, queue);
   }
 
-  // ── Day-by-day scheduling ─────────────────────────────────────────────────
   const planRows: Array<{
     test_id: string;
     day_date: string;
@@ -131,27 +118,24 @@ export async function buildStudyPlan(
   for (let day = 0; day < daysAvailable; day++) {
     const dayStr = fmtLocalDate(currentDate);
 
-    let anyScheduledToday = false;
-
     for (const [subjId, queue] of subjectQueues) {
       const dailyMin = configMap.get(subjId) ?? DEFAULT_DAILY_MINUTES;
       let budgetLeft = dailyMin;
 
       for (const ch of queue) {
-        if (ch.cursor >= ch.topics.length) continue; // chapter done
+        if (ch.cursor >= ch.topics.length) continue;
         if (budgetLeft <= 0) break;
 
-        const minutesPerTopic = (ch as unknown as { minutesPerTopic: number }).minutesPerTopic;
         const dayTopics: string[] = [];
         let sessionMinutes = 0;
 
         while (ch.cursor < ch.topics.length) {
-          const wouldExceed = sessionMinutes + minutesPerTopic > budgetLeft;
-          if (wouldExceed && dayTopics.length > 0) break; // respect budget
+          const wouldExceed = sessionMinutes + ch.minutesPerTopic > budgetLeft;
+          if (wouldExceed && dayTopics.length > 0) break;
           dayTopics.push(ch.topics[ch.cursor]);
-          sessionMinutes += minutesPerTopic;
+          sessionMinutes += ch.minutesPerTopic;
           ch.cursor++;
-          if (wouldExceed) break; // forced first topic; stop
+          if (wouldExceed) break;
         }
 
         if (dayTopics.length > 0) {
@@ -163,12 +147,10 @@ export async function buildStudyPlan(
             estimated_minutes: sessionMinutes,
           });
           budgetLeft -= sessionMinutes;
-          anyScheduledToday = true;
         }
       }
     }
 
-    // Stop early if everything is covered
     const allDone = [...subjectQueues.values()].every(q =>
       q.every(ch => ch.cursor >= ch.topics.length)
     );
