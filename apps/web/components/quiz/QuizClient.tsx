@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   FlaskConical, CheckCircle2, XCircle, Trophy,
-  RotateCcw, Loader2, ArrowLeft, ArrowRight
+  RotateCcw, Loader2, ArrowLeft, ArrowRight, Target, Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,8 +64,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<ResultItem[]>([]);
   const [finalScore, setFinalScore] = useState(0);
+  const [targetedQuestions, setTargetedQuestions] = useState<Question[]>([]);
+  const [loadingTargeted, setLoadingTargeted] = useState(false);
+  const [showingTargeted, setShowingTargeted] = useState(false);
 
-  const questions = quiz?.questions_json ?? [];
+  const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
 
   // Skipped questions that still have no answer
@@ -239,6 +242,41 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     setSkipped([]);
     setReadyToSubmit(false);
     setResults([]);
+    setTargetedQuestions([]);
+    setShowingTargeted(false);
+  }
+
+  async function practiceWeakTopics() {
+    const wrongQuestions = results
+      .filter(r => !r.correct)
+      .map(r => questions.find(q => q.id === r.questionId)?.question ?? '')
+      .filter(Boolean);
+    if (!wrongQuestions.length) return;
+
+    setLoadingTargeted(true);
+    try {
+      const res = await fetch(`/api/generate/quiz/${chapter.id}/targeted`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wrongQuestions }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error ?? 'Failed to generate practice questions');
+      } else {
+        setTargetedQuestions(json.questions);
+        setShowingTargeted(true);
+        setCurrent(0);
+        setAnswers({});
+        setFillInput('');
+        setSkipped([]);
+        setReadyToSubmit(false);
+        setPhase('quiz');
+      }
+    } catch {
+      toast.error('Network error. Please try again.');
+    }
+    setLoadingTargeted(false);
   }
 
   // Count questions that actually have an answer (no double-counting for fill_blank)
@@ -589,6 +627,41 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Weakness targeting */}
+        {results.filter(r => !r.correct).length > 0 && !showingTargeted && (
+          <Card className="border-0 shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-rose-500 to-pink-600 px-4 py-3 flex items-center gap-2 text-white font-semibold text-sm">
+              <Target className="h-4 w-4" /> Weak Areas Detected
+            </div>
+            <CardContent className="p-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                You got <span className="font-bold text-red-600">{results.filter(r => !r.correct).length} question{results.filter(r => !r.correct).length !== 1 ? 's' : ''}</span> wrong.
+                Practice targeted questions to strengthen these topics.
+              </p>
+              <div className="space-y-1.5">
+                {results.filter(r => !r.correct).map(r => {
+                  const q = questions.find(q => q.id === r.questionId);
+                  return (
+                    <div key={r.questionId} className="flex items-start gap-2 text-xs text-gray-600 bg-rose-50 rounded-lg px-3 py-2">
+                      <XCircle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">{q?.question}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button
+                onClick={practiceWeakTopics}
+                disabled={loadingTargeted}
+                className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white gap-2"
+              >
+                {loadingTargeted
+                  ? <><Loader2 className="h-4 w-4 animate-spin" />Generating practice…</>
+                  : <><Zap className="h-4 w-4" />Practice Weak Topics (5 questions)</>}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-3">
           <h2 className="font-semibold text-gray-900">Answer Review</h2>

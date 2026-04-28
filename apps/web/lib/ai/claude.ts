@@ -238,6 +238,127 @@ Rules:
   return parseJSON<VideoScriptContent>(text);
 }
 
+// ─── Chat with Chapter ────────────────────────────────────────────────────────
+
+export async function chatWithChapter(
+  chapterName: string,
+  chapterContent: string | null | undefined,
+  messages: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string> {
+  const content = sampleContent(chapterContent ?? '', 60_000);
+
+  const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–10).
+Answer questions using ONLY the following chapter content. If the question is not covered in the chapter, say so politely and suggest the student refer to the full chapter.
+Be clear, use simple language, and give real-world examples where helpful. Keep answers concise (2–5 sentences unless a longer explanation is needed).
+
+Chapter: "${chapterName}"
+
+Chapter Content:
+${content}`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
+  });
+
+  return (message.content[0] as { type: string; text: string }).text;
+}
+
+// ─── Chapter Summary ──────────────────────────────────────────────────────────
+
+export interface ChapterSummary {
+  quick_recap: string;
+  key_points: string[];
+  key_concepts: { term: string; explanation: string }[];
+  exam_tips: string[];
+}
+
+export async function generateChapterSummary(
+  chapterName: string,
+  chapterContent: string | null | undefined
+): Promise<ChapterSummary> {
+  const content = sampleContent(chapterContent ?? '', 80_000);
+
+  const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–10).
+
+Chapter: "${chapterName}"
+Content:
+${content}
+
+Return a JSON object with this exact schema:
+{
+  "quick_recap": "2–3 sentence overview of the entire chapter",
+  "key_points": ["5–8 most important points a student must remember, covering the whole chapter"],
+  "key_concepts": [
+    { "term": "concept name", "explanation": "clear 1-sentence explanation from the content" }
+  ],
+  "exam_tips": ["3–5 specific tips on what examiners typically ask from this chapter"]
+}
+
+Rules:
+- Cover ALL sections (beginning, middle, end) — not just the opening topics
+- Use simple, student-friendly language
+- key_concepts should have 5–8 important terms/definitions from the chapter
+- Return ONLY valid JSON, no markdown`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    temperature: 0.3,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return parseJSON<ChapterSummary>(text);
+}
+
+// ─── Targeted Practice Questions ──────────────────────────────────────────────
+
+export async function generateTargetedQuestions(
+  chapterName: string,
+  chapterContent: string | null | undefined,
+  wrongQuestions: string[]
+): Promise<QuizQuestion[]> {
+  const content = sampleContent(chapterContent ?? '', 60_000);
+
+  const prompt = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–10).
+
+The student got the following questions WRONG in a quiz. Generate 5 new practice questions specifically on these weak areas.
+
+Chapter: "${chapterName}"
+Questions the student got wrong:
+${wrongQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+Chapter Content:
+${content}
+
+Generate exactly 5 questions focused on those weak areas. Use MCQ and True/False types only.
+Return this JSON format:
+[
+  {
+    "id": "t1",
+    "type": "mcq",
+    "question": "...",
+    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+    "correct_answer": "A) ...",
+    "explanation": "..."
+  }
+]
+Return ONLY valid JSON array.`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    temperature: 1,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return parseJSON<QuizQuestion[]>(text);
+}
+
 // ─── Study Plan Topic Extraction ──────────────────────────────────────────────
 
 export async function extractTopics(

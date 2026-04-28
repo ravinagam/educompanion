@@ -43,12 +43,19 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
   const [flipped, setFlipped] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<'all' | 'unknown'>('all');
+  const [mode, setMode] = useState<'all' | 'due' | 'unknown'>('due');
   const [sessionDone, setSessionDone] = useState(false);
 
-  const displayCards = mode === 'unknown'
-    ? flashcards.filter(f => !f.progress || f.progress.status === 'unknown')
-    : flashcards;
+  const now = new Date();
+  const dueCards = flashcards.filter(f =>
+    !f.progress || new Date(f.progress.next_review_at) <= now
+  );
+
+  const displayCards =
+    mode === 'due' ? dueCards :
+    mode === 'unknown' ? flashcards.filter(f => !f.progress || f.progress.status === 'unknown') :
+    // 'all': due cards first, then the rest
+    [...dueCards, ...flashcards.filter(f => f.progress && new Date(f.progress.next_review_at) > now)];
 
   const currentCard = displayCards[current];
 
@@ -210,7 +217,13 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
       </div>
 
       {/* Mode switcher */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
+        <Button size="sm" variant={mode === 'due' ? 'default' : 'outline'}
+          onClick={() => { setMode('due'); setCurrent(0); setFlipped(false); }}
+          className={mode === 'due' ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}
+        >
+          Due Now ({dueCards.length})
+        </Button>
         <Button size="sm" variant={mode === 'all' ? 'default' : 'outline'} onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
           All ({flashcards.length})
         </Button>
@@ -218,6 +231,18 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
           Missed ({flashcards.filter(f => !f.progress || f.progress.status === 'unknown').length})
         </Button>
       </div>
+
+      {/* No cards in this mode */}
+      {!currentCard && mode === 'due' && (
+        <div className="text-center py-10 bg-amber-50 rounded-2xl border border-amber-100">
+          <CheckCircle2 className="h-10 w-10 text-amber-400 mx-auto mb-3" />
+          <p className="font-semibold text-gray-700">All caught up!</p>
+          <p className="text-sm text-gray-500 mt-1">No cards due for review right now.</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
+            Study All Cards
+          </Button>
+        </div>
+      )}
 
       {/* Flashcard */}
       {currentCard && (

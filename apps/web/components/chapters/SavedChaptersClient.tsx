@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import {
   BookOpen, Upload, CheckCircle2, AlertCircle, Clock,
   Loader2, FlaskConical, Layers, Trash2, Video, RefreshCw, Plus,
+  ClipboardList, MessageCircle,
 } from 'lucide-react';
 
 interface Chapter {
@@ -45,6 +46,8 @@ const ACTION_STYLES = {
   quiz:       { ready: 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
   flashcards: { ready: 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
   video:      { ready: 'border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
+  summary:    { ready: 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 hover:border-amber-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
+  chat:       { ready: 'border-teal-200 text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -74,10 +77,15 @@ function ChapterCard({
   const ready = chapter.upload_status === 'ready';
   const canRetry = chapter.upload_status === 'error' || chapter.upload_status === 'processing';
 
-  const actions = [
+  const topActions = [
     { key: 'quiz',       href: `/chapters/${chapter.id}/quiz`,       icon: <FlaskConical className="h-4 w-4" />, label: 'Quiz' },
     { key: 'flashcards', href: `/chapters/${chapter.id}/flashcards`, icon: <Layers className="h-4 w-4" />,       label: 'Flashcards' },
-    { key: 'video',      href: `/chapters/${chapter.id}/video`,      icon: <Video className="h-4 w-4" />,        label: 'Video Summary' },
+    { key: 'video',      href: `/chapters/${chapter.id}/video`,      icon: <Video className="h-4 w-4" />,        label: 'Video' },
+  ] as const;
+
+  const bottomActions = [
+    { key: 'summary', href: `/chapters/${chapter.id}/summary`, icon: <ClipboardList className="h-4 w-4" />, label: 'Summary' },
+    { key: 'chat',    href: `/chapters/${chapter.id}/chat`,    icon: <MessageCircle className="h-4 w-4" />, label: 'Ask AI' },
   ] as const;
 
   return (
@@ -119,11 +127,26 @@ function ChapterCard({
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — top row */}
         <div className="mt-auto grid grid-cols-3 gap-2">
-          {actions.map(({ key, href, icon, label }) => {
+          {topActions.map(({ key, href, icon, label }) => {
             const style = ACTION_STYLES[key];
             const cls = `flex flex-col items-center justify-center gap-1 rounded-xl border py-3 text-xs font-semibold transition-colors ${
+              ready ? style.ready : `${style.disabled} cursor-not-allowed`
+            }`;
+            return ready ? (
+              <Link key={key} href={href} className={cls}>{icon}{label}</Link>
+            ) : (
+              <div key={key} className={cls}>{icon}{label}</div>
+            );
+          })}
+        </div>
+
+        {/* Action buttons — bottom row (Summary + Ask AI) */}
+        <div className="grid grid-cols-2 gap-2">
+          {bottomActions.map(({ key, href, icon, label }) => {
+            const style = ACTION_STYLES[key];
+            const cls = `flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-semibold transition-colors ${
               ready ? style.ready : `${style.disabled} cursor-not-allowed`
             }`;
             return ready ? (
