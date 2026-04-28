@@ -2,26 +2,21 @@ import type { NextRequest } from 'next/server';
 
 const MAX_TEXT_CHARS = 120_000; // ~80 pages — enough for any school chapter
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  const { PDFParse } = (await import('pdf-parse')) as any;
+  // pdf-parse v1 — pure Node.js compatible, no browser APIs required
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let parser: any = null;
-  let extracted = '';
+  const pdfParse = ((await import('pdf-parse')) as any).default ?? (await import('pdf-parse'));
+  let result: { text: string };
   try {
-    parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText({ first: 150 }); // cap at 150 pages
-    extracted = result.text ?? '';
+    result = await pdfParse(buffer);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`PDF parsing failed: ${msg}`);
-  } finally {
-    await parser?.destroy().catch(() => {});
   }
-  if (!extracted.trim()) {
+  if (!result.text?.trim()) {
     throw new Error('PDF appears to be scanned/image-only or encrypted — no text could be extracted');
   }
-  return extracted;
+  return result.text;
 }
 
 export async function extractTextFromBuffer(
