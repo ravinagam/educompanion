@@ -4,8 +4,7 @@ const MAX_TEXT_CHARS = 120_000; // ~80 pages — enough for any school chapter
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   // pdf-parse v1 — pure Node.js compatible, no browser APIs required
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfParse = ((await import('pdf-parse')) as any).default ?? (await import('pdf-parse'));
+  const { default: pdfParse } = await import('pdf-parse');
   let result: { text: string };
   try {
     result = await pdfParse(buffer);
