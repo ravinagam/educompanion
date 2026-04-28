@@ -9,7 +9,7 @@ export default async function ChaptersPage() {
 
   const { data: subjects } = await supabase
     .from('subjects')
-    .select('*, chapters(id, name, upload_status, complexity_score, created_at, file_name, file_size_bytes)')
+    .select('*, chapters(id, name, upload_status, complexity_score, created_at, file_name, file_size_bytes, error_message)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: true });
 

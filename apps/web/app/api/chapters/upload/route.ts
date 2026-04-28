@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { processChapterAsync } from '@/lib/chapters/process';
+import { processChapterAsync, MIME_FROM_EXT } from '@/lib/chapters/process';
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
     // Use after() so Next.js guarantees this runs after the response is sent,
     // even across hot-reloads in dev. void+IIFE is not reliable in Next.js 15+.
     const capturedId = chapter.id as string;
-    const capturedMime = file.type;
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const capturedMime = MIME_FROM_EXT[ext] ?? file.type;
     const capturedName = file.name;
     after(async () => {
       const bgAdmin = createAdminClient();

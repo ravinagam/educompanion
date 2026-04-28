@@ -2,6 +2,28 @@ import type { NextRequest } from 'next/server';
 
 const MAX_TEXT_CHARS = 120_000; // ~80 pages — enough for any school chapter
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  const { PDFParse } = (await import('pdf-parse')) as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let parser: any = null;
+  let extracted = '';
+  try {
+    parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const result = await parser.getText({ first: 150 }); // cap at 150 pages
+    extracted = result.text ?? '';
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`PDF parsing failed: ${msg}`);
+  } finally {
+    await parser?.destroy().catch(() => {});
+  }
+  if (!extracted.trim()) {
+    throw new Error('PDF appears to be scanned/image-only or encrypted — no text could be extracted');
+  }
+  return extracted;
+}
+
 export async function extractTextFromBuffer(
   buffer: Buffer,
   mimeType: string,
@@ -12,13 +34,7 @@ export async function extractTextFromBuffer(
   if (mimeType === 'text/plain') {
     text = buffer.toString('utf-8');
   } else if (mimeType === 'application/pdf') {
-    // pdf-parse v2.x uses a class-based API (not a function call like v1.x)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { PDFParse } = (await import('pdf-parse')) as any;
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText({ first: 150 }); // cap at 150 pages
-    text = result.text;
-    await parser.destroy();
+    text = await extractPdfText(buffer);
   } else if (
     mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     mimeType === 'application/msword'

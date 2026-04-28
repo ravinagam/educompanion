@@ -21,6 +21,7 @@ interface Chapter {
   created_at: string;
   file_name: string | null;
   file_size_bytes: number | null;
+  error_message: string | null;
 }
 
 interface Subject {
@@ -126,6 +127,13 @@ function ChapterCard({
             </button>
           )}
         </div>
+
+        {/* Error detail */}
+        {chapter.upload_status === 'error' && chapter.error_message && (
+          <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2 leading-relaxed">
+            {chapter.error_message}
+          </p>
+        )}
 
         {/* Action buttons — top row */}
         <div className="mt-auto grid grid-cols-3 gap-2">
