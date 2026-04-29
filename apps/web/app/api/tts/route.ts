@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       loudness: 1.5,
       speech_sample_rate: 22050,
       enable_preprocessing: true,
+      eng_interpolation_wt: 128,
     }),
   });
 

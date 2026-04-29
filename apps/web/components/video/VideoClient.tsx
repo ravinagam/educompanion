@@ -221,8 +221,18 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     return utt;
   }, []);
 
-  // Fetch Hindi audio from Sarvam TTS and play it; calls onEnd when done or on error
+  // Fetch Hindi audio from Sarvam TTS and play it; falls back to Web Speech on any failure
   const speakHindi = useCallback(async (text: string, onEnd: () => void, myId: number) => {
+    // Fallback: use browser Web Speech API (English voice) when Sarvam is unavailable
+    const fallback = () => {
+      if (narrationIdRef.current !== myId) return;
+      if (!synthRef.current) { onEnd(); return; }
+      const utt = makeUtt(toSpeechText(text));
+      utt.onend = () => { if (narrationIdRef.current === myId) onEnd(); };
+      utt.onerror = () => { if (narrationIdRef.current === myId) onEnd(); };
+      synthRef.current.speak(utt);
+    };
+
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
@@ -230,18 +240,21 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         body: JSON.stringify({ text, language: 'hi-IN' }),
       });
       if (narrationIdRef.current !== myId) return;
+      if (!res.ok) { fallback(); return; }
+
       const data = await res.json() as { audio?: string };
-      if (!data.audio || narrationIdRef.current !== myId) { onEnd(); return; }
+      if (narrationIdRef.current !== myId) return;
+      if (!data.audio) { fallback(); return; }
 
       const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
-      audio.onerror = () => { if (narrationIdRef.current === myId) onEnd(); };
+      audio.onerror = () => { if (narrationIdRef.current === myId) fallback(); };
       await audio.play();
     } catch {
-      if (narrationIdRef.current === myId) onEnd();
+      fallback();
     }
-  }, []);
+  }, [makeUtt]);
 
   // Stop all narration — invalidate running callbacks by bumping the narration id
   const stopNarration = useCallback(() => {
