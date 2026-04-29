@@ -62,6 +62,8 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [showDifficultyPicker, setShowDifficultyPicker] = useState(false);
+  const [generatedDifficulty, setGeneratedDifficulty] = useState<'easy' | 'medium' | 'hard' | null>(null);
   const [results, setResults] = useState<ResultItem[]>([]);
   const fillInputRef = useRef<HTMLInputElement>(null);
   const [finalScore, setFinalScore] = useState(0);
@@ -96,6 +98,8 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         toast.error(json.error ?? 'Generation failed');
       } else {
         toast.success('Quiz generated!');
+        setGeneratedDifficulty(difficulty);
+        setShowDifficultyPicker(false);
         setCurrent(0);
         setAnswers({});
         setFillInput('');
@@ -323,18 +327,52 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!quiz ? (
+            {/* Inline difficulty picker — shown for both generate and regenerate */}
+            {showDifficultyPicker && (
+              <div className="space-y-3 py-2">
+                <p className="text-sm font-medium text-gray-700">Select difficulty</p>
+                <div className="flex gap-2">
+                  {(['easy', 'medium', 'hard'] as const).map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setDifficulty(d)}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                        difficulty === d
+                          ? d === 'easy' ? 'bg-green-100 border-green-400 text-green-800'
+                            : d === 'medium' ? 'bg-amber-100 border-amber-400 text-amber-800'
+                            : 'bg-red-100 border-red-400 text-red-800'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {d === 'easy' ? 'Easy' : d === 'medium' ? 'Medium' : 'Hard'}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowDifficultyPicker(false)} className="flex-1" disabled={generating}>
+                    Cancel
+                  </Button>
+                  <Button onClick={generateQuiz} disabled={generating} className="flex-1">
+                    {generating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating…</> : 'Confirm →'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!showDifficultyPicker && !quiz && (
               <div className="text-center py-6 space-y-3">
                 <p className="text-gray-500">No quiz generated yet for this chapter.</p>
                 {chapter.upload_status !== 'ready' ? (
                   <p className="text-sm text-amber-600">Chapter is still processing. Please wait.</p>
                 ) : (
-                  <Button onClick={generateQuiz} disabled={generating}>
-                    {generating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating...</> : 'Generate Quiz with AI'}
+                  <Button onClick={() => setShowDifficultyPicker(true)}>
+                    Generate Quiz with AI
                   </Button>
                 )}
               </div>
-            ) : (
+            )}
+
+            {!showDifficultyPicker && quiz && (
               <>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-blue-50 rounded-lg p-3">
@@ -352,6 +390,19 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                     <p className="text-xs text-gray-500">Attempts</p>
                   </div>
                 </div>
+
+                {generatedDifficulty && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Difficulty:</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      generatedDifficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                      generatedDifficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {generatedDifficulty.charAt(0).toUpperCase() + generatedDifficulty.slice(1)}
+                    </span>
+                  </div>
+                )}
 
                 {attempts.length > 0 && (
                   <div className="space-y-2">
@@ -373,30 +424,9 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Difficulty</p>
-                  <div className="flex gap-2">
-                    {(['easy', 'medium', 'hard'] as const).map(d => (
-                      <button
-                        key={d}
-                        onClick={() => setDifficulty(d)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
-                          difficulty === d
-                            ? d === 'easy' ? 'bg-green-100 border-green-400 text-green-800'
-                              : d === 'medium' ? 'bg-amber-100 border-amber-400 text-amber-800'
-                              : 'bg-red-100 border-red-400 text-red-800'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {d.charAt(0).toUpperCase() + d.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="flex gap-3">
-                  <Button onClick={generateQuiz} variant="outline" disabled={generating} className="flex-1">
-                    {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                  <Button onClick={() => setShowDifficultyPicker(true)} variant="outline" className="flex-1">
+                    <RotateCcw className="h-4 w-4 mr-2" />
                     Regenerate
                   </Button>
                   <Button onClick={() => {
@@ -448,9 +478,20 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
               <h1 className="text-2xl font-bold text-gray-900">{subjectName} - {chapter.name}</h1>
               <h2 className="text-xl font-bold text-gray-700">Quiz</h2>
             </div>
-            <p className="text-sm text-gray-500 mb-0.5">
-              Answered {answeredCount} / {questions.length}
-            </p>
+            <div className="flex items-center gap-2 mb-0.5">
+              {generatedDifficulty && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  generatedDifficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                  generatedDifficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {generatedDifficulty.charAt(0).toUpperCase() + generatedDifficulty.slice(1)}
+                </span>
+              )}
+              <p className="text-sm text-gray-500">
+                Answered {answeredCount} / {questions.length}
+              </p>
+            </div>
           </div>
         </div>
         <div className="space-y-1">
