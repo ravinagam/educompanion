@@ -32,9 +32,12 @@ export async function POST(request: NextRequest) {
 
   if (!res.ok) {
     const err = await res.text();
+    console.error('[TTS] Sarvam API error', res.status, err);
     return NextResponse.json({ error: err }, { status: res.status });
   }
 
   const data = await res.json() as { audios?: string[] };
-  return NextResponse.json({ audio: data.audios?.[0] ?? null });
+  const audio = data.audios?.[0] ?? null;
+  console.log('[TTS] Sarvam success, audio length:', audio?.length ?? 0);
+  return NextResponse.json({ audio });
 }

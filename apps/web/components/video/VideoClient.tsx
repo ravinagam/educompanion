@@ -165,6 +165,12 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const progTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Holds the current HTMLAudioElement when using Hindi TTS
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Track whether Sarvam TTS is actually working (confirmed on first successful audio)
+  const [hindiTtsActive, setHindiTtsActive] = useState(false);
+
+  useEffect(() => {
+    console.log('[VideoPlayer] isHindi:', isHindi);
+  }, [isHindi]);
 
   const section = sections[slideIdx];
   const estDuration = slideDuration(section);
@@ -224,7 +230,8 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   // Fetch Hindi audio from Sarvam TTS and play it; falls back to Web Speech on any failure
   const speakHindi = useCallback(async (text: string, onEnd: () => void, myId: number) => {
     // Fallback: use browser Web Speech API (English voice) when Sarvam is unavailable
-    const fallback = () => {
+    const fallback = (reason: string) => {
+      console.warn('[TTS] Sarvam fallback →', reason);
       if (narrationIdRef.current !== myId) return;
       if (!synthRef.current) { onEnd(); return; }
       const utt = makeUtt(toSpeechText(text));
@@ -240,19 +247,28 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         body: JSON.stringify({ text, language: 'hi-IN' }),
       });
       if (narrationIdRef.current !== myId) return;
-      if (!res.ok) { fallback(); return; }
+      if (!res.ok) {
+        const err = await res.text().catch(() => res.status.toString());
+        fallback(`HTTP ${res.status}: ${err}`);
+        return;
+      }
 
-      const data = await res.json() as { audio?: string };
+      const data = await res.json() as { audio?: string; error?: string };
       if (narrationIdRef.current !== myId) return;
-      if (!data.audio) { fallback(); return; }
+      if (!data.audio) { fallback(`no audio in response: ${JSON.stringify(data)}`); return; }
 
       const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
-      audio.onerror = () => { if (narrationIdRef.current === myId) fallback(); };
+      audio.onerror = (e) => {
+        console.error('[TTS] Audio playback error', e);
+        if (narrationIdRef.current === myId) fallback('audio playback error');
+      };
+      setHindiTtsActive(true);
+      console.log('[TTS] Playing Sarvam audio, length:', data.audio.length);
       await audio.play();
-    } catch {
-      fallback();
+    } catch (e) {
+      fallback(`exception: ${e}`);
     }
   }, [makeUtt]);
 
@@ -519,6 +535,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         </div>
 
         <div className="flex items-center gap-2 w-24 justify-end">
+          {isHindi && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+              hindiTtsActive ? 'bg-orange-500/30 text-orange-300' : 'bg-white/10 text-white/40'
+            }`} title={hindiTtsActive ? 'Hindi TTS active' : 'Hindi TTS loading…'}>
+              हि
+            </span>
+          )}
           <Button size="icon" variant="ghost"
             className={`h-7 w-7 ${voiceEnabled ? 'text-white' : 'text-gray-600'}`}
             onClick={toggleVoice}
