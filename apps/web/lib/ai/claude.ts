@@ -251,14 +251,16 @@ Rules:
 export async function chatWithChapter(
   chapterName: string,
   chapterContent: string | null | undefined,
-  messages: { role: 'user' | 'assistant'; content: string }[]
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  subjectName?: string
 ): Promise<UsageResult<string>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
+  const isHindi = subjectName?.toLowerCase().includes('hindi') ?? false;
 
   const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–10).
 Answer questions using ONLY the following chapter content. If the question is not covered in the chapter, say so politely and suggest the student refer to the full chapter.
 Be clear, use simple language, and give real-world examples where helpful. Keep answers concise (2–5 sentences unless a longer explanation is needed).
-
+${isHindi ? 'Always respond in Hindi (Devanagari script). The student is studying a Hindi subject.' : ''}
 Chapter: "${chapterName}"
 
 Chapter Content:

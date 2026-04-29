@@ -19,7 +19,7 @@ export async function POST(
   const admin = createAdminClient();
   const { data: chapter } = await admin
     .from('chapters')
-    .select('id, name, content_text, subjects!inner(user_id)')
+    .select('id, name, content_text, subjects!inner(user_id, name)')
     .eq('id', chapterId)
     .single();
 
@@ -27,8 +27,10 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  const subjectName = (chapter.subjects as unknown as { name: string }).name;
+
   try {
-    const result = await chatWithChapter(chapter.name, chapter.content_text, messages);
+    const result = await chatWithChapter(chapter.name, chapter.content_text, messages, subjectName);
     logAiUsage(user.id, 'chat', result.model, result.input_tokens, result.output_tokens).catch(console.error);
     return NextResponse.json({ reply: result.data });
   } catch (e) {
