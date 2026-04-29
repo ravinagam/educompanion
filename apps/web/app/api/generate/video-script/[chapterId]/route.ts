@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateVideoScript } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
   _request: NextRequest,
@@ -43,7 +44,9 @@ export async function POST(
   }
 
   try {
-    const scriptJson = await generateVideoScript(chapter.name, chapter.content_text ?? '');
+    const result = await generateVideoScript(chapter.name, chapter.content_text ?? '');
+    const scriptJson = result.data;
+    logAiUsage(user.id, 'video_script', result.model, result.input_tokens, result.output_tokens).catch(console.error);
 
     await admin.from('video_scripts').update({
       script_json: scriptJson,

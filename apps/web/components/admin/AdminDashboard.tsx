@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface Chapter { id: string; name: string; upload_status: string }
@@ -21,7 +21,24 @@ interface Feedback {
   user: { name: string; email: string } | null;
 }
 
-interface Props { users: User[]; feedback: Feedback[] }
+interface UsageLog {
+  user_id: string; feature: string;
+  input_tokens: number; output_tokens: number; cost_usd: number; created_at: string;
+}
+
+interface UserUsage {
+  userId: string; name: string; email: string;
+  totalCalls: number; totalTokens: number; totalCost: number;
+  byFeature: Record<string, { calls: number; tokens: number; cost: number }>;
+  lastUsed: string | null;
+}
+
+interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[] }
+
+const FEATURE_LABELS: Record<string, string> = {
+  quiz: 'Quiz', quiz_targeted: 'Practice', flashcards: 'Flashcards',
+  video_script: 'Video Script', chat: 'AI Chat', summary: 'Summary',
+};
 
 function stat(label: string, value: number, icon: React.ReactNode, color: string) {
   return (
@@ -101,10 +118,31 @@ function UserRow({ user }: { user: User }) {
   );
 }
 
-export function AdminDashboard({ users, feedback }: Props) {
-  const [tab, setTab] = useState<'users' | 'feedback'>('users');
+export function AdminDashboard({ users, feedback, usageLogs }: Props) {
+  const [tab, setTab] = useState<'users' | 'feedback' | 'usage'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
+
+  // Aggregate usage per user
+  const userMap = new Map(users.map(u => [u.id, u]));
+  const usageByUser = new Map<string, UserUsage>();
+  for (const log of usageLogs) {
+    if (!usageByUser.has(log.user_id)) {
+      const u = userMap.get(log.user_id);
+      usageByUser.set(log.user_id, { userId: log.user_id, name: u?.name ?? 'Unknown', email: u?.email ?? '', totalCalls: 0, totalTokens: 0, totalCost: 0, byFeature: {}, lastUsed: null });
+    }
+    const entry = usageByUser.get(log.user_id)!;
+    entry.totalCalls++;
+    entry.totalTokens += log.input_tokens + log.output_tokens;
+    entry.totalCost += Number(log.cost_usd);
+    if (!entry.byFeature[log.feature]) entry.byFeature[log.feature] = { calls: 0, tokens: 0, cost: 0 };
+    entry.byFeature[log.feature].calls++;
+    entry.byFeature[log.feature].tokens += log.input_tokens + log.output_tokens;
+    entry.byFeature[log.feature].cost += Number(log.cost_usd);
+    if (!entry.lastUsed || log.created_at > entry.lastUsed) entry.lastUsed = log.created_at;
+  }
+  const userUsageList = [...usageByUser.values()].sort((a, b) => b.totalCost - a.totalCost);
+  const totalCost = userUsageList.reduce((s, u) => s + u.totalCost, 0);
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -125,15 +163,24 @@ export function AdminDashboard({ users, feedback }: Props) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stat('Total Users', users.length, <Users className="h-5 w-5" />, 'bg-gradient-to-br from-indigo-600 to-blue-600')}
         {stat('Total Chapters', totalChapters, <BookOpen className="h-5 w-5" />, 'bg-gradient-to-br from-emerald-600 to-teal-600')}
         {stat('Feedback Received', feedback.length, <MessageSquare className="h-5 w-5" />, 'bg-gradient-to-br from-amber-500 to-orange-500')}
+        <Card className="border-0 shadow-md overflow-hidden">
+          <div className="px-5 py-4 flex items-center gap-4 bg-gradient-to-br from-violet-600 to-purple-700">
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0"><Zap className="h-5 w-5" /></div>
+            <div className="text-white">
+              <p className="text-2xl font-bold">${totalCost.toFixed(4)}</p>
+              <p className="text-xs opacity-80">AI Cost (USD)</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        {(['users', 'feedback'] as const).map(t => (
+        {(['users', 'feedback', 'usage'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -143,7 +190,7 @@ export function AdminDashboard({ users, feedback }: Props) {
                 : 'border-transparent text-gray-500 hover:text-indigo-600'
             }`}
           >
-            {t === 'users' ? `Users (${users.length})` : `Feedback (${feedback.length})`}
+            {t === 'users' ? `Users (${users.length})` : t === 'feedback' ? `Feedback (${feedback.length})` : `AI Usage (${usageLogs.length})`}
           </button>
         ))}
       </div>
@@ -154,6 +201,55 @@ export function AdminDashboard({ users, feedback }: Props) {
           {users.length === 0 ? (
             <p className="text-center text-gray-400 py-10">No users yet</p>
           ) : users.map(u => <UserRow key={u.id} user={u} />)}
+        </div>
+      )}
+
+      {/* Usage tab */}
+      {tab === 'usage' && (
+        <div className="space-y-3">
+          {userUsageList.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">No AI usage recorded yet</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-xs text-gray-500 font-semibold">
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3 text-right">Calls</th>
+                    <th className="px-4 py-3 text-right">Tokens</th>
+                    <th className="px-4 py-3 text-right">Cost (USD)</th>
+                    <th className="px-4 py-3">Feature breakdown</th>
+                    <th className="px-4 py-3 text-right">Last used</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {userUsageList.map(u => (
+                    <tr key={u.userId} className="bg-white hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{u.name}</p>
+                        <p className="text-xs text-gray-400">{u.email}</p>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalCalls}</td>
+                      <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalTokens.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-violet-700">${u.totalCost.toFixed(4)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(u.byFeature).map(([feat, val]) => (
+                            <span key={feat} className="text-xs bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5">
+                              {FEATURE_LABELS[feat] ?? feat} ×{val.calls}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-gray-400">
+                        {u.lastUsed ? new Date(u.lastUsed).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

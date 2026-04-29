@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { chatWithChapter } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
   request: NextRequest,
@@ -27,8 +28,9 @@ export async function POST(
   }
 
   try {
-    const reply = await chatWithChapter(chapter.name, chapter.content_text, messages);
-    return NextResponse.json({ reply });
+    const result = await chatWithChapter(chapter.name, chapter.content_text, messages);
+    logAiUsage(user.id, 'chat', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    return NextResponse.json({ reply: result.data });
   } catch (e) {
     console.error('[chat]', e);
     return NextResponse.json({ error: 'AI error' }, { status: 500 });

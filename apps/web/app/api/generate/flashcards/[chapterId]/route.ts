@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateFlashcards } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
   _request: NextRequest,
@@ -43,7 +44,9 @@ export async function POST(
 
   let pairs: { term: string; definition: string }[];
   try {
-    pairs = await generateFlashcards(chapter.name, chapter.content_text, variationHint);
+    const result = await generateFlashcards(chapter.name, chapter.content_text, variationHint);
+    pairs = result.data;
+    logAiUsage(user.id, 'flashcards', result.model, result.input_tokens, result.output_tokens).catch(console.error);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI generation failed';
     return NextResponse.json({ error: msg }, { status: 500 });

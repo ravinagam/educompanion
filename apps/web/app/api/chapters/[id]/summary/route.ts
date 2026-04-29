@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateChapterSummary } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export async function GET(
   _request: NextRequest,
@@ -53,7 +54,9 @@ export async function POST(
   }
 
   try {
-    const summary = await generateChapterSummary(chapter.name, chapter.content_text);
+    const result = await generateChapterSummary(chapter.name, chapter.content_text);
+    const summary = result.data;
+    logAiUsage(user.id, 'summary', result.model, result.input_tokens, result.output_tokens).catch(console.error);
 
     await admin
       .from('chapter_summaries')

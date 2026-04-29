@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateQuiz } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
   request: NextRequest,
@@ -46,7 +47,9 @@ export async function POST(
 
   let questions;
   try {
-    questions = await generateQuiz(chapter.name, chapter.content_text, variationHint, difficulty);
+    const result = await generateQuiz(chapter.name, chapter.content_text, variationHint, difficulty);
+    questions = result.data;
+    logAiUsage(user.id, 'quiz', result.model, result.input_tokens, result.output_tokens).catch(console.error);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI generation failed';
     return NextResponse.json({ error: msg }, { status: 500 });

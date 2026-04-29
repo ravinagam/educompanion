@@ -8,6 +8,13 @@ function getClaude() {
   return _claude;
 }
 
+export interface UsageResult<T> {
+  data: T;
+  input_tokens: number;
+  output_tokens: number;
+  model: string;
+}
+
 function parseJSON<T>(text: string): T {
   const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
   try {
@@ -46,7 +53,7 @@ export async function generateQuiz(
   chapterContent: string | null | undefined,
   variationHint = '',
   difficulty: 'easy' | 'medium' | 'hard' = 'medium'
-): Promise<QuizQuestion[]> {
+): Promise<UsageResult<QuizQuestion[]>> {
   // Use up to 80k chars sampled from across the whole chapter
   const content = sampleContent(chapterContent ?? '', 80_000);
 
@@ -108,7 +115,7 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return parseJSON<QuizQuestion[]>(text);
+  return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Flashcard Generation ─────────────────────────────────────────────────────
@@ -117,7 +124,7 @@ export async function generateFlashcards(
   chapterName: string,
   chapterContent: string | null | undefined,
   variationHint = ''
-): Promise<Pick<Flashcard, 'term' | 'definition'>[]> {
+): Promise<UsageResult<Pick<Flashcard, 'term' | 'definition'>[]>> {
   const content = sampleContent(chapterContent ?? '', 80_000);
 
   const variationLine = variationHint
@@ -157,7 +164,7 @@ Return ONLY valid JSON, no markdown.`;
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return parseJSON<Pick<Flashcard, 'term' | 'definition'>[]>(text);
+  return { data: parseJSON<Pick<Flashcard, 'term' | 'definition'>[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Video Script Generation ──────────────────────────────────────────────────
@@ -165,7 +172,7 @@ Return ONLY valid JSON, no markdown.`;
 export async function generateVideoScript(
   chapterName: string,
   chapterContent: string | null | undefined
-): Promise<VideoScriptContent> {
+): Promise<UsageResult<VideoScriptContent>> {
   const content = sampleContent(chapterContent ?? '', 100_000);
 
   const prompt = `You are creating an educational video script for Indian school students (grades 8–10).
@@ -236,7 +243,7 @@ Rules:
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return parseJSON<VideoScriptContent>(text);
+  return { data: parseJSON<VideoScriptContent>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Chat with Chapter ────────────────────────────────────────────────────────
@@ -245,7 +252,7 @@ export async function chatWithChapter(
   chapterName: string,
   chapterContent: string | null | undefined,
   messages: { role: 'user' | 'assistant'; content: string }[]
-): Promise<string> {
+): Promise<UsageResult<string>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
 
   const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–10).
@@ -264,7 +271,8 @@ ${content}`;
     messages: messages.map(m => ({ role: m.role, content: m.content })),
   });
 
-  return (message.content[0] as { type: string; text: string }).text;
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: text, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Chapter Summary ──────────────────────────────────────────────────────────
@@ -279,7 +287,7 @@ export interface ChapterSummary {
 export async function generateChapterSummary(
   chapterName: string,
   chapterContent: string | null | undefined
-): Promise<ChapterSummary> {
+): Promise<UsageResult<ChapterSummary>> {
   const content = sampleContent(chapterContent ?? '', 80_000);
 
   const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–10).
@@ -312,7 +320,7 @@ Rules:
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return parseJSON<ChapterSummary>(text);
+  return { data: parseJSON<ChapterSummary>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Targeted Practice Questions ──────────────────────────────────────────────
@@ -321,7 +329,7 @@ export async function generateTargetedQuestions(
   chapterName: string,
   chapterContent: string | null | undefined,
   wrongQuestions: string[]
-): Promise<QuizQuestion[]> {
+): Promise<UsageResult<QuizQuestion[]>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
 
   const prompt = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–10).
@@ -357,7 +365,7 @@ Return ONLY valid JSON array.`;
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return parseJSON<QuizQuestion[]>(text);
+  return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Study Plan Topic Extraction ──────────────────────────────────────────────
