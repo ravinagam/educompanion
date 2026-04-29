@@ -24,7 +24,7 @@ export default async function DashboardPage() {
       .limit(5),
     supabase
       .from('quiz_attempts')
-      .select(`*, quiz:quizzes(chapter_id, chapter:chapters(name))`)
+      .select(`*, quiz:quizzes(chapter_id, chapter:chapters(name, subject:subjects(name)))`)
       .eq('user_id', user.id)
       .order('taken_at', { ascending: false })
       .limit(8),
@@ -40,7 +40,9 @@ export default async function DashboardPage() {
 
   const recentAttempts = (recentAttemptsRes.data ?? []).map(a => ({
     ...a,
-    chapter_name: (a.quiz as { chapter: { name: string } })?.chapter?.name ?? 'Unknown',
+    chapter_name: (a.quiz as { chapter: { name: string; subject: { name: string } } })?.chapter?.name ?? 'Unknown',
+    subject_name: (a.quiz as { chapter: { subject: { name: string } } })?.chapter?.subject?.name ?? '',
+    difficulty: (a as { difficulty?: string }).difficulty ?? 'medium',
   }));
 
   return (

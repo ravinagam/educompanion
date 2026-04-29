@@ -34,6 +34,8 @@ interface RecentAttempt {
   total: number;
   taken_at: string;
   chapter_name: string;
+  subject_name: string;
+  difficulty: string;
 }
 
 interface Props {
@@ -211,10 +213,20 @@ export function DashboardClient({ todayPlans, upcomingTests, recentAttempts }: P
                 {recentAttempts.slice(0, 5).map(attempt => {
                   const pct = Math.round((attempt.score / attempt.total) * 100);
                   const scoreColor = pct >= 70 ? 'text-green-700 bg-green-100' : pct >= 50 ? 'text-amber-700 bg-amber-100' : 'text-red-700 bg-red-100';
+                  const diff = attempt.difficulty ?? 'medium';
+                  const diffColor = diff === 'easy' ? 'bg-green-100 text-green-700' : diff === 'hard' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700';
                   return (
                     <div key={attempt.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-violet-50 border border-violet-100">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{attempt.chapter_name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-medium text-gray-900 truncate">{attempt.chapter_name}</p>
+                          {attempt.subject_name && (
+                            <span className="text-xs text-violet-500 font-medium shrink-0">· {attempt.subject_name}</span>
+                          )}
+                          <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${diffColor}`}>
+                            {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <Progress value={pct} className="flex-1 h-1.5" />
                           <span className="text-xs text-gray-500 shrink-0">{attempt.score}/{attempt.total}</span>
