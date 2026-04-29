@@ -10,7 +10,7 @@ import type { User } from '@educompanion/shared';
 
 const nav = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Upload Material', href: '/upload', icon: Upload },
+  { label: 'Upload Chapter', href: '/upload', icon: Upload },
   { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
   { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
 ];

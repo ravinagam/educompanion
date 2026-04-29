@@ -232,7 +232,7 @@ export function SavedChaptersClient({ subjects }: Props) {
         <Link href="/upload">
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
-            Upload Material
+            Upload Chapter
           </Button>
         </Link>
       </div>
@@ -243,7 +243,7 @@ export function SavedChaptersClient({ subjects }: Props) {
           <p className="font-medium">No chapters saved yet</p>
           <p className="text-sm mb-4">Upload your first chapter to get started</p>
           <Link href="/upload">
-            <Button><Upload className="h-4 w-4 mr-2" />Upload Material</Button>
+            <Button><Upload className="h-4 w-4 mr-2" />Upload Chapter</Button>
           </Link>
         </div>
       ) : (
