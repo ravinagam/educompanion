@@ -31,7 +31,7 @@ export function MobileNav({ user }: Props) {
           <div className="flex items-center gap-2 px-6 py-5 border-b">
             <BookMarked className="h-6 w-6 text-blue-600" />
             <div>
-              <span className="font-bold">EaseMyStudy</span>
+              <span className="font-bold">EasyMyStudy</span>
               <p className="text-xs text-gray-400 leading-none">by Bodhly</p>
             </div>
           </div>

@@ -83,7 +83,7 @@ export default function OnboardingPage() {
       });
     }
 
-    toast.success('Setup complete! Welcome to EaseMyStudy');
+    toast.success('Setup complete! Welcome to EasyMyStudy');
     router.push('/dashboard');
     router.refresh();
   }
@@ -97,7 +97,7 @@ export default function OnboardingPage() {
               <BookMarked className="h-8 w-8" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to EaseMyStudy!</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome to EasyMyStudy!</h1>
           <p className="text-gray-500">Let&apos;s set up your learning profile</p>
         </div>
 
@@ -126,7 +126,7 @@ export default function OnboardingPage() {
             {step === 0 && (
               <div className="space-y-4">
                 <p className="text-gray-600">
-                  EaseMyStudy helps you study smarter with AI-generated quizzes,
+                  EasyMyStudy helps you study smarter with AI-generated quizzes,
                   flashcards, and personalized study plans. All tied to your actual textbook material.
                 </p>
                 <div className="bg-blue-50 rounded-lg p-4 space-y-2">

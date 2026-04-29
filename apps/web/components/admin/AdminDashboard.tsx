@@ -155,7 +155,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
       <div className="rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 px-6 py-5 text-white shadow-md flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-gray-300 text-sm mt-0.5">EaseMyStudy overview</p>
+          <p className="text-gray-300 text-sm mt-0.5">EasyMyStudy overview</p>
         </div>
         <Button onClick={signOut} variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10 gap-1.5">
           <LogOut className="h-4 w-4" /> Sign out

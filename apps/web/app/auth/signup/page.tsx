@@ -86,7 +86,7 @@ export default function SignupPage() {
           <div className="flex justify-center">
             <div className="flex items-center gap-2 text-blue-600">
               <BookOpen className="h-8 w-8" />
-              <span className="text-2xl font-bold">EaseMyStudy</span>
+              <span className="text-2xl font-bold">EasyMyStudy</span>
             </div>
           </div>
           <p className="text-gray-500 text-sm">Create your student account</p>
