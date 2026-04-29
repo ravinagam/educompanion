@@ -16,7 +16,7 @@ interface MyFeedback {
   status: string;
 }
 
-export function FeedbackButton() {
+export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
   const [open, setOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<'submit' | 'history'>('submit');
   const [message, setMessage] = useState('');
@@ -90,18 +90,31 @@ export function FeedbackButton() {
 
   return (
     <>
-      {/* Floating trigger button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 relative flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all"
-        title="Share feedback"
-      >
-        <MessageSquarePlus className="h-4 w-4" />
-        Feedback
-        {hasUnread && (
-          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
-        )}
-      </button>
+      {/* Trigger button — sidebar nav item or floating button */}
+      {sidebar ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors relative"
+        >
+          <MessageSquarePlus className="h-4 w-4 shrink-0" />
+          Feedback
+          {hasUnread && (
+            <span className="ml-auto h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-50 relative flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all"
+          title="Share feedback"
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          Feedback
+          {hasUnread && (
+            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
+          )}
+        </button>
+      )}
 
       {/* Backdrop + panel */}
       {open && (

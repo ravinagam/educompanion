@@ -8,6 +8,7 @@ import {
   FlaskConical, Layers, BookMarked
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 const nav = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -55,8 +56,9 @@ export function AppSidebar({ user }: Props) {
         ))}
       </nav>
 
-      <div className="px-4 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400 text-center">AI-powered learning</p>
+      <div className="px-3 pb-2 border-t border-gray-100 pt-3">
+        <FeedbackButton sidebar />
+        <p className="text-xs text-gray-400 text-center mt-2">AI-powered learning</p>
       </div>
     </aside>
   );
