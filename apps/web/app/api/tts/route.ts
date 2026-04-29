@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { logCostDirect, SARVAM_COST_PER_CHAR } from '@/lib/ai/usage';
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY ?? '';
 
@@ -6,6 +8,9 @@ export async function POST(request: NextRequest) {
   if (!SARVAM_API_KEY) {
     return NextResponse.json({ error: 'TTS not configured' }, { status: 503 });
   }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { text, language } = await request.json() as { text: string; language?: string };
   if (!text) return NextResponse.json({ error: 'text required' }, { status: 400 });
@@ -39,5 +44,11 @@ export async function POST(request: NextRequest) {
   const data = await res.json() as { audios?: string[] };
   const audio = data.audios?.[0] ?? null;
   console.log('[TTS] Sarvam success, audio length:', audio?.length ?? 0);
+
+  if (user && audio) {
+    const charCount = text.slice(0, 500).length;
+    logCostDirect(user.id, 'tts', 'bulbul:v2', charCount, charCount * SARVAM_COST_PER_CHAR).catch(console.error);
+  }
+
   return NextResponse.json({ audio });
 }

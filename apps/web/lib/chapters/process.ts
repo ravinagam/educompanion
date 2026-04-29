@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { extractTextFromBuffer } from '@/lib/utils/text-extraction';
 import { chunkText, embedBatch, computeComplexityScore } from '@/lib/ai/embeddings';
+import { logCostDirect, VOYAGE_COST_PER_M } from '@/lib/ai/usage';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
@@ -8,13 +9,14 @@ export async function processChapterAsync(
   chapterId: string,
   buffer: Buffer,
   mimeType: string,
-  filename: string
+  filename: string,
+  userId?: string
 ) {
   const admin = createAdminClient();
 
   // Wrap entire processing in a timeout so it can never hang forever
   await Promise.race([
-    runProcessing(admin, chapterId, buffer, mimeType, filename),
+    runProcessing(admin, chapterId, buffer, mimeType, filename, userId),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Processing timed out after 5 minutes')), PROCESSING_TIMEOUT_MS)
     ),
@@ -26,7 +28,8 @@ async function runProcessing(
   chapterId: string,
   buffer: Buffer,
   mimeType: string,
-  filename: string
+  filename: string,
+  userId?: string
 ) {
   console.log('[process] Step 1/4 — extracting text from', filename, `(${mimeType})`);
   const contentText = await extractTextFromBuffer(buffer, mimeType, filename);
@@ -55,6 +58,12 @@ async function runProcessing(
       }));
       await admin.from('chapter_embeddings').insert(rows);
       console.log('[process] Embedded batch', Math.floor(i / batchSize) + 1, 'of', Math.ceil(chunks.length / batchSize));
+    }
+    if (userId) {
+      const totalChars = chunks.reduce((sum, c) => sum + c.length, 0);
+      const estTokens = Math.round(totalChars / 4);
+      const costUsd = (estTokens / 1_000_000) * VOYAGE_COST_PER_M;
+      logCostDirect(userId, 'embeddings', 'voyage-multilingual-2', estTokens, costUsd).catch(console.error);
     }
   } catch (embErr) {
     console.warn('[process] Embeddings skipped (chapter still usable):', embErr instanceof Error ? embErr.message : embErr);

@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       const bgAdmin = createAdminClient();
       try {
         console.log('[upload] Starting background processing for chapter', capturedId);
-        await processChapterAsync(capturedId, buffer, capturedMime, capturedName);
+        await processChapterAsync(capturedId, buffer, capturedMime, capturedName, user.id);
         console.log('[upload] Processing complete for chapter', capturedId);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Processing failed';

@@ -59,7 +59,7 @@ export async function POST(
     const bgAdmin = createAdminClient();
     try {
       console.log('[reprocess] Starting for chapter', id, filename, mimeType);
-      await processChapterAsync(id, buffer, mimeType, filename);
+      await processChapterAsync(id, buffer, mimeType, filename, user.id);
       console.log('[reprocess] Complete for chapter', id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Processing failed';

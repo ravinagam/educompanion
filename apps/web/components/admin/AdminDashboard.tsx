@@ -43,6 +43,7 @@ function inr(usd: number) { return `₹${(usd * USD_TO_INR).toFixed(2)}`; }
 const FEATURE_LABELS: Record<string, string> = {
   quiz: 'Quiz', quiz_targeted: 'Practice', flashcards: 'Flashcards',
   video_script: 'Video Script', chat: 'AI Chat', summary: 'Summary',
+  embeddings: 'Embeddings', tts: 'Hindi TTS',
 };
 
 function stat(label: string, value: number, icon: React.ReactNode, color: string) {
@@ -316,7 +317,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
                   <tr className="bg-gray-50 text-left text-xs text-gray-500 font-semibold">
                     <th className="px-4 py-3">Student</th>
                     <th className="px-4 py-3 text-right">Calls</th>
-                    <th className="px-4 py-3 text-right">Tokens</th>
+                    <th className="px-4 py-3 text-right">Units</th>
                     <th className="px-4 py-3 text-right">Cost (INR)</th>
                     <th className="px-4 py-3">Feature breakdown</th>
                     <th className="px-4 py-3 text-right">Last used</th>
