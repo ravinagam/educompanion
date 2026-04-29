@@ -128,7 +128,7 @@ export function UploadClient({ subjects }: Props) {
             <Upload className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Upload Study Material</h1>
+            <h1 className="text-xl font-bold">Upload Chapter</h1>
             <p className="text-blue-100 text-xs mt-0.5">Add a chapter to your library for AI-powered study tools</p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export function UploadClient({ subjects }: Props) {
 
           {/* Drop zone */}
           <div className="space-y-1.5">
-            <Label className="text-gray-700 font-medium">Study Material</Label>
+            <Label className="text-gray-700 font-medium">Chapter File</Label>
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
