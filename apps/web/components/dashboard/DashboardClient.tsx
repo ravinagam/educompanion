@@ -40,6 +40,7 @@ interface RecentAttempt {
 
 interface Props {
   userId: string;
+  userName: string;
   todayPlans: StudyPlan[];
   upcomingTests: UpcomingTest[];
   recentAttempts: RecentAttempt[];
@@ -51,7 +52,7 @@ function urgencyBadge(days: number) {
   return <Badge className="bg-green-500 text-white">🟢 On Track</Badge>;
 }
 
-export function DashboardClient({ todayPlans, upcomingTests, recentAttempts }: Props) {
+export function DashboardClient({ userName, todayPlans, upcomingTests, recentAttempts }: Props) {
   const completedToday = todayPlans.filter(p => p.is_completed).length;
   const totalToday = todayPlans.length;
   const todayPercent = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
@@ -60,7 +61,7 @@ export function DashboardClient({ todayPlans, upcomingTests, recentAttempts }: P
     <div className="space-y-6">
       {/* Page header */}
       <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 px-6 py-5 text-white shadow-md">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Hi, {userName.split(' ')[0]}!</h1>
         <p className="text-blue-100 text-sm mt-0.5">
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>

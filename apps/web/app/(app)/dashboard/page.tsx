@@ -48,6 +48,7 @@ export default async function DashboardPage() {
   return (
     <DashboardClient
       userId={user.id}
+      userName={user.user_metadata?.name || user.user_metadata?.username || 'Student'}
       todayPlans={todayPlansRes.data ?? []}
       upcomingTests={upcomingTests}
       recentAttempts={recentAttempts}
