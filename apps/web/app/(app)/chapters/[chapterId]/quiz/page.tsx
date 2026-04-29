@@ -39,7 +39,7 @@ export default async function QuizPage({ params }: { params: Promise<{ chapterId
 
   const { data: attempts } = await supabase
     .from('quiz_attempts')
-    .select('id, score, total, taken_at')
+    .select('id, score, total, taken_at, difficulty')
     .eq('user_id', user.id)
     .eq('quiz_id', rawQuiz?.id ?? '')
     .order('taken_at', { ascending: false })

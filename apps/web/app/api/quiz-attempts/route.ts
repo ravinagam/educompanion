@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { quizId, answers } = await request.json();
+  const { quizId, answers, difficulty } = await request.json();
   // answers: { [questionId]: chosenAnswer }
 
   if (!quizId || !answers) {
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       score,
       total: questions.length,
       answers_json: answers,
+      difficulty: ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
     })
     .select()
     .single();

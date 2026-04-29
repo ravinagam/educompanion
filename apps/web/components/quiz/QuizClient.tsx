@@ -31,6 +31,7 @@ interface Attempt {
   score: number;
   total: number;
   taken_at: string;
+  difficulty: string | null;
 }
 
 interface ResultItem {
@@ -236,7 +237,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
       const res = await fetch('/api/quiz-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quizId: quiz!.id, answers: finalAnswers }),
+        body: JSON.stringify({ quizId: quiz!.id, answers: finalAnswers, difficulty: generatedDifficulty ?? 'medium' }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -407,20 +408,30 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                 {attempts.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Recent Attempts</p>
-                    {attempts.map(a => (
-                      <div key={a.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500">
-                          {new Date(a.taken_at).toLocaleDateString('en-IN')}{' '}
-                          {new Date(a.taken_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <Badge variant={
-                          Math.round(a.score / a.total * 100) >= 70 ? 'default' :
-                          Math.round(a.score / a.total * 100) >= 50 ? 'secondary' : 'destructive'
-                        }>
-                          {a.score}/{a.total} ({Math.round(a.score / a.total * 100)}%)
-                        </Badge>
-                      </div>
-                    ))}
+                    {attempts.map(a => {
+                      const pct = Math.round(a.score / a.total * 100);
+                      const diff = a.difficulty ?? 'medium';
+                      return (
+                        <div key={a.id} className="flex items-center justify-between text-sm gap-2">
+                          <span className="text-gray-500 shrink-0">
+                            {new Date(a.taken_at).toLocaleDateString('en-IN')}{' '}
+                            {new Date(a.taken_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              diff === 'easy' ? 'bg-green-100 text-green-700' :
+                              diff === 'hard' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                            </span>
+                            <Badge variant={pct >= 70 ? 'default' : pct >= 50 ? 'secondary' : 'destructive'}>
+                              {a.score}/{a.total} ({pct}%)
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
