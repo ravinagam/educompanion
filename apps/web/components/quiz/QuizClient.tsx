@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   FlaskConical, CheckCircle2, XCircle, Trophy,
@@ -62,7 +61,9 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [readyToSubmit, setReadyToSubmit] = useState(false); // set synchronously when last unanswered Q answered
   const [submitting, setSubmitting] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [results, setResults] = useState<ResultItem[]>([]);
+  const fillInputRef = useRef<HTMLInputElement>(null);
   const [finalScore, setFinalScore] = useState(0);
   const [targetedQuestions, setTargetedQuestions] = useState<Question[]>([]);
   const [loadingTargeted, setLoadingTargeted] = useState(false);
@@ -70,6 +71,12 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
 
   const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
+
+  useEffect(() => {
+    if (phase === 'quiz' && currentQ?.type === 'fill_blank') {
+      fillInputRef.current?.focus();
+    }
+  }, [phase, currentQ?.id, currentQ?.type]);
 
   // Skipped questions that still have no answer
   const unansweredSkipped = skipped.filter(id => !answers[id]);
@@ -79,12 +86,21 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   async function generateQuiz() {
     setGenerating(true);
     try {
-      const res = await fetch(`/api/generate/quiz/${chapter.id}`, { method: 'POST' });
+      const res = await fetch(`/api/generate/quiz/${chapter.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ difficulty }),
+      });
       const json = await res.json();
       if (!res.ok) {
         toast.error(json.error ?? 'Generation failed');
       } else {
         toast.success('Quiz generated!');
+        setCurrent(0);
+        setAnswers({});
+        setFillInput('');
+        setSkipped([]);
+        setReadyToSubmit(false);
         router.refresh();
       }
     } catch {
@@ -357,12 +373,40 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   </div>
                 )}
 
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Difficulty</p>
+                  <div className="flex gap-2">
+                    {(['easy', 'medium', 'hard'] as const).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setDifficulty(d)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                          difficulty === d
+                            ? d === 'easy' ? 'bg-green-100 border-green-400 text-green-800'
+                              : d === 'medium' ? 'bg-amber-100 border-amber-400 text-amber-800'
+                              : 'bg-red-100 border-red-400 text-red-800'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-3">
                   <Button onClick={generateQuiz} variant="outline" disabled={generating} className="flex-1">
                     {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
                     Regenerate
                   </Button>
-                  <Button onClick={() => setPhase('quiz')} className="flex-1">
+                  <Button onClick={() => {
+                    setCurrent(0);
+                    setAnswers({});
+                    setFillInput('');
+                    setSkipped([]);
+                    setReadyToSubmit(false);
+                    setPhase('quiz');
+                  }} className="flex-1">
                     Start Quiz →
                   </Button>
                 </div>
@@ -464,6 +508,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             {/* Fill in the blank */}
             {currentQ.type === 'fill_blank' && (
               <input
+                ref={fillInputRef}
                 className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Type your answer..."
                 value={fillInput}

@@ -4,10 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateQuiz } from '@/lib/ai/claude';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ chapterId: string }> }
 ) {
   const { chapterId } = await params;
+  const body = await request.json().catch(() => ({}));
+  const difficulty: 'easy' | 'medium' | 'hard' = ['easy', 'medium', 'hard'].includes(body.difficulty) ? body.difficulty : 'medium';
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,7 +46,7 @@ export async function POST(
 
   let questions;
   try {
-    questions = await generateQuiz(chapter.name, chapter.content_text, variationHint);
+    questions = await generateQuiz(chapter.name, chapter.content_text, variationHint, difficulty);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI generation failed';
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -81,7 +83,7 @@ export async function POST(
 }
 
 export async function GET(
-  _request: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ chapterId: string }> }
 ) {
   const { chapterId } = await params;

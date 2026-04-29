@@ -44,7 +44,8 @@ function sampleContent(text: string, maxChars: number): string {
 export async function generateQuiz(
   chapterName: string,
   chapterContent: string | null | undefined,
-  variationHint = ''
+  variationHint = '',
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
 ): Promise<QuizQuestion[]> {
   // Use up to 80k chars sampled from across the whole chapter
   const content = sampleContent(chapterContent ?? '', 80_000);
@@ -67,7 +68,7 @@ Rules:
 - Mix question types: 6 MCQ, 3 True/False, 3 Fill-in-the-blank
 - MCQs must have exactly 4 options (A, B, C, D)
 - Every question must have a clear correct answer and a concise explanation
-- Difficulty: 30% easy, 50% medium, 20% hard
+- Difficulty: ${difficulty === 'easy' ? '70% easy, 25% medium, 5% hard — straightforward recall questions, simple vocabulary' : difficulty === 'hard' ? '5% easy, 25% medium, 70% hard — deep conceptual reasoning, application, and analysis' : '30% easy, 50% medium, 20% hard — balanced mix'}
 - Spread questions evenly across different topics/sections of the chapter
 
 Return a JSON array with this exact schema:
