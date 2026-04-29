@@ -37,6 +37,9 @@ interface UserUsage {
 
 interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[] }
 
+const USD_TO_INR = 94;
+function inr(usd: number) { return `₹${(usd * USD_TO_INR).toFixed(2)}`; }
+
 const FEATURE_LABELS: Record<string, string> = {
   quiz: 'Quiz', quiz_targeted: 'Practice', flashcards: 'Flashcards',
   video_script: 'Video Script', chat: 'AI Chat', summary: 'Summary',
@@ -268,8 +271,8 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
           <div className="px-5 py-4 flex items-center gap-4 bg-gradient-to-br from-violet-600 to-purple-700">
             <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0"><Zap className="h-5 w-5" /></div>
             <div className="text-white">
-              <p className="text-2xl font-bold">${totalCost.toFixed(4)}</p>
-              <p className="text-xs opacity-80">AI Cost (USD)</p>
+              <p className="text-2xl font-bold">{inr(totalCost)}</p>
+              <p className="text-xs opacity-80">AI Cost (INR)</p>
             </div>
           </div>
         </Card>
@@ -314,7 +317,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
                     <th className="px-4 py-3">Student</th>
                     <th className="px-4 py-3 text-right">Calls</th>
                     <th className="px-4 py-3 text-right">Tokens</th>
-                    <th className="px-4 py-3 text-right">Cost (USD)</th>
+                    <th className="px-4 py-3 text-right">Cost (INR)</th>
                     <th className="px-4 py-3">Feature breakdown</th>
                     <th className="px-4 py-3 text-right">Last used</th>
                   </tr>
@@ -328,7 +331,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalCalls}</td>
                       <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalTokens.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-violet-700">${u.totalCost.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-violet-700">{inr(u.totalCost)}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {Object.entries(u.byFeature).map(([feat, val]) => (
