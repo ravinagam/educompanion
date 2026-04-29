@@ -518,7 +518,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={prev} disabled={current === 0}>
+              <Button variant="outline" onClick={current === 0 ? () => setPhase('intro') : prev}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <Button
