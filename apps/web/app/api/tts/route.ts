@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       inputs: [text.slice(0, 500)],
       target_language_code: language ?? 'hi-IN',
       speaker: 'anushka',
-      model: 'bulbul:v1',
+      model: 'bulbul:v2',
       pitch: 0,
       pace: 0.9,
       loudness: 1.5,
