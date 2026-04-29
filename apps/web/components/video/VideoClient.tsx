@@ -144,7 +144,7 @@ async function fetchWikiImage(query: string): Promise<string | null> {
 
 // ── Slide Player ──────────────────────────────────────────────────────────────
 
-function SlidePlayer({ sections }: { sections: VideoSection[] }) {
+function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi: boolean }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
@@ -163,6 +163,8 @@ function SlidePlayer({ sections }: { sections: VideoSection[] }) {
   const narrationIdRef = useRef(0);
   const nextBulletIdxRef = useRef(0);
   const progTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Holds the current HTMLAudioElement when using Hindi TTS
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const section = sections[slideIdx];
   const estDuration = slideDuration(section);
@@ -219,10 +221,36 @@ function SlidePlayer({ sections }: { sections: VideoSection[] }) {
     return utt;
   }, []);
 
+  // Fetch Hindi audio from Sarvam TTS and play it; calls onEnd when done or on error
+  const speakHindi = useCallback(async (text: string, onEnd: () => void, myId: number) => {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: 'hi-IN' }),
+      });
+      if (narrationIdRef.current !== myId) return;
+      const data = await res.json() as { audio?: string };
+      if (!data.audio || narrationIdRef.current !== myId) { onEnd(); return; }
+
+      const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+      currentAudioRef.current = audio;
+      audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
+      audio.onerror = () => { if (narrationIdRef.current === myId) onEnd(); };
+      await audio.play();
+    } catch {
+      if (narrationIdRef.current === myId) onEnd();
+    }
+  }, []);
+
   // Stop all narration — invalidate running callbacks by bumping the narration id
   const stopNarration = useCallback(() => {
     narrationIdRef.current++;
     synthRef.current?.cancel();
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
   }, []);
 
   // Speech-driven narration: title → bullet[0] → bullet[1] → ... → advance
@@ -252,8 +280,18 @@ function SlidePlayer({ sections }: { sections: VideoSection[] }) {
       nextBulletIdxRef.current = idx + 1;
       setVisibleBullets(idx + 1); // reveal bullet before speaking it
 
-      if (!voiceEnabledRef.current || !synthRef.current) {
+      if (!voiceEnabledRef.current) {
         // Voice off: just reveal at fixed interval
+        setTimeout(speakBullet, BULLET_INTERVAL_S * 1000);
+        return;
+      }
+
+      if (isHindi) {
+        speakHindi(sec.bullets[idx], speakBullet, myId);
+        return;
+      }
+
+      if (!synthRef.current) {
         setTimeout(speakBullet, BULLET_INTERVAL_S * 1000);
         return;
       }
@@ -264,15 +302,21 @@ function SlidePlayer({ sections }: { sections: VideoSection[] }) {
     }
 
     // Speak slide title first, then begin bullet chain
-    if (voiceEnabledRef.current && synthRef.current) {
-      const titleUtt = makeUtt(toSpeechText(sec.title));
-      titleUtt.onend = () => { if (narrationIdRef.current === myId) speakBullet(); };
-      titleUtt.onerror = speakBullet;
-      synthRef.current.speak(titleUtt);
+    if (voiceEnabledRef.current) {
+      if (isHindi) {
+        speakHindi(sec.title, speakBullet, myId);
+      } else if (synthRef.current) {
+        const titleUtt = makeUtt(toSpeechText(sec.title));
+        titleUtt.onend = () => { if (narrationIdRef.current === myId) speakBullet(); };
+        titleUtt.onerror = speakBullet;
+        synthRef.current.speak(titleUtt);
+      } else {
+        speakBullet();
+      }
     } else {
       speakBullet();
     }
-  }, [sections.length, makeUtt]);
+  }, [sections.length, makeUtt, isHindi, speakHindi]);
 
   // Navigation helpers
   const goToSlide = useCallback((idx: number) => {
@@ -571,7 +615,7 @@ export function VideoClient({ chapter, subjectName, videoScript: initialScript }
             </CardHeader>
           </Card>
 
-          <SlidePlayer sections={sections} />
+          <SlidePlayer sections={sections} isHindi={subjectName.toLowerCase().includes('hindi')} />
 
           <div className="space-y-3">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
