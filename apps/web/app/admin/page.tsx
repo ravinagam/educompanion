@@ -21,7 +21,7 @@ export default async function AdminPage() {
       .order('created_at', { ascending: false }),
     admin
       .from('feedback')
-      .select('id, message, page, created_at, user:users(name, email)')
+      .select('id, message, page, created_at, admin_response, admin_responded_at, status, user:users(name, email)')
       .order('created_at', { ascending: false }),
     admin
       .from('ai_usage_logs')

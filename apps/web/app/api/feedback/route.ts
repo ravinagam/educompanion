@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data } = await supabase
+    .from('feedback')
+    .select('id, message, page, created_at, admin_response, admin_responded_at, status')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  return NextResponse.json({ feedback: data ?? [] });
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
