@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'EduCompanion — Smart Study Partner',
+  title: 'EaseMyStudy — Smart Study Partner',
   description: 'AI-powered study planner for students in grades 8–10',
 };
 

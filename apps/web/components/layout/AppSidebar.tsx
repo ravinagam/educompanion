@@ -25,7 +25,10 @@ export function AppSidebar({ user }: Props) {
     <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 shrink-0">
       <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-100">
         <BookMarked className="h-6 w-6 text-blue-600" />
-        <span className="font-bold text-gray-900">EduCompanion</span>
+        <div>
+          <span className="font-bold text-gray-900">EaseMyStudy</span>
+          <p className="text-xs text-gray-400 leading-none">by Bodhly</p>
+        </div>
       </div>
 
       <div className="px-4 py-4 border-b border-gray-100">

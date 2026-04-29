@@ -30,7 +30,10 @@ export function MobileNav({ user }: Props) {
         <SheetContent side="left" className="w-64 p-0">
           <div className="flex items-center gap-2 px-6 py-5 border-b">
             <BookMarked className="h-6 w-6 text-blue-600" />
-            <span className="font-bold">EduCompanion</span>
+            <div>
+              <span className="font-bold">EaseMyStudy</span>
+              <p className="text-xs text-gray-400 leading-none">by Bodhly</p>
+            </div>
           </div>
           <div className="px-4 py-3 border-b">
             <p className="font-medium text-gray-800">{user.name}</p>
