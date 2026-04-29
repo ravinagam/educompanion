@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       inputs: [text.slice(0, 500)],
       target_language_code: language ?? 'hi-IN',
-      speaker: 'meera',
+      speaker: 'anushka',
       model: 'bulbul:v1',
       pitch: 0,
       pace: 0.9,
