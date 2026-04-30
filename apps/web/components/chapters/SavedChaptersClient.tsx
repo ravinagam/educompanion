@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   BookOpen, Upload, CheckCircle2, AlertCircle, Clock,
   Loader2, FlaskConical, Layers, Trash2, Video, RefreshCw, Plus,
-  ClipboardList, MessageCircle,
+  ClipboardList, MessageCircle, Sparkles,
 } from 'lucide-react';
 
 interface Chapter {
@@ -164,6 +164,27 @@ function ChapterCard({
             );
           })}
         </div>
+
+        {/* ── VIDEO-V2 PREVIEW FEATURE ── isolated row, safe to delete entirely ── */}
+        <div className="pt-1 border-t border-dashed border-violet-100">
+          {ready ? (
+            <Link
+              href={`/chapters/${chapter.id}/visual-summary`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 py-2.5 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 transition-colors w-full"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Video v2
+              <span className="ml-0.5 rounded-full bg-violet-200 text-violet-700 text-[10px] font-bold px-1.5 py-0.5 leading-none">Preview</span>
+            </Link>
+          ) : (
+            <div className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-100 py-2.5 text-xs font-semibold text-gray-300 bg-gray-50 cursor-not-allowed w-full">
+              <Sparkles className="h-3.5 w-3.5" />
+              Video v2
+              <span className="ml-0.5 rounded-full bg-gray-200 text-gray-400 text-[10px] font-bold px-1.5 py-0.5 leading-none">Preview</span>
+            </div>
+          )}
+        </div>
+        {/* ── END VIDEO-V2 PREVIEW FEATURE ──────────────────────────────────── */}
       </CardContent>
     </Card>
   );
