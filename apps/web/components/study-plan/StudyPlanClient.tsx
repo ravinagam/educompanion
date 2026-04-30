@@ -354,16 +354,6 @@ export function StudyPlanClient({ test, plans: initialPlans, daysRemaining }: Pr
                                   </div>
                                 )}
                               </div>
-                              {plan.chapter && (
-                                <div className="flex gap-1 shrink-0">
-                                  <Link href={`/chapters/${plan.chapter.id}/quiz`}>
-                                    <Button size="sm" variant="ghost" className="h-7 text-xs px-2">Quiz</Button>
-                                  </Link>
-                                  <Link href={`/chapters/${plan.chapter.id}/flashcards`}>
-                                    <Button size="sm" variant="ghost" className="h-7 text-xs px-2">Flashcards</Button>
-                                  </Link>
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>
