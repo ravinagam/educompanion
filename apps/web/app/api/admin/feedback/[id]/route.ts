@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminSessionClient } from '@/lib/supabase/admin-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const ADMIN_EMAIL = 'ravi.nagam.kiran@gmail.com';
@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

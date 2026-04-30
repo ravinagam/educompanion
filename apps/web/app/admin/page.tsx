@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminSessionClient } from '@/lib/supabase/admin-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 const ADMIN_EMAIL = 'ravi.nagam.kiran@gmail.com';
 
 export default async function AdminPage() {
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   // Not logged in, or logged in as a student → admin login page

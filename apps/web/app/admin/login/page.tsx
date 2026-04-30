@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createAdminBrowserClient } from '@/lib/supabase/admin-browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ const ADMIN_EMAIL = 'ravi.nagam.kiran@gmail.com';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createAdminBrowserClient();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
 
@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
           <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center mx-auto">
             <ShieldCheck className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">EasyMyStudy Admin</h1>
+          <h1 className="text-xl font-bold text-white">EaseStudy Admin</h1>
           <p className="text-gray-400 text-sm">Sign in with your admin credentials</p>
         </div>
 
