@@ -64,16 +64,48 @@ export function UploadClient({ subjects }: Props) {
       return;
     }
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('subjectId', selectedSubjectId);
-    formData.append('chapterName', chapterName.trim());
-
     try {
-      const res = await fetch('/api/chapters/upload', { method: 'POST', body: formData });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error ?? 'Upload failed');
+      // Step 1: Get a signed upload URL (avoids sending the file through Vercel)
+      const urlRes = await fetch('/api/chapters/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId: selectedSubjectId, fileName: file.name }),
+      });
+      const urlJson = await urlRes.json();
+      if (!urlRes.ok) {
+        toast.error(urlJson.error ?? 'Failed to prepare upload');
+        setUploading(false);
+        return;
+      }
+      const { signedUrl, storagePath } = urlJson as { signedUrl: string; storagePath: string };
+
+      // Step 2: Upload file directly to Supabase Storage (no Vercel body limit)
+      const putRes = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      });
+      if (!putRes.ok) {
+        toast.error('Failed to upload file. Please try again.');
+        setUploading(false);
+        return;
+      }
+
+      // Step 3: Create chapter record and trigger background processing
+      const uploadRes = await fetch('/api/chapters/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          fileName: file.name,
+          fileSize: file.size,
+          subjectId: selectedSubjectId,
+          chapterName: chapterName.trim(),
+        }),
+      });
+      const uploadJson = await uploadRes.json();
+      if (!uploadRes.ok) {
+        toast.error(uploadJson.error ?? 'Upload failed');
       } else {
         setUploaded(true);
       }

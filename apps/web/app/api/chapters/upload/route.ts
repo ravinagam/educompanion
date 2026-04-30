@@ -12,86 +12,105 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const chapterId = formData.get('chapterId') as string | null;
-    const chapterName = formData.get('chapterName') as string | null;
-    const subjectId = formData.get('subjectId') as string | null;
-
-    if (!file || !chapterName || !subjectId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (file.size > 52_428_800) {
-      return NextResponse.json({ error: 'File too large (max 50 MB)' }, { status: 400 });
-    }
-
     const admin = createAdminClient();
+    const contentType = request.headers.get('content-type') ?? '';
 
-    // Verify subject belongs to user
-    const { data: subject } = await supabase
-      .from('subjects')
-      .select('id')
-      .eq('id', subjectId)
-      .eq('user_id', user.id)
-      .single();
+    let buffer: Buffer = Buffer.alloc(0);
+    let fileName: string;
+    let fileSize: number;
+    let subjectId: string;
+    let chapterName: string;
+    let chapterId: string | null = null;
+    let storagePath: string;
+    let mimeType: string;
 
-    if (!subject) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+    if (contentType.includes('application/json')) {
+      // Two-step upload: file already in storage via signed URL
+      const body = await request.json() as {
+        storagePath: string; fileName: string; fileSize: number;
+        subjectId: string; chapterName: string; chapterId?: string;
+      };
+      if (!body.storagePath || !body.fileName || !body.subjectId || !body.chapterName) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+      storagePath = body.storagePath;
+      fileName = body.fileName;
+      fileSize = body.fileSize ?? 0;
+      subjectId = body.subjectId;
+      chapterName = body.chapterName;
+      chapterId = body.chapterId ?? null;
 
-    // Upload file to Supabase Storage
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    const storagePath = `${user.id}/${subjectId}/${Date.now()}.${ext}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+      const { data: subject } = await supabase.from('subjects').select('id')
+        .eq('id', subjectId).eq('user_id', user.id).single();
+      if (!subject) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
 
-    const { error: storageError } = await admin.storage
-      .from('chapter-files')
-      .upload(storagePath, buffer, { contentType: file.type, upsert: false });
+      const { data: blob, error: downloadErr } = await admin.storage
+        .from('chapter-files').download(storagePath);
+      if (downloadErr || !blob) throw new Error(`Storage download error: ${downloadErr?.message}`);
+      buffer = Buffer.from(await blob.arrayBuffer());
 
-    if (storageError) throw new Error(`Storage error: ${storageError.message}`);
+      const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+      mimeType = MIME_FROM_EXT[ext] ?? 'application/octet-stream';
+    } else {
+      // Direct upload via multipart/form-data (small files ≤ 4.5 MB)
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+      chapterId = formData.get('chapterId') as string | null;
+      chapterName = (formData.get('chapterName') as string) ?? '';
+      subjectId = (formData.get('subjectId') as string) ?? '';
 
-    const { data: { publicUrl } } = admin.storage
-      .from('chapter-files')
-      .getPublicUrl(storagePath);
+      if (!file || !chapterName || !subjectId) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+      if (file.size > 52_428_800) {
+        return NextResponse.json({ error: 'File too large (max 50 MB)' }, { status: 400 });
+      }
 
-    // Create or update chapter record
+      const { data: subject } = await supabase.from('subjects').select('id')
+        .eq('id', subjectId).eq('user_id', user.id).single();
+      if (!subject) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      storagePath = `${user.id}/${subjectId}/${Date.now()}.${ext}`;
+      fileName = file.name;
+      fileSize = file.size;
+      mimeType = MIME_FROM_EXT[ext] ?? file.type;
+      const arrayBuffer = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+
+      const { error: storageError } = await admin.storage
+        .from('chapter-files')
+        .upload(storagePath, buffer, { contentType: file.type, upsert: false });
+      if (storageError) throw new Error(`Storage error: ${storageError.message}`);
+    }
+
+    const { data: { publicUrl } } = admin.storage.from('chapter-files').getPublicUrl(storagePath);
+
     let chapter;
     if (chapterId) {
-      const { data } = await admin
-        .from('chapters')
-        .update({ upload_status: 'processing', file_url: publicUrl, file_name: file.name, file_size_bytes: file.size })
-        .eq('id', chapterId)
-        .select()
-        .single();
+      const { data } = await admin.from('chapters')
+        .update({ upload_status: 'processing', file_url: publicUrl, file_name: fileName, file_size_bytes: fileSize })
+        .eq('id', chapterId).select().single();
       chapter = data;
     } else {
-      const { data } = await admin
-        .from('chapters')
-        .insert({
-          subject_id: subjectId,
-          name: chapterName,
-          upload_status: 'processing',
-          file_url: publicUrl,
-          file_name: file.name,
-          file_size_bytes: file.size,
-        })
-        .select()
-        .single();
+      const { data } = await admin.from('chapters')
+        .insert({ subject_id: subjectId, name: chapterName, upload_status: 'processing', file_url: publicUrl, file_name: fileName, file_size_bytes: fileSize })
+        .select().single();
       chapter = data;
     }
 
     if (!chapter) throw new Error('Failed to create chapter record');
 
-    // Use after() so Next.js guarantees this runs after the response is sent,
-    // even across hot-reloads in dev. void+IIFE is not reliable in Next.js 15+.
     const capturedId = chapter.id as string;
-    const capturedMime = MIME_FROM_EXT[ext] ?? file.type;
-    const capturedName = file.name;
+    const capturedBuffer = buffer;
+    const capturedMime = mimeType;
+    const capturedName = fileName;
+
     after(async () => {
       const bgAdmin = createAdminClient();
       try {
         console.log('[upload] Starting background processing for chapter', capturedId);
-        await processChapterAsync(capturedId, buffer, capturedMime, capturedName, user.id);
+        await processChapterAsync(capturedId, capturedBuffer, capturedMime, capturedName, user.id);
         console.log('[upload] Processing complete for chapter', capturedId);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Processing failed';
