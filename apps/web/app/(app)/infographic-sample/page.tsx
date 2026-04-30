@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Play, Pause, Sparkles, BookOpen, Clock, Star, Brain } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Play, Pause, Sparkles, BookOpen, Clock, Star, Brain, Volume2, VolumeX } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -214,6 +214,38 @@ function MindMapCardView({ card }: { card: MindMapCard }) {
   );
 }
 
+// ── Text-to-speech ────────────────────────────────────────────────────────────
+
+function cardNarration(c: AnyCard): string {
+  switch (c.type) {
+    case 'cover':
+      return `${CHAPTER_NAME}. ${SUBJECT}. This visual summary covers 3 key concepts, 5 key dates, and 5 must-remember exam facts. Let's begin.`;
+    case 'concept':
+      return `Key Concept: ${c.title}. ${c.definition}. Here's a way to think about it — ${c.example}`;
+    case 'timeline':
+      return `Key Events Timeline. ${c.events.map(e => `${e.year}: ${e.event}`).join('. ')}.`;
+    case 'remember':
+      return `Must Remember — these facts appear most often in exams. ${c.facts.map((f, i) => `${i + 1}. ${f}`).join('. ')}.`;
+    case 'mindmap':
+      return `Big Picture: ${c.center}. ${c.branches.map(b => `${b.label}: ${b.items.join(', ')}`).join('. ')}.`;
+  }
+}
+
+function speak(text: string, rate = 0.92) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = rate;
+  u.pitch = 1;
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeech() {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
 function renderCard(c: AnyCard) {
   switch (c.type) {
     case 'cover':    return <CoverCardView />;
@@ -229,19 +261,31 @@ function renderCard(c: AnyCard) {
 export default function InfographicSamplePage() {
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [audioOn, setAudioOn] = useState(false);
+  const audioOnRef = useRef(audioOn);
+  audioOnRef.current = audioOn;
 
   const card = CARDS[current];
 
   const next = useCallback(() => setCurrent(c => Math.min(c + 1, CARDS.length - 1)), []);
   const prev = useCallback(() => setCurrent(c => Math.max(c - 1, 0)), []);
 
-  // Auto-play
+  // Auto-narrate when card changes (if audio is on)
+  useEffect(() => {
+    if (audioOnRef.current) speak(cardNarration(CARDS[current]));
+  }, [current]);
+
+  // Stop speech on unmount
+  useEffect(() => () => stopSpeech(), []);
+
+  // Auto-play — wait for narration to finish before advancing
   useEffect(() => {
     if (!playing) return;
     if (current >= CARDS.length - 1) { setPlaying(false); return; }
-    const id = setTimeout(() => setCurrent(c => c + 1), 5000);
+    const delay = audioOn ? 7000 : 5000; // give narration time to finish
+    const id = setTimeout(() => setCurrent(c => c + 1), delay);
     return () => clearTimeout(id);
-  }, [playing, current]);
+  }, [playing, current, audioOn]);
 
   // Keyboard nav
   useEffect(() => {
@@ -254,6 +298,16 @@ export default function InfographicSamplePage() {
     return () => window.removeEventListener('keydown', handler);
   }, [next, prev]);
 
+  function toggleAudio() {
+    const next = !audioOn;
+    setAudioOn(next);
+    if (next) {
+      speak(cardNarration(card));
+    } else {
+      stopSpeech();
+    }
+  }
+
   const progress = Math.round(((current + 1) / CARDS.length) * 100);
 
   return (
@@ -264,11 +318,26 @@ export default function InfographicSamplePage() {
         <Link href="/chapters" className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3">
           <ArrowLeft className="h-3 w-3" /> Back to Chapters
         </Link>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-            <Sparkles className="h-3 w-3" /> Preview Feature
-          </span>
-          <h1 className="text-lg font-bold text-gray-900">Visual Summary</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+              <Sparkles className="h-3 w-3" /> Preview Feature
+            </span>
+            <h1 className="text-lg font-bold text-gray-900">Visual Summary</h1>
+          </div>
+          <button
+            onClick={toggleAudio}
+            title={audioOn ? 'Turn off narration' : 'Turn on narration'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              audioOn
+                ? 'bg-blue-600 text-white shadow'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {audioOn
+              ? <><Volume2 className="h-3.5 w-3.5" /> Audio On</>
+              : <><VolumeX className="h-3.5 w-3.5" /> Audio Off</>}
+          </button>
         </div>
         <p className="text-gray-500 text-sm">{CHAPTER_NAME} · {SUBJECT}</p>
       </div>
