@@ -4,6 +4,20 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const { pathname } = request.nextUrl;
+
+  // Admin, API, and terms routes don't need the student session check.
+  // Running getUser() on these routes would let the middleware refresh or
+  // clear student cookies as a side-effect of admin navigation — which can
+  // silently log the student out while they're mid-quiz.
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/terms')
+  ) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,21 +40,15 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith('/auth');
-  const isApiRoute = pathname.startsWith('/api');
-  const isAdminRoute = pathname.startsWith('/admin');
-  const isTermsRoute = pathname.startsWith('/terms');
-  const isPublicRoute = isAuthRoute || isApiRoute || isAdminRoute || isTermsRoute;
 
-  if (!user && !isPublicRoute) {
+  if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute && !isAdminRoute) {
+  if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

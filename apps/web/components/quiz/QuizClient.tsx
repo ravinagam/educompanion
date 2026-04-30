@@ -95,6 +95,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         body: JSON.stringify({ difficulty }),
       });
       const json = await res.json();
+      if (res.status === 401) {
+        toast.error('Session expired — please log in again.');
+        setTimeout(() => { window.location.href = '/auth/login'; }, 1500);
+        return;
+      }
       if (!res.ok) {
         toast.error(json.error ?? 'Generation failed');
       } else {
@@ -240,6 +245,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         body: JSON.stringify({ quizId: quiz!.id, answers: finalAnswers, difficulty: generatedDifficulty ?? 'medium' }),
       });
       const json = await res.json();
+      if (res.status === 401) {
+        toast.error('Session expired — please log in again.');
+        setTimeout(() => { window.location.href = '/auth/login'; }, 1500);
+        return;
+      }
       if (!res.ok) {
         toast.error(json.error ?? 'Submission failed');
         setSubmitting(false);
