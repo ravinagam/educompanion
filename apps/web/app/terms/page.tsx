@@ -84,7 +84,7 @@ export default function TermsPage() {
         </div>
 
         <p className="text-center text-sm text-gray-400">
-          <Link href="/auth/login" className="hover:underline text-blue-600">Back to EaseStudy</Link>
+          <Link href="/auth/signup" className="hover:underline text-blue-600">Back to Create Account</Link>
         </p>
       </div>
     </div>
