@@ -23,6 +23,7 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [form, setForm] = useState({
     name: '',
     username: '',
@@ -180,7 +181,23 @@ export default function SignupPage() {
                   onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <div className="flex items-start gap-2 pt-1">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={e => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                />
+                <label htmlFor="terms" className="text-xs text-gray-500 leading-snug cursor-pointer">
+                  I agree to the{' '}
+                  <Link href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">
+                    Terms of Use
+                  </Link>
+                  . I will only upload content I am legally entitled to use.
+                </label>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || !agreedToTerms}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Create Account
               </Button>

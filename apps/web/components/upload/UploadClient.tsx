@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Upload, FileText, CheckCircle2, Loader2, BookOpen, ArrowLeft, X,
+  Upload, FileText, CheckCircle2, Loader2, BookOpen, ArrowLeft, X, Info,
 } from 'lucide-react';
 
 interface Subject { id: string; name: string }
@@ -186,6 +186,12 @@ export function UploadClient({ subjects }: Props) {
           {/* Drop zone */}
           <div className="space-y-1.5">
             <Label className="text-gray-700 font-medium">Chapter File</Label>
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              <Info className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700">
+                Only upload documents you own or have permission to use — such as your own notes or freely available study material.
+              </p>
+            </div>
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}

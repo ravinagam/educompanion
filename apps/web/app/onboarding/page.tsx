@@ -129,6 +129,9 @@ export default function OnboardingPage() {
                   EaseStudy helps you study smarter with AI-generated quizzes,
                   flashcards, and personalized study plans. All tied to your actual textbook material.
                 </p>
+                <p className="text-gray-500 text-sm">
+                  EaseStudy is a personal study tool. Your uploaded material is used only to power your own learning and is never shared with others.
+                </p>
                 <div className="bg-blue-50 rounded-lg p-4 space-y-2">
                   <p className="font-medium text-blue-900 text-sm">What you can do:</p>
                   {[
