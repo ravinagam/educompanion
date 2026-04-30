@@ -83,11 +83,9 @@ export function StudyPlanClient({ test, plans: initialPlans, daysRemaining }: Pr
   const [completing, setCompleting] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
 
-  // Sync from server when background generation finishes (initialPlans updates after router.refresh)
+  // Sync from server whenever initialPlans changes (after router.refresh)
   useEffect(() => {
-    if (plans.length === 0 && initialPlans.length > 0) {
-      setPlans(initialPlans);
-    }
+    if (initialPlans.length > 0) setPlans(initialPlans);
   }, [initialPlans]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-poll while plan is still being generated in the background
@@ -176,6 +174,7 @@ export function StudyPlanClient({ test, plans: initialPlans, daysRemaining }: Pr
         toast.error(json.error ?? 'Regeneration failed');
       } else {
         toast.success('Plan regenerated!');
+        setPlans([]);    // show loading state while server refreshes
         router.refresh();
       }
     } catch {
