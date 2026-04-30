@@ -1,10 +1,12 @@
 export const BOARDS = ['CBSE', 'ICSE', 'State', 'Custom'] as const;
-export const GRADES = [8, 9, 10] as const;
+export const GRADES = [8, 9, 10, 11, 12] as const;
 
 export const DEFAULT_SUBJECTS_BY_GRADE: Record<number, string[]> = {
   8: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
   9: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
   10: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
+  11: ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Accountancy', 'Economics', 'Business Studies'],
+  12: ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Accountancy', 'Economics', 'Business Studies'],
 };
 
 export const URGENCY_COLORS = {

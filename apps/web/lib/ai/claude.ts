@@ -61,7 +61,7 @@ export async function generateQuiz(
     ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of questions — different topics, angles, and phrasing from any previous generation.\n`
     : '';
 
-  const prompt = `You are an expert teacher for Indian school students (grades 8–10).
+  const prompt = `You are an expert teacher for Indian school students (grades 8–12).
 Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the following chapter content.
 ${variationLine}
 Chapter: "${chapterName}"
@@ -131,7 +131,7 @@ export async function generateFlashcards(
     ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of flashcards — different terms and concepts from any previous generation.\n`
     : '';
 
-  const prompt = `You are a concise teacher creating study flashcards for Indian school students (grades 8–10).
+  const prompt = `You are a concise teacher creating study flashcards for Indian school students (grades 8–12).
 
 Generate exactly ${FLASHCARDS_PER_CHAPTER} flashcard pairs from ONLY the following chapter content.
 ${variationLine}
@@ -175,7 +175,7 @@ export async function generateVideoScript(
 ): Promise<UsageResult<VideoScriptContent>> {
   const content = sampleContent(chapterContent ?? '', 100_000);
 
-  const prompt = `You are creating an educational video script for Indian school students (grades 8–10).
+  const prompt = `You are creating an educational video script for Indian school students (grades 8–12).
 
 Generate a structured video script ONLY from the content below.
 
@@ -257,7 +257,7 @@ export async function chatWithChapter(
   const content = sampleContent(chapterContent ?? '', 60_000);
   const isHindi = subjectName?.toLowerCase().includes('hindi') ?? false;
 
-  const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–10).
+  const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–12).
 Answer questions using ONLY the following chapter content. If the question is not covered in the chapter, say so politely and suggest the student refer to the full chapter.
 Be clear, use simple language, and give real-world examples where helpful. Keep answers concise (2–5 sentences unless a longer explanation is needed).
 ${isHindi ? 'Always respond in Hindi (Devanagari script). The student is studying a Hindi subject.' : ''}
@@ -292,7 +292,7 @@ export async function generateChapterSummary(
 ): Promise<UsageResult<ChapterSummary>> {
   const content = sampleContent(chapterContent ?? '', 80_000);
 
-  const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–10).
+  const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–12).
 
 Chapter: "${chapterName}"
 Content:
@@ -334,7 +334,7 @@ export async function generateTargetedQuestions(
 ): Promise<UsageResult<QuizQuestion[]>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
 
-  const prompt = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–10).
+  const prompt = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–12).
 
 The student got the following questions WRONG in a quiz. Generate 5 new practice questions specifically on these weak areas.
 

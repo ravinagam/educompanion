@@ -16,7 +16,7 @@ export default function TermsPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Terms of Use</h1>
-            <p className="text-sm text-gray-400 mt-1">Effective date: May 2025</p>
+            <p className="text-sm text-gray-400 mt-1">Effective date: May 2026</p>
           </div>
 
           <section className="space-y-2">

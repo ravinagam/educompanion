@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'EaseStudy — Smart Study Partner',
-  description: 'AI-powered study planner for students in grades 8–10',
+  description: 'AI-powered study planner for students in grades 8–12',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
