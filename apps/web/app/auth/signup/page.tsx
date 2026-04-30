@@ -191,7 +191,7 @@ export default function SignupPage() {
                 />
                 <label htmlFor="terms" className="text-xs text-gray-500 leading-snug cursor-pointer">
                   I agree to the{' '}
-                  <Link href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">
+                  <Link href="/terms" className="text-blue-600 hover:underline font-medium">
                     Terms of Use
                   </Link>
                   . I will only upload content I am legally entitled to use.
