@@ -78,6 +78,28 @@ async function runProcessing(
   }).eq('id', chapterId);
 
   if (updateErr) throw new Error(`DB update failed: ${updateErr.message}`);
+
+  // Delete the raw file from storage — it is no longer needed once text is extracted
+  try {
+    const { data: chapter } = await admin
+      .from('chapters')
+      .select('file_url')
+      .eq('id', chapterId)
+      .single();
+
+    if (chapter?.file_url) {
+      const url = new URL(chapter.file_url);
+      const storagePath = url.pathname.split('/object/public/chapter-files/')[1];
+      if (storagePath) {
+        await admin.storage.from('chapter-files').remove([storagePath]);
+        await admin.from('chapters').update({ file_url: null }).eq('id', chapterId);
+        console.log('[process] Deleted raw file from storage:', storagePath);
+      }
+    }
+  } catch (cleanupErr) {
+    console.warn('[process] Storage cleanup skipped:', cleanupErr instanceof Error ? cleanupErr.message : cleanupErr);
+  }
+
   console.log('[process] Done — chapter', chapterId, 'is ready');
 }
 
