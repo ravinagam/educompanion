@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2 } from 'lucide-react';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -162,10 +162,58 @@ function FeedbackCard({ f }: { f: Feedback }) {
   );
 }
 
+function ChapterBadge({ chapter, onDeleted }: { chapter: Chapter; onDeleted: (id: string) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/chapters/${chapter.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        onDeleted(chapter.id);
+        toast.success(`"${chapter.name}" deleted`);
+      } else {
+        toast.error('Failed to delete chapter');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+    setDeleting(false);
+    setConfirming(false);
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(chapter.upload_status)}`}>
+      {chapter.name}
+      {confirming ? (
+        <>
+          <button onClick={handleDelete} disabled={deleting} className="text-red-600 hover:text-red-800 font-bold ml-1">
+            {deleting ? '…' : '✓'}
+          </button>
+          <button onClick={() => setConfirming(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+        </>
+      ) : (
+        <button onClick={() => setConfirming(true)} className="opacity-40 hover:opacity-100 transition-opacity ml-0.5">
+          <Trash2 className="h-2.5 w-2.5" />
+        </button>
+      )}
+    </span>
+  );
+}
+
 function UserRow({ user }: { user: User }) {
   const [expanded, setExpanded] = useState(false);
-  const totalChapters = user.subjects.reduce((n, s) => n + s.chapters.length, 0);
-  const readyChapters = user.subjects.reduce((n, s) => n + s.chapters.filter(c => c.upload_status === 'ready').length, 0);
+  const [subjects, setSubjects] = useState(user.subjects);
+
+  function handleChapterDeleted(subjectId: string, chapterId: string) {
+    setSubjects(prev => prev.map(s =>
+      s.id === subjectId ? { ...s, chapters: s.chapters.filter(c => c.id !== chapterId) } : s
+    ));
+  }
+
+  const totalChapters = subjects.reduce((n, s) => n + s.chapters.length, 0);
+  const readyChapters = subjects.reduce((n, s) => n + s.chapters.filter(c => c.upload_status === 'ready').length, 0);
 
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -183,7 +231,7 @@ function UserRow({ user }: { user: User }) {
         <div className="flex items-center gap-2 shrink-0">
           <Badge className="bg-indigo-50 text-indigo-700 border-0 text-xs">Class {user.grade}</Badge>
           <Badge className="bg-violet-50 text-violet-700 border-0 text-xs">{user.board}</Badge>
-          <span className="text-xs text-gray-400">{totalChapters} ch · {user.subjects.length} subj</span>
+          <span className="text-xs text-gray-400">{totalChapters} ch · {subjects.length} subj</span>
           <span className="text-xs text-gray-300">{new Date(user.created_at).toLocaleDateString('en-IN')}</span>
           {expanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
         </div>
@@ -196,22 +244,20 @@ function UserRow({ user }: { user: User }) {
             <span>📧 {user.contact_email || <span className="italic text-gray-300">no email</span>}</span>
             <span>📱 {user.phone_number || <span className="italic text-gray-300">no phone</span>}</span>
           </div>
-          {user.subjects.length === 0 ? (
+          {subjects.length === 0 ? (
             <p className="text-xs text-gray-400">No subjects yet</p>
-          ) : user.subjects.map(subj => (
+          ) : subjects.map(subj => (
             <div key={subj.id}>
               <p className="text-xs font-semibold text-gray-600 mb-1">{subj.name} ({subj.chapters.length} chapters · {subj.chapters.filter(c => c.upload_status === 'ready').length} ready)</p>
               <div className="flex flex-wrap gap-1.5">
                 {subj.chapters.map(ch => (
-                  <span key={ch.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(ch.upload_status)}`}>
-                    {ch.name}
-                  </span>
+                  <ChapterBadge key={ch.id} chapter={ch} onDeleted={(id) => handleChapterDeleted(subj.id, id)} />
                 ))}
               </div>
             </div>
           ))}
           {totalChapters > 0 && (
-            <p className="text-xs text-gray-400 pt-1">{readyChapters}/{totalChapters} chapters ready</p>
+            <p className="text-xs text-gray-400 pt-1">{readyChapters}/{totalChapters} chapters ready · <span className="italic">click 🗑 to delete a chapter</span></p>
           )}
         </div>
       )}

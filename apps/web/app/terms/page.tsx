@@ -73,14 +73,46 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="font-semibold text-gray-800">6. Contact</h2>
+            <h2 className="font-semibold text-gray-800">6. Grievance Officer</h2>
             <p className="text-gray-600 text-sm leading-relaxed">
-              For questions about these terms, contact us at{' '}
-              <a href="mailto:support@easestudy.in" className="text-blue-600 hover:underline">
-                support@easestudy.in
+              In accordance with the Information Technology Act 2000 and IT (Intermediary
+              Guidelines) Rules 2021, the details of the Grievance Officer are:
+            </p>
+            <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-700 space-y-1">
+              <p><span className="font-medium">Name:</span> Ravi Nagam Kiran</p>
+              <p><span className="font-medium">Email:</span>{' '}
+                <a href="mailto:ravi.nagam.kiran@gmail.com" className="text-blue-600 hover:underline">
+                  ravi.nagam.kiran@gmail.com
+                </a>
+              </p>
+              <p><span className="font-medium">Response time:</span> Within 72 hours of receiving a complaint</p>
+            </div>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              To report content that infringes your copyright or other rights, email the Grievance
+              Officer with the subject line <span className="font-medium">"Content Takedown Request"</span>.
+              Include the URL or description of the content and proof of your rights. We will act
+              on valid requests within 72 hours.
+            </p>
+          </section>
+
+          <section className="space-y-2">
+            <h2 className="font-semibold text-gray-800">7. Contact</h2>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              For general questions about these terms, contact us at{' '}
+              <a href="mailto:ravi.nagam.kiran@gmail.com" className="text-blue-600 hover:underline">
+                ravi.nagam.kiran@gmail.com
               </a>.
             </p>
           </section>
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs text-gray-400">
+              To report infringing content uploaded by a user,{' '}
+              <a href="mailto:ravi.nagam.kiran@gmail.com?subject=Content%20Takedown%20Request" className="text-blue-600 hover:underline">
+                email the Grievance Officer
+              </a>.
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-sm text-gray-400">

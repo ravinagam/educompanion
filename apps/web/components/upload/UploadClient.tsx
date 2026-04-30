@@ -189,7 +189,13 @@ export function UploadClient({ subjects }: Props) {
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
               <Info className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700">
-                Only upload documents you own or have permission to use — such as your own notes or freely available study material.
+                Only upload documents you own or have permission to use — such as your own notes or freely available study material.{' '}
+                <a
+                  href="mailto:ravi.nagam.kiran@gmail.com?subject=Content%20Takedown%20Request"
+                  className="underline text-amber-800 hover:text-amber-900"
+                >
+                  Report infringing content
+                </a>.
               </p>
             </div>
             <div
