@@ -31,7 +31,8 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = pathname.startsWith('/auth');
   const isApiRoute = pathname.startsWith('/api');
   const isAdminRoute = pathname.startsWith('/admin');
-  const isPublicRoute = isAuthRoute || isApiRoute || isAdminRoute;
+  const isTermsRoute = pathname.startsWith('/terms');
+  const isPublicRoute = isAuthRoute || isApiRoute || isAdminRoute || isTermsRoute;
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
