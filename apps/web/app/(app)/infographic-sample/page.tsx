@@ -18,6 +18,46 @@ type AnyCard = CoverCard | ConceptCard | TimelineCard | RememberCard | MindMapCa
 const CHAPTER_NAME = 'The French Revolution';
 const SUBJECT = 'History · Class 9';
 
+// Public-domain historical artwork from Wikimedia Commons.
+// Each entry: background image URL + matching coloured gradient overlay so text stays readable.
+const CARD_IMAGES = [
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Eug%C3%A8ne_Delacroix_-_La_libert%C3%A9_guidant_le_peuple.jpg/800px-Eug%C3%A8ne_Delacroix_-_La_libert%C3%A9_guidant_le_peuple.jpg',
+    overlay: 'rgba(29,78,216,0.75), rgba(15,23,42,0.88)',
+    credit: 'Delacroix · Liberty Leading the People, 1830',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Chateau_de_Versailles_1668_Pierre_Patel.jpg/800px-Chateau_de_Versailles_1668_Pierre_Patel.jpg',
+    overlay: 'rgba(37,99,235,0.78), rgba(29,78,216,0.90)',
+    credit: 'Pierre Patel · Palace of Versailles, 1668',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Declaration_of_the_Rights_of_Man_and_of_the_Citizen_in_1789.jpg/500px-Declaration_of_the_Rights_of_Man_and_of_the_Citizen_in_1789.jpg',
+    overlay: 'rgba(124,58,237,0.78), rgba(109,40,217,0.90)',
+    credit: 'Declaration of the Rights of Man and Citizen, 1789',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Robespierre.jpg/500px-Robespierre.jpg',
+    overlay: 'rgba(190,18,60,0.80), rgba(153,27,27,0.92)',
+    credit: 'Portrait of Robespierre, c. 1790',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Prise_de_la_Bastille.jpg/800px-Prise_de_la_Bastille.jpg',
+    overlay: 'rgba(67,56,202,0.78), rgba(88,28,135,0.90)',
+    credit: 'Jean-Pierre Houël · Storming of the Bastille, 1789',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Le_Serment_du_Jeu_de_paume.jpg/800px-Le_Serment_du_Jeu_de_paume.jpg',
+    overlay: 'rgba(180,83,9,0.80), rgba(154,52,18,0.92)',
+    credit: 'Jacques-Louis David · The Tennis Court Oath, 1791',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Jacques_Louis_David_-_The_Emperor_Napoleon_in_His_Study_at_the_Tuileries_-_Google_Art_Project_2.jpg/500px-Jacques_Louis_David_-_The_Emperor_Napoleon_in_His_Study_at_the_Tuileries_-_Google_Art_Project_2.jpg',
+    overlay: 'rgba(4,120,87,0.78), rgba(15,118,110,0.90)',
+    credit: 'Jacques-Louis David · Napoleon in His Study, 1812',
+  },
+];
+
 const CARDS: AnyCard[] = [
   {
     type: 'cover',
@@ -343,17 +383,32 @@ export default function InfographicSamplePage() {
       </div>
 
       {/* Card */}
-      <div
-        className={`bg-gradient-to-br ${card.bg} rounded-3xl shadow-xl overflow-hidden relative`}
-        style={{ minHeight: 430 }}
-      >
-        <div style={{ minHeight: 430 }} className="flex flex-col">
-          {renderCard(card)}
-        </div>
-        <div className="absolute top-4 right-4 bg-black/25 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
-          {current + 1} / {CARDS.length}
-        </div>
-      </div>
+      {(() => {
+        const img = CARD_IMAGES[current];
+        return (
+          <div
+            className="rounded-3xl shadow-xl overflow-hidden relative"
+            style={{
+              minHeight: 430,
+              backgroundImage: `linear-gradient(135deg, ${img.overlay}), url("${img.url}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div style={{ minHeight: 430 }} className="flex flex-col">
+              {renderCard(card)}
+            </div>
+            {/* Card counter */}
+            <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
+              {current + 1} / {CARDS.length}
+            </div>
+            {/* Photo credit */}
+            <div className="absolute bottom-2 left-3 text-white/30 text-[10px]">
+              {img.credit}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Progress bar */}
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
