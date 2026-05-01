@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logCostDirect, SARVAM_COST_PER_CHAR } from '@/lib/ai/usage';
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY ?? '';
 
 // ─── English TTS via Microsoft Edge Neural (AriaNeural, no API key needed) ───
 async function msEdgeTTS(text: string): Promise<Buffer> {
+  // Dynamic import keeps msedge-tts out of webpack's static analysis
+  const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
   const tts = new MsEdgeTTS();
   await tts.setMetadata('en-US-AriaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
   const { audioStream } = tts.toStream(text);
