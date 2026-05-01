@@ -227,11 +227,16 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     return utt;
   }, []);
 
-  // Fetch Hindi audio from Sarvam TTS and play it; falls back to Web Speech on any failure
-  const speakHindi = useCallback(async (text: string, onEnd: () => void, myId: number) => {
-    // Fallback: use browser Web Speech API (English voice) when Sarvam is unavailable
+  // Generic API-backed TTS: calls /api/tts, plays returned base64 audio.
+  // Falls back to Web Speech on any failure.
+  const speakViaApi = useCallback(async (
+    text: string,
+    language: string,
+    onEnd: () => void,
+    myId: number,
+  ) => {
     const fallback = (reason: string) => {
-      console.warn('[TTS] Sarvam fallback →', reason);
+      console.warn('[TTS] API fallback →', reason);
       if (narrationIdRef.current !== myId) return;
       if (!synthRef.current) { onEnd(); return; }
       const utt = makeUtt(toSpeechText(text));
@@ -244,33 +249,33 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language: 'hi-IN' }),
+        body: JSON.stringify({ text, language }),
       });
       if (narrationIdRef.current !== myId) return;
-      if (!res.ok) {
-        const err = await res.text().catch(() => res.status.toString());
-        fallback(`HTTP ${res.status}: ${err}`);
-        return;
-      }
+      if (!res.ok) { fallback(`HTTP ${res.status}`); return; }
 
-      const data = await res.json() as { audio?: string; error?: string };
+      const data = await res.json() as { audio?: string; format?: string; error?: string };
       if (narrationIdRef.current !== myId) return;
-      if (!data.audio) { fallback(`no audio in response: ${JSON.stringify(data)}`); return; }
+      if (!data.audio) { fallback('no audio in response'); return; }
 
-      const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+      const mime = data.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+      const audio = new Audio(`data:${mime};base64,${data.audio}`);
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
-      audio.onerror = (e) => {
-        console.error('[TTS] Audio playback error', e);
-        if (narrationIdRef.current === myId) fallback('audio playback error');
-      };
-      setHindiTtsActive(true);
-      console.log('[TTS] Playing Sarvam audio, length:', data.audio.length);
+      audio.onerror = () => { if (narrationIdRef.current === myId) fallback('playback error'); };
+      if (language === 'hi-IN') setHindiTtsActive(true);
       await audio.play();
     } catch (e) {
       fallback(`exception: ${e}`);
     }
   }, [makeUtt]);
+
+  // Convenience wrappers kept for call-site clarity
+  const speakHindi = useCallback((text: string, onEnd: () => void, myId: number) =>
+    speakViaApi(text, 'hi-IN', onEnd, myId), [speakViaApi]);
+
+  const speakEnglish = useCallback((text: string, onEnd: () => void, myId: number) =>
+    speakViaApi(toSpeechText(text), 'en-US', onEnd, myId), [speakViaApi]);
 
   // Stop all narration — invalidate running callbacks by bumping the narration id
   const stopNarration = useCallback(() => {
@@ -317,35 +322,22 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
 
       if (isHindi) {
         speakHindi(sec.bullets[idx], speakBullet, myId);
-        return;
+      } else {
+        speakEnglish(sec.bullets[idx], speakBullet, myId);
       }
-
-      if (!synthRef.current) {
-        setTimeout(speakBullet, BULLET_INTERVAL_S * 1000);
-        return;
-      }
-      const utt = makeUtt(toSpeechText(sec.bullets[idx]));
-      utt.onend = () => { if (narrationIdRef.current === myId) speakBullet(); };
-      utt.onerror = () => { if (narrationIdRef.current === myId) setTimeout(speakBullet, 400); };
-      synthRef.current!.speak(utt);
     }
 
     // Speak slide title first, then begin bullet chain
     if (voiceEnabledRef.current) {
       if (isHindi) {
         speakHindi(sec.title, speakBullet, myId);
-      } else if (synthRef.current) {
-        const titleUtt = makeUtt(toSpeechText(sec.title));
-        titleUtt.onend = () => { if (narrationIdRef.current === myId) speakBullet(); };
-        titleUtt.onerror = speakBullet;
-        synthRef.current.speak(titleUtt);
       } else {
-        speakBullet();
+        speakEnglish(sec.title, speakBullet, myId);
       }
     } else {
       speakBullet();
     }
-  }, [sections.length, makeUtt, isHindi, speakHindi]);
+  }, [sections.length, isHindi, speakHindi, speakEnglish]);
 
   // Navigation helpers
   const goToSlide = useCallback((idx: number) => {
