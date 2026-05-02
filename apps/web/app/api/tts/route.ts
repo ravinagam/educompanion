@@ -4,21 +4,6 @@ import { logCostDirect, SARVAM_COST_PER_CHAR } from '@/lib/ai/usage';
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY ?? '';
 
-// ─── English TTS via Microsoft Edge Neural (AriaNeural, no API key needed) ───
-async function msEdgeTTS(text: string): Promise<Buffer> {
-  // Dynamic import keeps msedge-tts out of webpack's static analysis
-  const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
-  const tts = new MsEdgeTTS();
-  await tts.setMetadata('en-US-AriaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
-  const { audioStream } = tts.toStream(text);
-  const chunks: Buffer[] = [];
-  for await (const chunk of audioStream) {
-    chunks.push(chunk as Buffer);
-  }
-  tts.close();
-  return Buffer.concat(chunks);
-}
-
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,17 +12,10 @@ export async function POST(request: NextRequest) {
   const { text, language } = await request.json() as { text: string; language?: string };
   if (!text) return NextResponse.json({ error: 'text required' }, { status: 400 });
 
-  // ── English: Microsoft AriaNeural (free, no key, high quality) ─────────────
+  // ── English: browser Web Speech API fallback (client handles it) ────────────
   const isEnglish = !language || language.startsWith('en');
   if (isEnglish) {
-    try {
-      const audioBuffer = await msEdgeTTS(text.slice(0, 600));
-      const audio = audioBuffer.toString('base64');
-      return NextResponse.json({ audio, format: 'mp3' });
-    } catch (err) {
-      console.error('[TTS] MsEdge error:', err);
-      return NextResponse.json({ error: 'TTS failed' }, { status: 500 });
-    }
+    return NextResponse.json({ error: 'use browser TTS' }, { status: 503 });
   }
 
   // ── Hindi / other: Sarvam AI ───────────────────────────────────────────────
