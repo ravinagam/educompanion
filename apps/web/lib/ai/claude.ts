@@ -52,7 +52,8 @@ export async function generateQuiz(
   chapterName: string,
   chapterContent: string | null | undefined,
   variationHint = '',
-  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  isHindi = false
 ): Promise<UsageResult<QuizQuestion[]>> {
   // Use up to 80k chars sampled from across the whole chapter
   const content = sampleContent(chapterContent ?? '', 80_000);
@@ -72,7 +73,7 @@ ${content}
 Rules:
 - Use ONLY information from the provided content. Do not add external facts.
 - IMPORTANT: Cover ALL sections and topics from across the entire chapter — not just the beginning. The content above may include excerpts from start, middle, and end of the chapter.
-- Mix question types: 6 MCQ, 3 True/False, 3 Fill-in-the-blank
+- Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
 - MCQs must have exactly 4 options (A, B, C, D)
 - Every question must have a clear correct answer and a concise explanation
 - Difficulty: ${difficulty === 'easy' ? '70% easy, 25% medium, 5% hard — straightforward recall questions, simple vocabulary' : difficulty === 'hard' ? '5% easy, 25% medium, 70% hard — deep conceptual reasoning, application, and analysis' : '30% easy, 50% medium, 20% hard — balanced mix'}

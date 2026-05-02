@@ -18,12 +18,13 @@ export async function POST(
   // Verify chapter ownership + status
   const { data: chapter } = await supabase
     .from('chapters')
-    .select('id, name, content_text, upload_status, subjects!inner(user_id)')
+    .select('id, name, content_text, upload_status, subjects!inner(user_id, name)')
     .eq('id', chapterId)
     .single();
 
   if (!chapter) return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
-  if ((chapter.subjects as unknown as { user_id: string }).user_id !== user.id) {
+  const subject = chapter.subjects as unknown as { user_id: string; name: string };
+  if (subject.user_id !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (chapter.upload_status !== 'ready') {
@@ -47,7 +48,8 @@ export async function POST(
 
   let questions;
   try {
-    const result = await generateQuiz(chapter.name, chapter.content_text, variationHint, difficulty);
+    const isHindi = subject.name.toLowerCase().includes('hindi');
+    const result = await generateQuiz(chapter.name, chapter.content_text, variationHint, difficulty, isHindi);
     questions = result.data;
     logAiUsage(user.id, 'quiz', result.model, result.input_tokens, result.output_tokens).catch(console.error);
   } catch (err) {
