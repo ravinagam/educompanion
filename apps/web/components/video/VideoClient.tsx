@@ -186,12 +186,35 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const progTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Holds the current HTMLAudioElement when using Hindi TTS
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  // iOS Safari requires a user-gesture-triggered AudioContext before async audio.play() works
+  const audioUnlockedRef = useRef(false);
   // Track whether Sarvam TTS is actually working (confirmed on first successful audio)
   const [hindiTtsActive, setHindiTtsActive] = useState(false);
 
   useEffect(() => {
     console.log('[VideoPlayer] isHindi:', isHindi);
   }, [isHindi]);
+
+  // ── iOS Safari audio unlock ───────────────────────────────────────────────
+  // Must be called synchronously inside a user-gesture handler.
+  // Playing a silent AudioContext buffer unlocks subsequent audio.play() calls
+  // even after async fetch() operations (which break out of the gesture context).
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    try {
+      type AC = typeof AudioContext;
+      const Ctor: AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: AC }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      ctx.resume().catch(() => {});
+    } catch { /* not supported — no-op */ }
+  }, []);
 
   // ── A/B crossfade: transition to a new image url ──────────────────────────
   const transitionTo = useCallback((url: string) => {
@@ -347,6 +370,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
 
       const mime = data.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
       const audio = new Audio(`data:${mime};base64,${data.audio}`);
+      (audio as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
       audio.onerror = () => { if (narrationIdRef.current === myId) fallback('playback error'); };
@@ -617,8 +641,8 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       </div>
 
       {/* Controls */}
-      <div className="bg-gray-950 px-5 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 text-gray-400 text-xs font-mono w-24">
+      <div className="bg-gray-950 px-2 sm:px-5 py-3 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="hidden sm:flex items-center gap-1.5 text-gray-400 text-xs font-mono shrink-0">
           <Clock className="h-3 w-3" />
           {formatTime(progElapsed)} / {formatTime(estDuration)}
         </div>
@@ -630,12 +654,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
           </Button>
 
           {ended ? (
-            <Button size="sm" className="h-8 px-4 bg-white text-gray-900 hover:bg-gray-100" onClick={restart}>
+            <Button size="sm" className="h-8 px-4 bg-white text-gray-900 hover:bg-gray-100"
+              onClick={() => { unlockAudio(); restart(); }}>
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Restart
             </Button>
           ) : (
             <Button size="icon" className="h-9 w-9 rounded-full bg-white text-gray-900 hover:bg-gray-100"
-              onClick={() => { const p = !playing; setPlaying(p); playingRef.current = p; }}>
+              onClick={() => { unlockAudio(); const p = !playing; setPlaying(p); playingRef.current = p; }}>
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
             </Button>
           )}
@@ -646,7 +671,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 w-24 justify-end">
+        <div className="flex items-center gap-2 shrink-0 justify-end">
           {isHindi && (
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
               hindiTtsActive ? 'bg-orange-500/30 text-orange-300' : 'bg-white/10 text-white/40'
@@ -664,7 +689,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
               ? <Volume2 className="h-3.5 w-3.5" />
               : <VolumeX className="h-3.5 w-3.5" />}
           </Button>
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             {sections.map((_, i) => (
               <button key={i} onClick={() => goToSlide(i)}
                 className={`rounded-full transition-all ${
