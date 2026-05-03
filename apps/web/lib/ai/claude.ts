@@ -207,7 +207,8 @@ Structure the script as JSON with this exact schema:
       "duration_seconds": 90,
       "timestamp_seconds": 45,
       "image_queries": ["Iron", "Rust"],
-      "image_label": "Exposure to Moisture"
+      "image_label": "Exposure to Moisture",
+      "bullet_queries": ["Iron", "Iron oxide", "Steel corrosion"]
     },
     ...more topics...,
     {
@@ -234,6 +235,7 @@ Rules:
   - Use 1 item for concept slides (definitions, overviews, processes without a clear before-after)
   - Examples of good titles: "Grapes", "Wine", "Iron", "Rust", "Photosynthesis", "Mitosis", "Atom", "Newton's laws of motion", "Water cycle", "Periodic table", "Human heart"
 - For image_label: short 2-5 word phrase describing the transformation (only when image_queries has 2 items, otherwise null)
+- For bullet_queries: one Wikipedia article title per bullet point — the most visually relevant image for what that bullet describes. Use "" if no clear Wikipedia image exists for that bullet. Same format rules as image_queries (exact article titles).
 - Return ONLY valid JSON, no markdown.`;
 
   const message = await getClaude().messages.create({

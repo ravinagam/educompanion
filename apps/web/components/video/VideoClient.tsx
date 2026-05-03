@@ -13,6 +13,17 @@ import {
   Volume2, VolumeX,
 } from 'lucide-react';
 
+// Animated waveform shown in place of the volume icon while narrating
+function WaveformBars() {
+  return (
+    <div className="flex items-end gap-px h-3.5 w-5">
+      {[0, 1, 2, 3, 4].map(i => (
+        <div key={i} className="wave-bar w-1 h-full rounded-full bg-white/80" />
+      ))}
+    </div>
+  );
+}
+
 interface VideoSection {
   id: string;
   type: 'intro' | 'topic' | 'summary';
@@ -23,6 +34,7 @@ interface VideoSection {
   image_queries?: string[];
   image_label?: string | null;
   image_query?: string;
+  bullet_queries?: string[];
 }
 
 interface VideoScriptContent {
@@ -65,9 +77,9 @@ function slideAccent(type: string) {
 }
 
 // Fallback interval (seconds) when voice is off
-const BULLET_INTERVAL_S = 4;
+const BULLET_INTERVAL_S = 3;
 // Seconds to linger after last bullet before auto-advancing
-const SLIDE_TAIL_S = 5;
+const SLIDE_TAIL_S = 2;
 
 function slideDuration(sec: VideoSection) {
   return sec.bullets.length * BULLET_INTERVAL_S + SLIDE_TAIL_S;
@@ -154,6 +166,15 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   // Wall-clock progress bar (cosmetic only — does not control advance)
   const [progElapsed, setProgElapsed] = useState(0);
   const [sectionImages, setSectionImages] = useState<Record<string, string[]>>({});
+  // Per-section bullet-level images: sectionId → array of urls (null = not found)
+  const [bulletImagesMap, setBulletImagesMap] = useState<Record<string, (string | null)[]>>({});
+  // A/B image crossfade slots
+  const [imgA, setImgA] = useState<string | null>(null);
+  const [imgB, setImgB] = useState<string | null>(null);
+  const [activeSlot, setActiveSlot] = useState<'a' | 'b'>('a');
+  const [dirA, setDirA] = useState<'l' | 'r'>('l');
+  const [dirB, setDirB] = useState<'l' | 'r'>('r');
+  const activeSlotRef = useRef<'a' | 'b'>('a');
 
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
@@ -172,11 +193,31 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     console.log('[VideoPlayer] isHindi:', isHindi);
   }, [isHindi]);
 
+  // ── A/B crossfade: transition to a new image url ──────────────────────────
+  const transitionTo = useCallback((url: string) => {
+    if (activeSlotRef.current === 'a') {
+      setDirB(d => d === 'l' ? 'r' : 'l');
+      setImgB(url);
+      setActiveSlot('b');
+      activeSlotRef.current = 'b';
+    } else {
+      setDirA(d => d === 'l' ? 'r' : 'l');
+      setImgA(url);
+      setActiveSlot('a');
+      activeSlotRef.current = 'a';
+    }
+  }, []);
+
   const section = sections[slideIdx];
   const estDuration = slideDuration(section);
-  const progress = Math.min((progElapsed / estDuration) * 100, 100);
+  // Drive progress from narration state: moves exactly when each bullet is spoken
+  const progress = section.bullets.length === 0
+    ? 100
+    : Math.min((visibleBullets / section.bullets.length) * 100, 100);
   const slideImgs = sectionImages[section.id] ?? [];
   const hasTwoImages = slideImgs.length >= 2;
+  // Show A/B panel when at least one slot has an image (and it's not a before/after slide)
+  const hasAnyImage = !hasTwoImages && (imgA !== null || imgB !== null);
 
   // ── Speech synthesis init + female voice selection
   useEffect(() => {
@@ -206,7 +247,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     return () => { synthRef.current?.cancel(); };
   }, []);
 
-  // ── Preload Wikipedia images
+  // ── Preload section-level Wikipedia images (image_queries)
   useEffect(() => {
     sections.forEach(sec => {
       const queries = getSectionImageQueries(sec);
@@ -219,10 +260,54 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Preload bullet-level Wikipedia images (bullet_queries)
+  useEffect(() => {
+    sections.forEach(sec => {
+      if (!sec.bullet_queries?.length) return;
+      Promise.all(
+        sec.bullet_queries.map(q => (q ? fetchWikiImage(q) : Promise.resolve(null)))
+      ).then(results => {
+        setBulletImagesMap(prev => ({ ...prev, [sec.id]: results }));
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Reset image slots on slide change
+  useEffect(() => {
+    setImgA(null);
+    setImgB(null);
+    setDirA('l');
+    setDirB('r');
+    setActiveSlot('a');
+    activeSlotRef.current = 'a';
+  }, [slideIdx]);
+
+  // ── Show first available image once slots are empty and images load
+  useEffect(() => {
+    if (imgA !== null || imgB !== null) return;
+    const firstBullet = bulletImagesMap[section.id]?.[0] ?? null;
+    const firstSection = sectionImages[section.id]?.[0] ?? null;
+    const init = firstBullet ?? firstSection;
+    if (init) { setImgA(init); setDirA('l'); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionImages, bulletImagesMap, section.id]);
+
+  // ── Sync image to the bullet currently being spoken
+  useEffect(() => {
+    if (visibleBullets === 0) return;
+    const idx = visibleBullets - 1;
+    const bulletImg = bulletImagesMap[section.id]?.[idx] ?? null;
+    const fallback  = sectionImages[section.id]?.[0] ?? null;
+    const target = bulletImg ?? fallback;
+    if (target) transitionTo(target);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleBullets]);
+
   // Build utterance with current voice/rate settings
   const makeUtt = useCallback((text: string) => {
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.92; utt.pitch = 1.0;
+    utt.rate = 1.05; utt.pitch = 1.08;
     if (selectedVoiceRef.current) utt.voice = selectedVoiceRef.current;
     return utt;
   }, []);
@@ -232,16 +317,18 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const speakViaApi = useCallback(async (
     text: string,
     language: string,
+    onStart: () => void,
     onEnd: () => void,
     myId: number,
   ) => {
     const fallback = (reason: string) => {
       console.warn('[TTS] API fallback →', reason);
       if (narrationIdRef.current !== myId) return;
-      if (!synthRef.current) { onEnd(); return; }
+      if (!synthRef.current) { onStart(); onEnd(); return; }
       const utt = makeUtt(toSpeechText(text));
       utt.onend = () => { if (narrationIdRef.current === myId) onEnd(); };
       utt.onerror = () => { if (narrationIdRef.current === myId) onEnd(); };
+      onStart(); // reveal bullet in sync with speech start
       synthRef.current.speak(utt);
     };
 
@@ -264,6 +351,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
       audio.onerror = () => { if (narrationIdRef.current === myId) fallback('playback error'); };
       if (language === 'hi-IN') setHindiTtsActive(true);
+      onStart(); // reveal bullet exactly when audio is about to play
       await audio.play();
     } catch (e) {
       fallback(`exception: ${e}`);
@@ -271,11 +359,11 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   }, [makeUtt]);
 
   // Convenience wrappers kept for call-site clarity
-  const speakHindi = useCallback((text: string, onEnd: () => void, myId: number) =>
-    speakViaApi(text, 'hi-IN', onEnd, myId), [speakViaApi]);
+  const speakHindi = useCallback((text: string, onStart: () => void, onEnd: () => void, myId: number) =>
+    speakViaApi(text, 'hi-IN', onStart, onEnd, myId), [speakViaApi]);
 
-  const speakEnglish = useCallback((text: string, onEnd: () => void, myId: number) =>
-    speakViaApi(toSpeechText(text), 'en-US', onEnd, myId), [speakViaApi]);
+  const speakEnglish = useCallback((text: string, onStart: () => void, onEnd: () => void, myId: number) =>
+    speakViaApi(toSpeechText(text), 'en-US', onStart, onEnd, myId), [speakViaApi]);
 
   // Stop all narration — invalidate running callbacks by bumping the narration id
   const stopNarration = useCallback(() => {
@@ -312,27 +400,31 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       }
 
       nextBulletIdxRef.current = idx + 1;
-      setVisibleBullets(idx + 1); // reveal bullet before speaking it
 
       if (!voiceEnabledRef.current) {
-        // Voice off: just reveal at fixed interval
+        // Voice off: reveal immediately then wait the fixed interval
+        setVisibleBullets(idx + 1);
         setTimeout(speakBullet, BULLET_INTERVAL_S * 1000);
         return;
       }
 
+      // Voice on: reveal bullet via onStart, fired right as audio begins playing
+      // (after API fetch completes) so visuals stay in sync with speech
+      const reveal = () => setVisibleBullets(idx + 1);
       if (isHindi) {
-        speakHindi(sec.bullets[idx], speakBullet, myId);
+        speakHindi(sec.bullets[idx], reveal, speakBullet, myId);
       } else {
-        speakEnglish(sec.bullets[idx], speakBullet, myId);
+        speakEnglish(sec.bullets[idx], reveal, speakBullet, myId);
       }
     }
 
     // Speak slide title first, then begin bullet chain
     if (voiceEnabledRef.current) {
+      const noop = () => {};
       if (isHindi) {
-        speakHindi(sec.title, speakBullet, myId);
+        speakHindi(sec.title, noop, speakBullet, myId);
       } else {
-        speakEnglish(sec.title, speakBullet, myId);
+        speakEnglish(sec.title, noop, speakBullet, myId);
       }
     } else {
       speakBullet();
@@ -408,12 +500,26 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       {/* Slide */}
       <div className={`relative bg-gradient-to-br ${slideBg(section.type)} aspect-video flex flex-col px-7 py-4 transition-all duration-500`}>
 
+        {/* Ambient breathing light — position shifts per slide type */}
+        <div
+          className="absolute inset-0 slide-ambient"
+          style={{
+            background: section.type === 'intro'
+              ? 'radial-gradient(ellipse at 18% 28%, rgba(99,102,241,0.35) 0%, transparent 60%)'
+              : section.type === 'summary'
+              ? 'radial-gradient(ellipse at 82% 22%, rgba(168,85,247,0.35) 0%, transparent 60%)'
+              : 'radial-gradient(ellipse at 50% 65%, rgba(56,189,248,0.22) 0%, transparent 60%)',
+          }}
+        />
+
         {/* Top bar */}
         <div className="flex items-center justify-between mb-2 shrink-0">
           <Badge variant="outline" className={`text-xs capitalize border ${slideAccent(section.type)}`}>
             {section.type}
           </Badge>
-          <span className="text-white/50 text-xs font-mono">{slideIdx + 1} / {sections.length}</span>
+          <span key={slideIdx} className="slide-counter text-white/50 text-xs font-mono">
+            {slideIdx + 1} / {sections.length}
+          </span>
         </div>
 
         {hasTwoImages ? (
@@ -424,9 +530,9 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
             </p>
 
             <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 shrink-0">
-              <div className="w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
+              <div key={`img0-${slideIdx}`} className="img-entrance w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={slideImgs[0]} alt="" className="w-full h-full object-cover"
+                <img src={slideImgs[0]} alt="" className="w-full h-full object-cover ken-burns-l"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
 
@@ -440,9 +546,9 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
                 </div>
               </div>
 
-              <div className="w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
+              <div key={`img1-${slideIdx}`} className="img-entrance w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={slideImgs[1]} alt="" className="w-full h-full object-cover"
+                <img src={slideImgs[1]} alt="" className="w-full h-full object-cover ken-burns-r"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
             </div>
@@ -477,12 +583,26 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
                 ))}
               </ul>
 
-              {slideImgs.length === 1 && (
-                <div className="shrink-0 w-[36%] max-h-full flex items-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={slideImgs[0]} alt={section.title}
-                    className="rounded-xl object-cover w-full max-h-40 sm:max-h-48 shadow-2xl border border-white/10"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              {hasAnyImage && (
+                <div className="shrink-0 w-[36%]">
+                  <div className="relative overflow-hidden rounded-xl w-full h-40 sm:h-48 shadow-2xl border border-white/10">
+                    {imgA && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img key={`a-${imgA}`} src={imgA} alt=""
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ken-burns-${dirA} ${activeSlot === 'a' ? 'opacity-100' : 'opacity-0'}`}
+                          onError={e => { (e.target as HTMLImageElement).style.opacity = '0'; }} />
+                      </>
+                    )}
+                    {imgB && (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img key={`b-${imgB}`} src={imgB} alt=""
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ken-burns-${dirB} ${activeSlot === 'b' ? 'opacity-100' : 'opacity-0'}`}
+                          onError={e => { (e.target as HTMLImageElement).style.opacity = '0'; }} />
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -538,7 +658,11 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
             className={`h-7 w-7 ${voiceEnabled ? 'text-white' : 'text-gray-600'}`}
             onClick={toggleVoice}
             title={voiceEnabled ? 'Mute narration' : 'Enable narration'}>
-            {voiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            {voiceEnabled && playing
+              ? <WaveformBars />
+              : voiceEnabled
+              ? <Volume2 className="h-3.5 w-3.5" />
+              : <VolumeX className="h-3.5 w-3.5" />}
           </Button>
           <div className="flex items-center gap-1">
             {sections.map((_, i) => (
