@@ -50,7 +50,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
   const [flipped, setFlipped] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<'all' | 'due' | 'unknown'>('due');
+  const [mode, setMode] = useState<'all' | 'due'>('all');
   const [sessionDone, setSessionDone] = useState(false);
 
   const now = new Date();
@@ -60,7 +60,6 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
 
   const displayCards =
     mode === 'due' ? dueCards :
-    mode === 'unknown' ? flashcards.filter(f => !f.progress || f.progress.status === 'unknown') :
     // 'all': due cards first, then the rest
     [...dueCards, ...flashcards.filter(f => f.progress && new Date(f.progress.next_review_at) > now)];
 
@@ -178,13 +177,6 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
               <Button variant="outline" onClick={restart} className="flex-1">
                 <RotateCcw className="h-4 w-4 mr-2" />Restart
               </Button>
-              <Button
-                className="flex-1"
-                onClick={() => { setMode('unknown'); setCurrent(0); setFlipped(false); setSessionDone(false); }}
-                disabled={!flashcards.some(f => !f.progress || f.progress.status === 'unknown')}
-              >
-                Study Missed Cards
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -225,17 +217,14 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
 
       {/* Mode switcher */}
       <div className="flex gap-2 flex-wrap">
+        <Button size="sm" variant={mode === 'all' ? 'default' : 'outline'} onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
+          All ({flashcards.length})
+        </Button>
         <Button size="sm" variant={mode === 'due' ? 'default' : 'outline'}
           onClick={() => { setMode('due'); setCurrent(0); setFlipped(false); }}
           className={mode === 'due' ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}
         >
           Due Now ({dueCards.length})
-        </Button>
-        <Button size="sm" variant={mode === 'all' ? 'default' : 'outline'} onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
-          All ({flashcards.length})
-        </Button>
-        <Button size="sm" variant={mode === 'unknown' ? 'default' : 'outline'} onClick={() => { setMode('unknown'); setCurrent(0); setFlipped(false); }}>
-          Missed ({flashcards.filter(f => !f.progress || f.progress.status === 'unknown').length})
         </Button>
       </div>
 
@@ -319,7 +308,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
       )}
 
       {!flipped && (
-        <p className="text-center text-xs text-gray-400">Tap the card to flip it, then rate your confidence</p>
+        <p className="text-center text-xs text-gray-400">Tap the card to flip it</p>
       )}
     </div>
   );
