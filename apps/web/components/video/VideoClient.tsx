@@ -154,6 +154,28 @@ async function fetchWikiImage(query: string): Promise<string | null> {
   }
 }
 
+// TTS fetch cache — keyed by "lang::text". Promises are shared so concurrent
+// calls for the same text never fire duplicate requests (prefetch + play).
+function fetchTTSCached(
+  cache: Map<string, Promise<{ audio: string; format: string } | null>>,
+  text: string,
+  language: string,
+): Promise<{ audio: string; format: string } | null> {
+  const key = `${language}::${text.slice(0, 200)}`;
+  if (!cache.has(key)) {
+    cache.set(key, fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, language }),
+    }).then(async r => {
+      if (!r.ok) return null;
+      const d = await r.json() as { audio?: string; format?: string };
+      return d.audio ? { audio: d.audio, format: d.format ?? 'wav' } : null;
+    }).catch(() => null));
+  }
+  return cache.get(key)!;
+}
+
 // ── Slide Player ──────────────────────────────────────────────────────────────
 
 function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi: boolean }) {
@@ -188,6 +210,8 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   // iOS Safari requires a user-gesture-triggered AudioContext before async audio.play() works
   const audioUnlockedRef = useRef(false);
+  // TTS prefetch cache shared across all speakViaApi calls in this player instance
+  const ttsCacheRef = useRef<Map<string, Promise<{ audio: string; format: string } | null>>>(new Map());
   // Track whether Sarvam TTS is actually working (confirmed on first successful audio)
   const [hindiTtsActive, setHindiTtsActive] = useState(false);
 
@@ -202,18 +226,17 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const unlockAudio = useCallback(() => {
     if (audioUnlockedRef.current) return;
     audioUnlockedRef.current = true;
+    // Play a silent HTMLAudioElement synchronously in the user-gesture handler.
+    // This is the reliable iOS pattern — AudioContext alone does NOT unlock
+    // HTMLAudioElement.play() on all iOS Safari versions.
     try {
-      type AC = typeof AudioContext;
-      const Ctor: AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: AC }).webkitAudioContext;
-      if (!Ctor) return;
-      const ctx = new Ctor();
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-      ctx.resume().catch(() => {});
-    } catch { /* not supported — no-op */ }
+      const silence = new Audio();
+      (silence as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
+      silence.volume = 0;
+      // Minimal 1-sample silent WAV (44 bytes)
+      silence.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+      silence.play().catch(() => {});
+    } catch { /* no-op */ }
   }, []);
 
   // ── A/B crossfade: transition to a new image url ──────────────────────────
@@ -356,17 +379,9 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     };
 
     try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language }),
-      });
+      const data = await fetchTTSCached(ttsCacheRef.current, text, language);
       if (narrationIdRef.current !== myId) return;
-      if (!res.ok) { fallback(`HTTP ${res.status}`); return; }
-
-      const data = await res.json() as { audio?: string; format?: string; error?: string };
-      if (narrationIdRef.current !== myId) return;
-      if (!data.audio) { fallback('no audio in response'); return; }
+      if (!data) { fallback('TTS API failed'); return; }
 
       const mime = data.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
       const audio = new Audio(`data:${mime};base64,${data.audio}`);
@@ -433,17 +448,27 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       }
 
       // Voice on: reveal bullet via onStart, fired right as audio begins playing
-      // (after API fetch completes) so visuals stay in sync with speech
       const reveal = () => setVisibleBullets(idx + 1);
       if (isHindi) {
         speakHindi(sec.bullets[idx], reveal, speakBullet, myId);
       } else {
         speakEnglish(sec.bullets[idx], reveal, speakBullet, myId);
       }
+      // Prefetch next bullet immediately so it's ready when this one ends
+      const nextIdx = idx + 1;
+      if (nextIdx < sec.bullets.length) {
+        const nextText = isHindi ? sec.bullets[nextIdx] : toSpeechText(sec.bullets[nextIdx]);
+        fetchTTSCached(ttsCacheRef.current, nextText, isHindi ? 'hi-IN' : 'en-US');
+      }
     }
 
     // Speak slide title first, then begin bullet chain
     if (voiceEnabledRef.current) {
+      // Prefetch bullet[0] while the title is being fetched/played
+      if (sec.bullets.length > 0) {
+        const firstText = isHindi ? sec.bullets[0] : toSpeechText(sec.bullets[0]);
+        fetchTTSCached(ttsCacheRef.current, firstText, isHindi ? 'hi-IN' : 'en-US');
+      }
       const noop = () => {};
       if (isHindi) {
         speakHindi(sec.title, noop, speakBullet, myId);
@@ -773,8 +798,7 @@ export function VideoClient({ chapter, subjectName, videoScript: initialScript }
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Play className="h-4 w-4 text-blue-500" />
+                <CardTitle className="text-base">
                   {scriptContent?.title}
                 </CardTitle>
                 <div className="flex items-center gap-3">
