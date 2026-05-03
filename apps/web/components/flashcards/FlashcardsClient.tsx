@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +48,11 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
       setSessionDone(false);
     }
   }, [initialCards]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [mastery, setMastery] = useState(initialMastery);
+  const mastery = useMemo(() => {
+    if (flashcards.length === 0) return initialMastery;
+    const knownCount = flashcards.filter(f => f.progress?.status === 'known').length;
+    return Math.round((knownCount / flashcards.length) * 100);
+  }, [flashcards, initialMastery]);
   const [current, setCurrent] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -85,35 +89,45 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
     if (!currentCard || submitting) return;
     setSubmitting(true);
 
-    const res = await fetch('/api/flashcard-progress', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ flashcardId: currentCard.id, status }),
-    });
+    const cardId = currentCard.id;
+    const existingProgress = currentCard.progress;
+    const sessionLength = displayCards.length;
 
-    if (res.ok) {
-      const json = await res.json();
-      setFlashcards(cards => cards.map(c =>
-        c.id === currentCard.id ? { ...c, progress: json.data } : c
-      ));
-
-      // Recompute mastery
-      const updatedCards = flashcards.map(c =>
-        c.id === currentCard.id ? { ...c, progress: json.data } : c
-      );
-      const knownCount = updatedCards.filter(c => c.progress?.status === 'known').length;
-      setMastery(Math.round((knownCount / flashcards.length) * 100));
-    }
+    // Optimistic update: move card out of due list immediately so count drops at once
+    setFlashcards(cards => cards.map(c =>
+      c.id === cardId
+        ? { ...c, progress: {
+            id: existingProgress?.id ?? '',
+            status,
+            next_review_at: new Date(Date.now() + 3600000).toISOString(),
+            review_count: (existingProgress?.review_count ?? 0) + 1,
+          }}
+        : c
+    ));
 
     setFlipped(false);
-
     const next = current + 1;
-    if (next >= displayCards.length) {
+    if (next >= sessionLength) {
       setSessionDone(true);
     } else {
       setCurrent(next);
     }
     setSubmitting(false);
+
+    // Persist in background and update with actual SRS interval
+    fetch('/api/flashcard-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flashcardId: cardId, status }),
+    }).then(async res => {
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.data) {
+        setFlashcards(prev => prev.map(c =>
+          c.id === cardId ? { ...c, progress: json.data } : c
+        ));
+      }
+    }).catch(() => {});
   }
 
   function restart() {
