@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,42 +35,60 @@ interface Props {
   userId: string;
 }
 
+// Build the ordered list of card IDs for a session.
+// Due cards come first; within each group order is stable.
+// Called once at session start — never during a session — so indices don't shift.
+function buildSessionIds(cards: Flashcard[], mode: 'all' | 'due'): string[] {
+  const now = new Date();
+  const due = cards.filter(f => !f.progress || new Date(f.progress.next_review_at) <= now);
+  const notDue = cards.filter(f => f.progress && new Date(f.progress.next_review_at) > now);
+  return (mode === 'due' ? due : [...due, ...notDue]).map(f => f.id);
+}
+
 export function FlashcardsClient({ chapter, subjectName, flashcards: initialCards, mastery: initialMastery }: Props) {
   const router = useRouter();
+
   const [flashcards, setFlashcards] = useState(initialCards);
+  const [mode, setMode] = useState<'all' | 'due'>('all');
+
+  // Frozen traversal order — only rebuilt on mode change, initialCards refresh, or restart.
+  // This prevents index-shifting when cards move between due/not-due mid-session.
+  const [sessionCardIds, setSessionCardIds] = useState<string[]>(() => buildSessionIds(initialCards, 'all'));
+
+  const [current, setCurrent] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [sessionDone, setSessionDone] = useState(false);
 
   // Sync when router.refresh() delivers new initialCards after generation
   useEffect(() => {
     if (initialCards.length > 0) {
       setFlashcards(initialCards);
+      setSessionCardIds(buildSessionIds(initialCards, mode));
       setCurrent(0);
       setFlipped(false);
       setSessionDone(false);
     }
   }, [initialCards]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mastery derived from live flashcards so it updates as cards are marked
   const mastery = useMemo(() => {
     if (flashcards.length === 0) return initialMastery;
     const knownCount = flashcards.filter(f => f.progress?.status === 'known').length;
     return Math.round((knownCount / flashcards.length) * 100);
   }, [flashcards, initialMastery]);
-  const [current, setCurrent] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<'all' | 'due'>('all');
-  const [sessionDone, setSessionDone] = useState(false);
 
+  // Live due count for button label — also updates as cards are marked
   const now = new Date();
-  const dueCards = flashcards.filter(f =>
-    !f.progress || new Date(f.progress.next_review_at) <= now
-  );
+  const dueCount = flashcards.filter(f => !f.progress || new Date(f.progress.next_review_at) <= now).length;
 
-  const displayCards =
-    mode === 'due' ? dueCards :
-    // 'all': due cards first, then the rest
-    [...dueCards, ...flashcards.filter(f => f.progress && new Date(f.progress.next_review_at) > now)];
+  // Look up current card by stable ID so progress is live but order doesn't shift
+  const flashcardById = useMemo(() => new Map(flashcards.map(f => [f.id, f])), [flashcards]);
+  const sessionLength = sessionCardIds.length;
+  const currentCard = flashcardById.get(sessionCardIds[current]);
 
-  const currentCard = displayCards[current];
+  const knownCount = flashcards.filter(f => f.progress?.status === 'known').length;
 
   async function generateFlashcards() {
     setGenerating(true);
@@ -91,9 +109,8 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
 
     const cardId = currentCard.id;
     const existingProgress = currentCard.progress;
-    const sessionLength = displayCards.length;
 
-    // Optimistic update: move card out of due list immediately so count drops at once
+    // Optimistic update — removes card from due count immediately
     setFlashcards(cards => cards.map(c =>
       c.id === cardId
         ? { ...c, progress: {
@@ -130,13 +147,19 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
     }).catch(() => {});
   }
 
+  function changeMode(newMode: 'all' | 'due') {
+    setMode(newMode);
+    setSessionCardIds(buildSessionIds(flashcards, newMode));
+    setCurrent(0);
+    setFlipped(false);
+  }
+
   function restart() {
+    setSessionCardIds(buildSessionIds(flashcards, mode));
     setCurrent(0);
     setFlipped(false);
     setSessionDone(false);
   }
-
-  const knownCount = flashcards.filter(f => f.progress?.status === 'known').length;
 
   // Intro / empty state
   if (flashcards.length === 0) {
@@ -182,7 +205,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
             <Check className="h-12 w-12 text-green-500 mx-auto" />
             <div>
               <p className="text-2xl font-bold text-gray-900">Session Complete!</p>
-              <p className="text-gray-600">You reviewed {displayCards.length} cards</p>
+              <p className="text-gray-600">You reviewed {sessionLength} cards</p>
             </div>
             <div className="bg-white rounded-lg p-4">
               <p className="text-sm text-gray-500 mb-1">Chapter Mastery</p>
@@ -214,7 +237,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
         </div>
         <div className="text-right">
           <p className="text-sm font-semibold text-blue-700">{mastery}% mastered</p>
-          <p className="text-xs text-gray-400">{current + 1} / {displayCards.length}</p>
+          <p className="text-xs text-gray-400">{current + 1} / {sessionLength}</p>
         </div>
       </div>
 
@@ -234,14 +257,14 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
 
       {/* Mode switcher */}
       <div className="flex gap-2 flex-wrap">
-        <Button size="sm" variant={mode === 'all' ? 'default' : 'outline'} onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
+        <Button size="sm" variant={mode === 'all' ? 'default' : 'outline'} onClick={() => changeMode('all')}>
           All ({flashcards.length})
         </Button>
         <Button size="sm" variant={mode === 'due' ? 'default' : 'outline'}
-          onClick={() => { setMode('due'); setCurrent(0); setFlipped(false); }}
+          onClick={() => changeMode('due')}
           className={mode === 'due' ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}
         >
-          Due Now ({dueCards.length})
+          Due Now ({dueCount})
         </Button>
       </div>
 
@@ -251,7 +274,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
           <CheckCircle2 className="h-10 w-10 text-amber-400 mx-auto mb-3" />
           <p className="font-semibold text-gray-700">All caught up!</p>
           <p className="text-sm text-gray-500 mt-1">No cards due for review right now.</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={() => { setMode('all'); setCurrent(0); setFlipped(false); }}>
+          <Button size="sm" variant="outline" className="mt-3" onClick={() => changeMode('all')}>
             Study All Cards
           </Button>
         </div>
