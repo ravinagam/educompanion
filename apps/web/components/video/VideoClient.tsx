@@ -206,7 +206,10 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const narrationIdRef = useRef(0);
   const nextBulletIdxRef = useRef(0);
   const progTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Holds the current HTMLAudioElement when using Hindi TTS
+  // Single persistent audio element — reusing the same element keeps the iOS
+  // audio session alive across slide transitions (new elements get blocked after ~2s silence)
+  const persistentAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Holds the current HTMLAudioElement (always = persistentAudioRef.current)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   // iOS Safari requires a user-gesture-triggered AudioContext before async audio.play() works
   const audioUnlockedRef = useRef(false);
@@ -219,6 +222,14 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     console.log('[VideoPlayer] isHindi:', isHindi);
   }, [isHindi]);
 
+  // ── Persistent audio element (created once, reused forever) ──────────────
+  useEffect(() => {
+    const audio = new Audio();
+    (audio as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
+    persistentAudioRef.current = audio;
+    return () => { audio.pause(); audio.src = ''; };
+  }, []);
+
   // ── iOS Safari audio unlock ───────────────────────────────────────────────
   // Must be called synchronously inside a user-gesture handler.
   // Playing a silent AudioContext buffer unlocks subsequent audio.play() calls
@@ -226,16 +237,14 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const unlockAudio = useCallback(() => {
     if (audioUnlockedRef.current) return;
     audioUnlockedRef.current = true;
-    // Play a silent HTMLAudioElement synchronously in the user-gesture handler.
-    // This is the reliable iOS pattern — AudioContext alone does NOT unlock
-    // HTMLAudioElement.play() on all iOS Safari versions.
+    // Play a silent clip on the SAME persistent element so iOS links the
+    // user gesture to this element — all future .play() calls on it are allowed.
     try {
-      const silence = new Audio();
-      (silence as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
-      silence.volume = 0;
-      // Minimal 1-sample silent WAV (44 bytes)
-      silence.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-      silence.play().catch(() => {});
+      const audio = persistentAudioRef.current;
+      if (!audio) return;
+      audio.volume = 0;
+      audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+      audio.play().catch(() => {});
     } catch { /* no-op */ }
   }, []);
 
@@ -392,8 +401,14 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       if (!data) { fallback('TTS API failed'); return; }
 
       const mime = data.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
-      const audio = new Audio(`data:${mime};base64,${data.audio}`);
-      (audio as HTMLAudioElement & { playsInline: boolean }).playsInline = true;
+      // Reuse the persistent element — iOS keeps the audio session alive on a
+      // single element across slide transitions (new elements get blocked)
+      const audio = persistentAudioRef.current ?? new Audio();
+      audio.pause();
+      audio.onended = null;
+      audio.onerror = null;
+      audio.volume = 1;
+      audio.src = `data:${mime};base64,${data.audio}`;
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
       audio.onerror = () => { if (narrationIdRef.current === myId) fallback('playback error'); };
@@ -641,8 +656,8 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
               </ul>
 
               {hasAnyImage && (
-                <div className="hidden sm:block shrink-0 w-[36%]">
-                  <div className="relative overflow-hidden rounded-xl w-full h-40 sm:h-48 shadow-2xl border border-white/10">
+                <div className="shrink-0 w-[30%] sm:w-[36%]">
+                  <div className="relative overflow-hidden rounded-xl w-full h-24 sm:h-48 shadow-2xl border border-white/10">
                     {imgA && (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
