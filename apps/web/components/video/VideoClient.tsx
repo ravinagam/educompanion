@@ -370,11 +370,19 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
     const fallback = (reason: string) => {
       console.warn('[TTS] API fallback →', reason);
       if (narrationIdRef.current !== myId) return;
-      if (!synthRef.current) { onStart(); onEnd(); return; }
+      onStart();
+      if (!synthRef.current) { onEnd(); return; }
       const utt = makeUtt(toSpeechText(text));
-      utt.onend = () => { if (narrationIdRef.current === myId) onEnd(); };
-      utt.onerror = () => { if (narrationIdRef.current === myId) onEnd(); };
-      onStart(); // reveal bullet in sync with speech start
+      let settled = false;
+      const advance = () => {
+        if (settled || narrationIdRef.current !== myId) return;
+        settled = true;
+        onEnd();
+      };
+      // Timeout guard — iOS Safari sometimes never fires onend/onerror
+      const guard = setTimeout(advance, 9000);
+      utt.onend  = () => { clearTimeout(guard); advance(); };
+      utt.onerror = () => { clearTimeout(guard); advance(); };
       synthRef.current.speak(utt);
     };
 
@@ -547,7 +555,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   return (
     <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 select-none">
       {/* Slide */}
-      <div className={`relative bg-gradient-to-br ${slideBg(section.type)} aspect-video flex flex-col px-7 py-4 transition-all duration-500`}>
+      <div className={`relative bg-gradient-to-br ${slideBg(section.type)} aspect-[4/3] sm:aspect-video flex flex-col px-4 py-2 sm:px-7 sm:py-4 transition-all duration-500`}>
 
         {/* Ambient breathing light — position shifts per slide type */}
         <div
@@ -562,7 +570,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         />
 
         {/* Top bar */}
-        <div className="flex items-center justify-between mb-2 shrink-0">
+        <div className="flex items-center justify-between mb-1 sm:mb-2 shrink-0">
           <Badge variant="outline" className={`text-xs capitalize border ${slideAccent(section.type)}`}>
             {section.type}
           </Badge>
@@ -574,12 +582,12 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         {hasTwoImages ? (
           /* ── Two-image before-after (Grade Booster style) ── */
           <>
-            <p className="text-white/70 text-xs sm:text-sm font-semibold text-center mb-2 shrink-0 tracking-wide uppercase drop-shadow">
+            <p className="text-white/70 text-[10px] sm:text-sm font-semibold text-center mb-1 sm:mb-2 shrink-0 tracking-wide uppercase drop-shadow">
               {section.title}
             </p>
 
-            <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 shrink-0">
-              <div key={`img0-${slideIdx}`} className="img-entrance w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
+            <div className="flex items-center justify-center gap-2 sm:gap-4 mb-2 sm:mb-3 shrink-0">
+              <div key={`img0-${slideIdx}`} className="img-entrance w-[22%] sm:w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={slideImgs[0]} alt="" className="w-full h-full object-cover ken-burns-l"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -595,20 +603,20 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
                 </div>
               </div>
 
-              <div key={`img1-${slideIdx}`} className="img-entrance w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
+              <div key={`img1-${slideIdx}`} className="img-entrance w-[22%] sm:w-[27%] aspect-square rounded-full overflow-hidden border-[3px] border-white/20 shadow-2xl bg-black/40 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={slideImgs[1]} alt="" className="w-full h-full object-cover ken-burns-r"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
             </div>
 
-            <ul className="flex-1 space-y-1.5 overflow-hidden min-h-0">
+            <ul className="flex-1 space-y-1 sm:space-y-1.5 overflow-hidden min-h-0">
               {section.bullets.map((bullet, i) => (
                 <li key={i} className={`flex items-start gap-2 transition-all duration-500 ${
                   i < visibleBullets ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
                 }`}>
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400/80 shrink-0" />
-                  <span className="text-white/90 text-sm sm:text-base leading-snug">{bullet}</span>
+                  <span className="mt-1 sm:mt-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400/80 shrink-0" />
+                  <span className="text-white/90 text-xs sm:text-base leading-snug">{bullet}</span>
                 </li>
               ))}
             </ul>
@@ -616,24 +624,24 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         ) : (
           /* ── Single image or no-image layout ── */
           <>
-            <h2 className="text-white text-xl sm:text-2xl font-bold mb-3 leading-tight shrink-0 drop-shadow-lg">
+            <h2 className="text-white text-sm sm:text-2xl font-bold mb-1 sm:mb-3 leading-snug shrink-0 drop-shadow-lg">
               {section.title}
             </h2>
 
-            <div className="flex gap-5 flex-1 min-h-0 items-center">
-              <ul className="flex-1 space-y-2.5 min-w-0">
+            <div className="flex gap-3 sm:gap-5 flex-1 min-h-0 items-start sm:items-center overflow-hidden">
+              <ul className="flex-1 space-y-1 sm:space-y-2.5 min-w-0 overflow-hidden">
                 {section.bullets.map((bullet, i) => (
-                  <li key={i} className={`flex items-start gap-3 transition-all duration-500 ${
+                  <li key={i} className={`flex items-start gap-2 sm:gap-3 transition-all duration-500 ${
                     i < visibleBullets ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
                   }`}>
-                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white/70 shrink-0" />
-                    <span className="text-white/90 text-sm sm:text-base leading-snug">{bullet}</span>
+                    <span className="mt-1 sm:mt-2 h-1.5 w-1.5 rounded-full bg-white/70 shrink-0" />
+                    <span className="text-white/90 text-xs sm:text-base leading-snug">{bullet}</span>
                   </li>
                 ))}
               </ul>
 
               {hasAnyImage && (
-                <div className="shrink-0 w-[36%]">
+                <div className="hidden sm:block shrink-0 w-[36%]">
                   <div className="relative overflow-hidden rounded-xl w-full h-40 sm:h-48 shadow-2xl border border-white/10">
                     {imgA && (
                       <>
@@ -816,7 +824,7 @@ export function VideoClient({ chapter, subjectName, videoScript: initialScript }
             </CardHeader>
           </Card>
 
-          <SlidePlayer sections={sections} isHindi={subjectName.toLowerCase().includes('hindi')} />
+          <SlidePlayer key={script?.id ?? 'player'} sections={sections} isHindi={subjectName.toLowerCase().includes('hindi')} />
 
           <div className="space-y-3">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
