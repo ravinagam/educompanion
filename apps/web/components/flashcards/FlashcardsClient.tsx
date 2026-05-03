@@ -41,8 +41,11 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
 
   // Sync when router.refresh() delivers new initialCards after generation
   useEffect(() => {
-    if (flashcards.length === 0 && initialCards.length > 0) {
+    if (initialCards.length > 0) {
       setFlashcards(initialCards);
+      setCurrent(0);
+      setFlipped(false);
+      setSessionDone(false);
     }
   }, [initialCards]); // eslint-disable-line react-hooks/exhaustive-deps
   const [mastery, setMastery] = useState(initialMastery);
