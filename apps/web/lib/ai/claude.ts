@@ -46,6 +46,20 @@ function sampleContent(text: string, maxChars: number): string {
   );
 }
 
+// ─── Image helpers ────────────────────────────────────────────────────────────
+
+type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+const EXT_TO_MEDIA: Record<string, ImageMediaType> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+};
+
+export interface ImageInput { base64: string; mediaType: ImageMediaType }
+
+export function storagePathToMediaType(path: string): ImageMediaType {
+  const ext = path.split('.').pop()?.toLowerCase() ?? 'jpg';
+  return EXT_TO_MEDIA[ext] ?? 'image/jpeg';
+}
+
 // ─── Quiz Generation ──────────────────────────────────────────────────────────
 
 export async function generateQuiz(
@@ -119,6 +133,56 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
   return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
+export async function generateQuizFromImages(
+  chapterName: string,
+  images: ImageInput[],
+  variationHint = '',
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  isHindi = false
+): Promise<UsageResult<QuizQuestion[]>> {
+  const variationLine = variationHint
+    ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of questions.\n`
+    : '';
+
+  const textPrompt = `You are an expert teacher for Indian school students (grades 8–12).
+Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the content shown in the textbook page screenshots above.
+${variationLine}
+Chapter: "${chapterName}"
+
+Rules:
+- Use ONLY information visible in the screenshots. Do not add external facts.
+- Cover ALL pages shown, not just the first one.
+- Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
+- MCQs must have exactly 4 options (A, B, C, D)
+- Every question must have a clear correct answer and a concise explanation
+- Difficulty: ${difficulty === 'easy' ? '70% easy, 25% medium, 5% hard — straightforward recall' : difficulty === 'hard' ? '5% easy, 25% medium, 70% hard — deep conceptual reasoning' : '30% easy, 50% medium, 20% hard — balanced mix'}
+- Spread questions evenly across all pages/topics
+
+Return a JSON array with this exact schema:
+[
+  { "id": "q1", "type": "mcq", "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correct_answer": "A) ...", "explanation": "..." },
+  { "id": "q2", "type": "true_false", "question": "...", "options": ["True", "False"], "correct_answer": "True", "explanation": "..." },
+  { "id": "q3", "type": "fill_blank", "question": "The process of ___ converts sunlight into food.", "correct_answer": "photosynthesis", "explanation": "..." }
+]
+Return ONLY valid JSON, no markdown, no explanation outside the array.`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    temperature: 1,
+    messages: [{
+      role: 'user',
+      content: [
+        ...images.map(img => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.base64 } })),
+        { type: 'text', text: textPrompt },
+      ],
+    }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+}
+
 // ─── Flashcard Generation ─────────────────────────────────────────────────────
 
 export async function generateFlashcards(
@@ -162,6 +226,50 @@ Return ONLY valid JSON, no markdown.`;
     max_tokens: 2048,
     temperature: 1,
     messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: parseJSON<Pick<Flashcard, 'term' | 'definition'>[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+}
+
+export async function generateFlashcardsFromImages(
+  chapterName: string,
+  images: ImageInput[],
+  variationHint = ''
+): Promise<UsageResult<Pick<Flashcard, 'term' | 'definition'>[]>> {
+  const variationLine = variationHint
+    ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of flashcards.\n`
+    : '';
+
+  const textPrompt = `You are a concise teacher creating study flashcards for Indian school students (grades 8–12).
+Generate exactly ${FLASHCARDS_PER_CHAPTER} flashcard pairs from ONLY the content shown in the textbook page screenshots above.
+${variationLine}
+Chapter: "${chapterName}"
+
+Rules:
+- Use ONLY information visible in the screenshots
+- Cover ALL pages shown — extract terms from every page
+- Terms should be short (1–5 words)
+- Definitions should be clear, accurate, and 1–2 sentences
+- Extract key terms, concepts, definitions, formulas, and important facts
+
+Return a JSON array:
+[
+  { "term": "Photosynthesis", "definition": "The process by which plants use sunlight, water, and CO2 to produce glucose and oxygen." }
+]
+Return ONLY valid JSON, no markdown.`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    temperature: 1,
+    messages: [{
+      role: 'user',
+      content: [
+        ...images.map(img => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.base64 } })),
+        { type: 'text', text: textPrompt },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;

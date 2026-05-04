@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateFlashcards } from '@/lib/ai/claude';
+import { generateFlashcards, generateFlashcardsFromImages, storagePathToMediaType, type ImageInput } from '@/lib/ai/claude';
 import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
@@ -15,7 +15,7 @@ export async function POST(
 
   const { data: chapter } = await supabase
     .from('chapters')
-    .select('id, name, content_text, upload_status, source_type, subjects!inner(user_id)')
+    .select('id, name, content_text, upload_status, source_type, screenshot_urls, subjects!inner(user_id)')
     .eq('id', chapterId)
     .single();
 
@@ -26,13 +26,15 @@ export async function POST(
   if (chapter.upload_status !== 'ready') {
     return NextResponse.json({ error: 'Chapter not ready yet' }, { status: 400 });
   }
-  const wordCount = (chapter.content_text ?? '').trim().split(/\s+/).filter(Boolean).length;
-  if (wordCount < 50) {
-    const isScreenshots = (chapter as unknown as { source_type: string }).source_type === 'screenshots';
-    const emptyError = isScreenshots
-      ? 'No text could be extracted from the uploaded screenshots. Please re-upload the screenshots and try again.'
-      : 'This PDF appears to be scanned (image-based) and contains no extractable text. Please upload a text-based PDF, DOCX, or TXT file.';
-    return NextResponse.json({ error: emptyError }, { status: 400 });
+
+  const chapterAny = chapter as unknown as { source_type: string; screenshot_urls: string[] | null };
+  const isScreenshots = chapterAny.source_type === 'screenshots' && (chapterAny.screenshot_urls?.length ?? 0) > 0;
+
+  if (!isScreenshots) {
+    const wordCount = (chapter.content_text ?? '').trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) {
+      return NextResponse.json({ error: 'This PDF appears to be scanned (image-based) and contains no extractable text. Please upload a text-based PDF, DOCX, or TXT file.' }, { status: 400 });
+    }
   }
 
   // Check if flashcards already exist — if so, this is a regeneration
@@ -48,9 +50,23 @@ export async function POST(
 
   let pairs: { term: string; definition: string }[];
   try {
-    const result = await generateFlashcards(chapter.name, chapter.content_text, variationHint);
-    pairs = result.data;
-    logAiUsage(user.id, 'flashcards', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    if (isScreenshots) {
+      const admin = createAdminClient();
+      const imageData: ImageInput[] = await Promise.all(
+        chapterAny.screenshot_urls!.map(async (path) => {
+          const { data: blob, error } = await admin.storage.from('chapter-files').download(path);
+          if (error || !blob) throw new Error(`Failed to load screenshot: ${path}`);
+          return { base64: Buffer.from(await blob.arrayBuffer()).toString('base64'), mediaType: storagePathToMediaType(path) };
+        })
+      );
+      const result = await generateFlashcardsFromImages(chapter.name, imageData, variationHint);
+      pairs = result.data;
+      logAiUsage(user.id, 'flashcards-images', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    } else {
+      const result = await generateFlashcards(chapter.name, chapter.content_text, variationHint);
+      pairs = result.data;
+      logAiUsage(user.id, 'flashcards', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI generation failed';
     return NextResponse.json({ error: msg }, { status: 500 });
