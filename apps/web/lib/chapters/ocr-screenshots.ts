@@ -1,14 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { logAiUsage } from '@/lib/ai/usage';
-
-type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
-
-const EXT_TO_MEDIA_TYPE: Record<string, ImageMediaType> = {
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-};
+import { compressForApi } from '@/lib/utils/compress-image';
 
 export async function ocrScreenshots(
   images: Array<{ buffer: Buffer; storagePath: string }>,
@@ -21,9 +13,7 @@ export async function ocrScreenshots(
   // All pages in parallel — turns 15×4s sequential into ~4s total
   const results = await Promise.allSettled(
     images.map(async ({ buffer, storagePath }, i) => {
-      const ext = storagePath.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const mediaType: ImageMediaType = EXT_TO_MEDIA_TYPE[ext] ?? 'image/jpeg';
-      const base64 = buffer.toString('base64');
+      const { base64, mediaType } = await compressForApi(buffer, storagePath);
 
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateChapterSummary, generateChapterSummaryFromImages, storagePathToMediaType, type ImageInput } from '@/lib/ai/claude';
+import { generateChapterSummary, generateChapterSummaryFromImages, type ImageInput } from '@/lib/ai/claude';
 import { logAiUsage } from '@/lib/ai/usage';
+import { compressForApi } from '@/lib/utils/compress-image';
 
 export async function GET(
   _request: NextRequest,
@@ -63,7 +64,7 @@ export async function POST(
         chapterAny.screenshot_urls!.map(async (path) => {
           const { data: blob, error } = await admin.storage.from('chapter-files').download(path);
           if (error || !blob) throw new Error(`Failed to load screenshot: ${path}`);
-          return { base64: Buffer.from(await blob.arrayBuffer()).toString('base64'), mediaType: storagePathToMediaType(path) };
+          return compressForApi(Buffer.from(await blob.arrayBuffer()), path);
         })
       );
       result = await generateChapterSummaryFromImages(chapter.name, imageData);

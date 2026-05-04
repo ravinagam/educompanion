@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '52mb',
     },
   },
-  serverExternalPackages: ['pdf-parse', 'mammoth', '@napi-rs/canvas'],
+  serverExternalPackages: ['pdf-parse', 'mammoth', '@napi-rs/canvas', 'sharp'],
 };
 
 export default nextConfig;
