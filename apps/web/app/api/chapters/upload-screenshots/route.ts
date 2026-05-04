@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ocrScreenshots } from '@/lib/chapters/ocr-screenshots';
@@ -32,6 +31,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
+  // Create chapter record immediately so it appears in the list
   const { data: chapter, error: insertErr } = await admin
     .from('chapters')
     .insert({
@@ -48,41 +48,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create chapter' }, { status: 500 });
   }
 
-  const capturedId = chapter.id as string;
-  const capturedPaths = storagePaths;
-  const capturedUserId = user.id;
+  const chapterId = chapter.id as string;
 
-  after(async () => {
-    const bgAdmin = createAdminClient();
-    try {
-      console.log('[screenshots] Starting OCR for chapter', capturedId, `(${capturedPaths.length} pages)`);
+  try {
+    console.log('[screenshots] Starting OCR for chapter', chapterId, `(${storagePaths.length} pages)`);
 
-      // Download all screenshots concurrently
-      const downloadResults = await Promise.all(
-        capturedPaths.map(async (path) => {
-          const { data: blob, error } = await bgAdmin.storage.from('chapter-files').download(path);
-          if (error || !blob) throw new Error(`Failed to download page: ${path}`);
-          return { buffer: Buffer.from(await blob.arrayBuffer()), storagePath: path };
-        })
-      );
-      const images = downloadResults;
+    // Download all screenshots concurrently
+    const images = await Promise.all(
+      storagePaths.map(async (path) => {
+        const { data: blob, error } = await admin.storage.from('chapter-files').download(path);
+        if (error || !blob) throw new Error(`Failed to download page: ${path}`);
+        return { buffer: Buffer.from(await blob.arrayBuffer()), storagePath: path };
+      })
+    );
 
-      // OCR all pages via Claude Haiku Vision
-      const contentText = await ocrScreenshots(images, capturedUserId);
-      console.log('[screenshots] OCR complete —', contentText.length, 'chars extracted');
+    // OCR all pages via Claude Haiku Vision (concurrent)
+    const contentText = await ocrScreenshots(images, user.id);
+    console.log('[screenshots] OCR complete —', contentText.length, 'chars extracted');
 
-      // Chunk → embed → save content_text → mark ready
-      await processTextContent(bgAdmin, capturedId, contentText, capturedUserId);
-      console.log('[screenshots] Chapter', capturedId, 'is ready');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Processing failed';
-      console.error('[screenshots] Processing failed for chapter', capturedId, ':', message);
-      await bgAdmin.from('chapters').update({
-        upload_status: 'error',
-        error_message: message,
-      }).eq('id', capturedId);
-    }
-  });
+    // Chunk → embed → save content_text → mark ready
+    await processTextContent(admin, chapterId, contentText, user.id);
+    console.log('[screenshots] Chapter', chapterId, 'is ready');
 
-  return NextResponse.json({ data: chapter });
+    const { data: readyChapter } = await admin.from('chapters').select().eq('id', chapterId).single();
+    return NextResponse.json({ data: readyChapter ?? chapter });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Processing failed';
+    console.error('[screenshots] Processing failed for chapter', chapterId, ':', message);
+    await admin.from('chapters').update({
+      upload_status: 'error',
+      error_message: message,
+    }).eq('id', chapterId);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

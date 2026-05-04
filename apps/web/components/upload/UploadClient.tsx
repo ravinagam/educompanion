@@ -256,7 +256,7 @@ export function UploadClient({ subjects }: Props) {
             <p className="text-gray-600 text-sm">
               <span className="font-semibold text-gray-800">{chapterName}</span>
               {uploadedSourceType === 'screenshots'
-                ? ' is being processed — OCR is reading your screenshots. Ready in 30–90 seconds.'
+                ? ' is ready! AI has read your screenshots. You can now create quizzes, flashcards, and more.'
                 : ' is being processed in the background. It will be ready in 15–30 seconds.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
