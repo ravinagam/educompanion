@@ -362,7 +362,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   // Build utterance with current voice/rate settings
   const makeUtt = useCallback((text: string) => {
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1.05; utt.pitch = 1.08;
+    utt.rate = 0.9; utt.pitch = 1.08;
     if (selectedVoiceRef.current) utt.voice = selectedVoiceRef.current;
     return utt;
   }, []);
@@ -471,11 +471,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       }
 
       // Voice on: reveal bullet via onStart, fired right as audio begins playing
+      // Add a short pause after each bullet before starting the next
       const reveal = () => setVisibleBullets(idx + 1);
+      const speakBulletAfterPause = () => setTimeout(speakBullet, 600);
       if (isHindi) {
-        speakHindi(sec.bullets[idx], reveal, speakBullet, myId);
+        speakHindi(sec.bullets[idx], reveal, speakBulletAfterPause, myId);
       } else {
-        speakEnglish(sec.bullets[idx], reveal, speakBullet, myId);
+        speakEnglish(sec.bullets[idx], reveal, speakBulletAfterPause, myId);
       }
       // Prefetch next bullet immediately so it's ready when this one ends
       const nextIdx = idx + 1;

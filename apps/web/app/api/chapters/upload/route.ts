@@ -3,6 +3,8 @@ import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processChapterAsync, MIME_FROM_EXT } from '@/lib/chapters/process';
+import { generateVideoScript } from '@/lib/ai/claude';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export const maxDuration = 60;
 
@@ -105,13 +107,34 @@ export async function POST(request: NextRequest) {
     const capturedBuffer = buffer;
     const capturedMime = mimeType;
     const capturedName = fileName;
+    const capturedChapterName = chapterName;
+    const capturedUserId = user.id;
 
     after(async () => {
       const bgAdmin = createAdminClient();
       try {
         console.log('[upload] Starting background processing for chapter', capturedId);
-        await processChapterAsync(capturedId, capturedBuffer, capturedMime, capturedName, user.id);
+        await processChapterAsync(capturedId, capturedBuffer, capturedMime, capturedName, capturedUserId);
         console.log('[upload] Processing complete for chapter', capturedId);
+
+        // Auto-generate video script (non-fatal)
+        try {
+          const { data: ch } = await bgAdmin.from('chapters').select('name, content_text').eq('id', capturedId).single();
+          if (ch?.content_text) {
+            await bgAdmin.from('video_scripts').delete().eq('chapter_id', capturedId);
+            await bgAdmin.from('video_scripts').insert({ chapter_id: capturedId, script_json: {}, render_status: 'rendering' });
+            const videoResult = await generateVideoScript(capturedChapterName, ch.content_text);
+            await bgAdmin.from('video_scripts').update({
+              script_json: videoResult.data,
+              render_status: 'ready',
+              error_message: null,
+            }).eq('chapter_id', capturedId);
+            logAiUsage(capturedUserId, 'video_script', videoResult.model, videoResult.input_tokens, videoResult.output_tokens).catch(console.error);
+            console.log('[upload] Video script auto-generated for chapter', capturedId);
+          }
+        } catch (videoErr) {
+          console.warn('[upload] Video auto-generation skipped:', videoErr instanceof Error ? videoErr.message : videoErr);
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Processing failed';
         console.error('[upload] Chapter processing failed:', capturedId, message);

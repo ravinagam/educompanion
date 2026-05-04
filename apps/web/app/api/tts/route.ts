@@ -20,7 +20,7 @@ async function sarvamTTS(text: string, language: string, speaker: string): Promi
       speaker,
       model: 'bulbul:v2',
       pitch: 0,
-      pace: language.startsWith('en') ? 1.0 : 0.9,
+      pace: language.startsWith('en') ? 0.85 : 0.8,
       loudness: 1.5,
       speech_sample_rate: 22050,
       enable_preprocessing: true,

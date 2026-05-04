@@ -3,8 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ocrScreenshots } from '@/lib/chapters/ocr-screenshots';
 import { processTextContent } from '@/lib/chapters/process';
+import { generateVideoScriptFromImages, type ImageInput } from '@/lib/ai/claude';
+import { compressForApi } from '@/lib/utils/compress-image';
+import { logAiUsage } from '@/lib/ai/usage';
 
-// OCR 30 pages × ~5s each + embedding = up to ~3 min; give headroom
+// OCR 30 pages + embedding + video script = up to ~3 min; give headroom
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
@@ -31,7 +34,6 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Create chapter record immediately so it appears in the list
   const { data: chapter, error: insertErr } = await admin
     .from('chapters')
     .insert({
@@ -53,8 +55,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[screenshots] Starting OCR for chapter', chapterId, `(${storagePaths.length} pages)`);
 
-    // Download all screenshots concurrently
-    const images = await Promise.all(
+    // Download all screenshots concurrently (used for both OCR and video generation)
+    const rawImages = await Promise.all(
       storagePaths.map(async (path) => {
         const { data: blob, error } = await admin.storage.from('chapter-files').download(path);
         if (error || !blob) throw new Error(`Failed to download page: ${path}`);
@@ -63,12 +65,33 @@ export async function POST(request: NextRequest) {
     );
 
     // OCR all pages via Claude Haiku Vision (concurrent)
-    const contentText = await ocrScreenshots(images, user.id);
+    const contentText = await ocrScreenshots(rawImages, user.id);
     console.log('[screenshots] OCR complete —', contentText.length, 'chars extracted');
 
     // Chunk → embed → save content_text → mark ready
     await processTextContent(admin, chapterId, contentText, user.id);
     console.log('[screenshots] Chapter', chapterId, 'is ready');
+
+    // Auto-generate video script using images directly (non-fatal)
+    try {
+      console.log('[screenshots] Auto-generating video script');
+      const apiImages: ImageInput[] = await Promise.all(
+        rawImages.map(({ buffer, storagePath }) => compressForApi(buffer, storagePath))
+      );
+      await admin.from('video_scripts').delete().eq('chapter_id', chapterId);
+      await admin.from('video_scripts').insert({ chapter_id: chapterId, script_json: {}, render_status: 'rendering' });
+      const videoResult = await generateVideoScriptFromImages(chapterName.trim(), apiImages);
+      await admin.from('video_scripts').update({
+        script_json: videoResult.data,
+        render_status: 'ready',
+        error_message: null,
+      }).eq('chapter_id', chapterId);
+      logAiUsage(user.id, 'video_script_images', videoResult.model, videoResult.input_tokens, videoResult.output_tokens).catch(console.error);
+      console.log('[screenshots] Video script ready');
+    } catch (videoErr) {
+      console.warn('[screenshots] Video auto-generation skipped:', videoErr instanceof Error ? videoErr.message : videoErr);
+      await admin.from('video_scripts').update({ render_status: 'error', error_message: 'Auto-generation failed' }).eq('chapter_id', chapterId);
+    }
 
     const { data: readyChapter } = await admin.from('chapters').select().eq('id', chapterId).single();
     return NextResponse.json({ data: readyChapter ?? chapter });

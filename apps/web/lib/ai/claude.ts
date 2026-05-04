@@ -563,6 +563,83 @@ Return ONLY valid JSON array.`;
   return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
+export async function generateVideoScriptFromImages(
+  chapterName: string,
+  images: ImageInput[]
+): Promise<UsageResult<VideoScriptContent>> {
+  const prompt = `You are creating an educational video script for Indian school students (grades 8–12).
+
+The textbook pages for the chapter are shown above in the screenshots.
+Chapter: "${chapterName}"
+
+Generate a structured video script ONLY from the content visible in the screenshots.
+
+Structure the script as JSON with this exact schema:
+{
+  "title": "Chapter title for the video",
+  "sections": [
+    {
+      "id": "intro",
+      "type": "intro",
+      "title": "Introduction",
+      "bullets": ["What this chapter covers", "Why it matters", "Key concept overview"],
+      "duration_seconds": 45,
+      "timestamp_seconds": 0,
+      "image_queries": ["relevant Wikipedia article title"],
+      "image_label": null
+    },
+    {
+      "id": "topic-1",
+      "type": "topic",
+      "title": "Topic Title",
+      "bullets": ["Key point 1", "Key point 2", "Key point 3"],
+      "duration_seconds": 90,
+      "timestamp_seconds": 45,
+      "image_queries": ["Wikipedia article"],
+      "image_label": null,
+      "bullet_queries": ["Wikipedia article per bullet"]
+    },
+    {
+      "id": "summary",
+      "type": "summary",
+      "title": "Summary & Review",
+      "bullets": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3"],
+      "duration_seconds": 60,
+      "timestamp_seconds": 300,
+      "image_queries": ["Wikipedia article"],
+      "image_label": null
+    }
+  ]
+}
+
+Rules:
+- Cover ALL pages shown — beginning, middle, and end — create sections for every major topic visible
+- Create 4–8 topic sections based on the actual content in the screenshots
+- Each bullet point is a concise, clear learning point from the content only
+- Calculate timestamp_seconds cumulatively
+- Total video should be 8–15 minutes (480–900 seconds)
+- For image_queries: 1 OR 2 exact Wikipedia article titles. Use 2 only for before/after transformations (first = before, second = after)
+- For image_label: short 2-5 word phrase only when image_queries has 2 items, otherwise null
+- For bullet_queries: one Wikipedia article title per bullet (or "" if none fits)
+- Return ONLY valid JSON, no markdown.`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    temperature: 1,
+    messages: [{
+      role: 'user',
+      content: [
+        ...images.map(img => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.base64 } })),
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: parseJSON<VideoScriptContent>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+}
+
 // ─── Study Plan Topic Extraction ──────────────────────────────────────────────
 
 export async function extractTopics(
