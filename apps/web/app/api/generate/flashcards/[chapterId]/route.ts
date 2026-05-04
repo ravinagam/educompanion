@@ -15,7 +15,7 @@ export async function POST(
 
   const { data: chapter } = await supabase
     .from('chapters')
-    .select('id, name, content_text, upload_status, subjects!inner(user_id)')
+    .select('id, name, content_text, upload_status, source_type, subjects!inner(user_id)')
     .eq('id', chapterId)
     .single();
 
@@ -28,7 +28,11 @@ export async function POST(
   }
   const wordCount = (chapter.content_text ?? '').trim().split(/\s+/).filter(Boolean).length;
   if (wordCount < 50) {
-    return NextResponse.json({ error: 'This PDF appears to be scanned (image-based) and contains no extractable text. Please upload a text-based PDF, DOCX, or TXT file.' }, { status: 400 });
+    const isScreenshots = (chapter as unknown as { source_type: string }).source_type === 'screenshots';
+    const emptyError = isScreenshots
+      ? 'No text could be extracted from the uploaded screenshots. Please re-upload the screenshots and try again.'
+      : 'This PDF appears to be scanned (image-based) and contains no extractable text. Please upload a text-based PDF, DOCX, or TXT file.';
+    return NextResponse.json({ error: emptyError }, { status: 400 });
   }
 
   // Check if flashcards already exist — if so, this is a regeneration
