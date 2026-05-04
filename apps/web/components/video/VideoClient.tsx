@@ -572,7 +572,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   return (
     <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 select-none">
       {/* Slide */}
-      <div className={`relative bg-gradient-to-br ${slideBg(section.type)} aspect-[4/3] sm:aspect-video flex flex-col px-4 py-2 sm:px-7 sm:py-4 transition-all duration-500`}>
+      <div className={`relative bg-gradient-to-br ${slideBg(section.type)} aspect-[4/3] sm:aspect-video flex flex-col px-4 pt-2 pb-5 sm:px-7 sm:py-4 overflow-hidden transition-all duration-500`}>
 
         {/* Ambient breathing light — position shifts per slide type */}
         <div
@@ -627,13 +627,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
               </div>
             </div>
 
-            <ul className="flex-1 space-y-1 sm:space-y-1.5 overflow-hidden min-h-0">
+            <ul className="flex-1 space-y-0.5 sm:space-y-1.5 overflow-hidden min-h-0">
               {section.bullets.map((bullet, i) => (
-                <li key={i} className={`flex items-start gap-2 transition-all duration-500 ${
+                <li key={i} className={`flex items-start gap-1.5 transition-all duration-500 ${
                   i < visibleBullets ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
                 }`}>
-                  <span className="mt-1 sm:mt-1.5 h-1.5 w-1.5 rounded-full bg-yellow-400/80 shrink-0" />
-                  <span className="text-white/90 text-xs sm:text-base leading-snug">{bullet}</span>
+                  <span className="mt-1 sm:mt-1.5 h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-yellow-400/80 shrink-0" />
+                  <span className="text-white/90 text-[11px] sm:text-base leading-snug">{bullet}</span>
                 </li>
               ))}
             </ul>
@@ -646,13 +646,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
             </h2>
 
             <div className="flex gap-3 sm:gap-5 flex-1 min-h-0 items-start sm:items-center overflow-hidden">
-              <ul className="flex-1 space-y-1 sm:space-y-2.5 min-w-0 overflow-hidden">
+              <ul className="flex-1 space-y-0.5 sm:space-y-2.5 min-w-0 overflow-hidden">
                 {section.bullets.map((bullet, i) => (
-                  <li key={i} className={`flex items-start gap-2 sm:gap-3 transition-all duration-500 ${
+                  <li key={i} className={`flex items-start gap-1.5 sm:gap-3 transition-all duration-500 ${
                     i < visibleBullets ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
                   }`}>
-                    <span className="mt-1 sm:mt-2 h-1.5 w-1.5 rounded-full bg-white/70 shrink-0" />
-                    <span className="text-white/90 text-xs sm:text-base leading-snug">{bullet}</span>
+                    <span className="mt-1 sm:mt-2 h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-white/70 shrink-0" />
+                    <span className="text-white/90 text-[11px] sm:text-base leading-snug">{bullet}</span>
                   </li>
                 ))}
               </ul>
