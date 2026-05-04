@@ -357,6 +357,48 @@ Rules:
   return { data: parseJSON<VideoScriptContent>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
+export async function generateChapterSummaryFromImages(
+  chapterName: string,
+  images: ImageInput[]
+): Promise<UsageResult<ChapterSummary>> {
+  const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–12).
+
+The textbook pages for the chapter are shown above in the screenshots.
+Chapter: "${chapterName}"
+
+Return a JSON object with this exact schema:
+{
+  "quick_recap": "2–3 sentence overview of the entire chapter",
+  "key_points": ["5–8 most important points a student must remember, covering the whole chapter"],
+  "key_concepts": [
+    { "term": "concept name", "explanation": "clear 1-sentence explanation from the content" }
+  ],
+  "exam_tips": ["3–5 specific tips on what examiners typically ask from this chapter"]
+}
+
+Rules:
+- Cover ALL pages shown — beginning, middle, and end
+- Use simple, student-friendly language
+- key_concepts should have 5–8 important terms/definitions visible in the screenshots
+- Return ONLY valid JSON, no markdown`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    temperature: 0.3,
+    messages: [{
+      role: 'user',
+      content: [
+        ...images.map(img => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.base64 } })),
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: parseJSON<ChapterSummary>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+}
+
 // ─── Chat with Chapter ────────────────────────────────────────────────────────
 
 export async function chatWithChapter(
@@ -382,6 +424,46 @@ ${content}`;
     max_tokens: 1024,
     system: systemPrompt,
     messages: messages.map(m => ({ role: m.role, content: m.content })),
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return { data: text, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+}
+
+export async function chatWithChapterFromImages(
+  chapterName: string,
+  images: ImageInput[],
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  subjectName?: string
+): Promise<UsageResult<string>> {
+  const isHindi = subjectName?.toLowerCase().includes('hindi') ?? false;
+
+  const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–12).
+Answer questions using ONLY the content visible in the textbook page screenshots provided in the conversation.
+If the question is not covered in the screenshots, say so politely.
+Be clear, use simple language, and give real-world examples where helpful. Keep answers concise (2–5 sentences unless a longer explanation is needed).
+${isHindi ? 'Always respond in Hindi (Devanagari script). The student is studying a Hindi subject.' : ''}
+Chapter: "${chapterName}"`;
+
+  // Prepend images to the first user message so they serve as context throughout the conversation
+  const apiMessages = messages.map((m, i) => {
+    if (i === 0 && m.role === 'user') {
+      return {
+        role: 'user' as const,
+        content: [
+          ...images.map(img => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.base64 } })),
+          { type: 'text' as const, text: m.content },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: apiMessages,
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { chatWithChapter } from '@/lib/ai/claude';
+import { chatWithChapter, chatWithChapterFromImages, storagePathToMediaType, type ImageInput } from '@/lib/ai/claude';
 import { logAiUsage } from '@/lib/ai/usage';
 
 export async function POST(
@@ -19,7 +19,7 @@ export async function POST(
   const admin = createAdminClient();
   const { data: chapter } = await admin
     .from('chapters')
-    .select('id, name, content_text, subjects!inner(user_id, name)')
+    .select('id, name, content_text, source_type, screenshot_urls, subjects!inner(user_id, name)')
     .eq('id', chapterId)
     .single();
 
@@ -28,10 +28,25 @@ export async function POST(
   }
 
   const subjectName = (chapter.subjects as unknown as { name: string }).name;
+  const chapterAny = chapter as unknown as { source_type: string; screenshot_urls: string[] | null };
+  const isScreenshots = chapterAny.source_type === 'screenshots' && (chapterAny.screenshot_urls?.length ?? 0) > 0;
 
   try {
-    const result = await chatWithChapter(chapter.name, chapter.content_text, messages, subjectName);
-    logAiUsage(user.id, 'chat', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    let result;
+    if (isScreenshots) {
+      const imageData: ImageInput[] = await Promise.all(
+        chapterAny.screenshot_urls!.map(async (path) => {
+          const { data: blob, error } = await admin.storage.from('chapter-files').download(path);
+          if (error || !blob) throw new Error(`Failed to load screenshot: ${path}`);
+          return { base64: Buffer.from(await blob.arrayBuffer()).toString('base64'), mediaType: storagePathToMediaType(path) };
+        })
+      );
+      result = await chatWithChapterFromImages(chapter.name, imageData, messages, subjectName);
+      logAiUsage(user.id, 'chat-images', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    } else {
+      result = await chatWithChapter(chapter.name, chapter.content_text, messages, subjectName);
+      logAiUsage(user.id, 'chat', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+    }
     return NextResponse.json({ reply: result.data });
   } catch (e) {
     console.error('[chat]', e);
