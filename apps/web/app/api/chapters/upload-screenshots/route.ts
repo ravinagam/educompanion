@@ -57,13 +57,15 @@ export async function POST(request: NextRequest) {
     try {
       console.log('[screenshots] Starting OCR for chapter', capturedId, `(${capturedPaths.length} pages)`);
 
-      // Download all screenshots from storage
-      const images: Array<{ buffer: Buffer; storagePath: string }> = [];
-      for (const path of capturedPaths) {
-        const { data: blob, error } = await bgAdmin.storage.from('chapter-files').download(path);
-        if (error || !blob) throw new Error(`Failed to download page: ${path}`);
-        images.push({ buffer: Buffer.from(await blob.arrayBuffer()), storagePath: path });
-      }
+      // Download all screenshots concurrently
+      const downloadResults = await Promise.all(
+        capturedPaths.map(async (path) => {
+          const { data: blob, error } = await bgAdmin.storage.from('chapter-files').download(path);
+          if (error || !blob) throw new Error(`Failed to download page: ${path}`);
+          return { buffer: Buffer.from(await blob.arrayBuffer()), storagePath: path };
+        })
+      );
+      const images = downloadResults;
 
       // OCR all pages via Claude Haiku Vision
       const contentText = await ocrScreenshots(images, capturedUserId);
