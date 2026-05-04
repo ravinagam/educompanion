@@ -14,7 +14,6 @@ export async function processChapterAsync(
 ) {
   const admin = createAdminClient();
 
-  // Wrap entire processing in a timeout so it can never hang forever
   await Promise.race([
     runProcessing(admin, chapterId, buffer, mimeType, filename, userId),
     new Promise<never>((_, reject) =>
@@ -35,16 +34,27 @@ async function runProcessing(
   const contentText = await extractTextFromBuffer(buffer, mimeType, filename);
   console.log('[process] Extracted', contentText.length, 'chars');
 
-  console.log('[process] Step 2/4 — computing complexity');
+  await processTextContent(admin, chapterId, contentText, userId);
+}
+
+// Shared by both file-upload and screenshot-upload pipelines.
+// Receives already-extracted text, runs complexity/chunking/embedding, marks chapter ready.
+export async function processTextContent(
+  admin: ReturnType<typeof createAdminClient>,
+  chapterId: string,
+  contentText: string,
+  userId?: string
+) {
+  console.log('[process] Computing complexity');
   const complexityScore = computeComplexityScore(contentText);
 
-  console.log('[process] Step 3/4 — chunking text');
+  console.log('[process] Chunking text');
   const chunks = chunkText(contentText);
   console.log('[process]', chunks.length, 'chunks created');
 
   await admin.from('chapter_embeddings').delete().eq('chapter_id', chapterId);
 
-  console.log('[process] Step 4/4 — generating embeddings');
+  console.log('[process] Generating embeddings');
   try {
     const batchSize = 20;
     for (let i = 0; i < chunks.length; i += batchSize) {
@@ -78,28 +88,6 @@ async function runProcessing(
   }).eq('id', chapterId);
 
   if (updateErr) throw new Error(`DB update failed: ${updateErr.message}`);
-
-  // Delete the raw file from storage — it is no longer needed once text is extracted
-  try {
-    const { data: chapter } = await admin
-      .from('chapters')
-      .select('file_url')
-      .eq('id', chapterId)
-      .single();
-
-    if (chapter?.file_url) {
-      const url = new URL(chapter.file_url);
-      const storagePath = url.pathname.split('/object/public/chapter-files/')[1];
-      if (storagePath) {
-        await admin.storage.from('chapter-files').remove([storagePath]);
-        await admin.from('chapters').update({ file_url: null }).eq('id', chapterId);
-        console.log('[process] Deleted raw file from storage:', storagePath);
-      }
-    }
-  } catch (cleanupErr) {
-    console.warn('[process] Storage cleanup skipped:', cleanupErr instanceof Error ? cleanupErr.message : cleanupErr);
-  }
-
   console.log('[process] Done — chapter', chapterId, 'is ready');
 }
 
