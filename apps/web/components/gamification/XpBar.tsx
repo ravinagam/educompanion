@@ -35,17 +35,18 @@ export function XpBar() {
     <div className="flex items-center gap-3">
       {/* Streak */}
       {data.current_streak > 0 && (
-        <div className="flex items-center gap-1 text-orange-500" title={`${data.current_streak}-day streak`}>
+        <div className="relative group flex items-center gap-1 text-orange-500 cursor-default">
           <Flame className="h-4 w-4" />
           <span className="text-xs font-semibold tabular-nums">{data.current_streak}</span>
+          <div className="pointer-events-none absolute top-8 left-0 z-50 hidden group-hover:block w-44 rounded-lg bg-gray-900 text-white text-xs shadow-xl p-3 space-y-1">
+            <p className="font-semibold">{data.current_streak}-day streak 🔥</p>
+            <p className="text-gray-400">Study every day to keep it going. Best: {data.longest_streak} days</p>
+          </div>
         </div>
       )}
 
       {/* Level badge + XP bar */}
-      <div
-        className="flex items-center gap-1.5 group relative"
-        title={isMax ? `Level ${level} · ${data.total_xp} XP total (MAX)` : `Level ${level} · ${data.total_xp} XP total\n\nEarn XP by:\n+25 Upload a chapter\n+50 Complete a quiz\n+30 Score ≥80% on a quiz\n+5  Mark a flashcard known\n+30 Watch a video to the end\n+10 Generate a summary`}
-      >
+      <div className="flex items-center gap-1.5 group relative">
         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0 cursor-default">
           {level}
         </div>
