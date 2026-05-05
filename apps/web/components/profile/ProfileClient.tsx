@@ -35,9 +35,8 @@ export function ProfileClient({ profile, stats }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const statsCardRef = useRef<HTMLDivElement>(null);
-  // Preload html2canvas on mount so first Share click works immediately
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const html2canvasRef = useRef<any>(null);
+  const shareBlobRef = useRef<Blob | null>(null);
+  const [shareReady, setShareReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -69,8 +68,19 @@ export function ProfileClient({ profile, stats }: Props) {
     setEditing(false);
   }
 
+  // Pre-generate the share image in the background after mount so tap is instant
   useEffect(() => {
-    import('html2canvas').then(m => { html2canvasRef.current = m.default; }).catch(() => {});
+    const timer = setTimeout(async () => {
+      if (!statsCardRef.current) return;
+      try {
+        const h2c = (await import('html2canvas')).default;
+        const canvas = await h2c(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        canvas.toBlob(blob => {
+          if (blob) { shareBlobRef.current = blob; setShareReady(true); }
+        }, 'image/png');
+      } catch { /* silently skip */ }
+    }, 800); // wait for DOM to fully paint
+    return () => clearTimeout(timer);
   }, []);
 
   async function signOut() {
@@ -78,7 +88,7 @@ export function ProfileClient({ profile, stats }: Props) {
     router.push('/auth/login');
   }
 
-  async function shareStats() {
+  function shareStats() {
     const g = stats.gamification;
     const fallbackText = [
       `📚 My easestudy Study Progress`,
@@ -94,43 +104,34 @@ export function ProfileClient({ profile, stats }: Props) {
       `Studied using easestudy`,
     ].filter(Boolean).join('\n');
 
-    // Try image capture (use preloaded module for instant response)
-    const h2c = html2canvasRef.current ?? (await import('html2canvas').then(m => m.default).catch(() => null));
-    if (h2c && statsCardRef.current) {
-      try {
-        const canvas = await h2c(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        const dataUrl = canvas.toDataURL('image/png');
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], 'easestudy-stats.png', { type: 'image/png' });
+    const blob = shareBlobRef.current;
 
-        // Try native image share (mobile)
-        if (navigator.canShare?.({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: 'My Study Stats — easestudy' });
-            return;
-          } catch (e) {
-            // user cancelled or share failed — fall through
-            if ((e as Error).name === 'AbortError') return;
-          }
-        }
+    if (blob) {
+      const file = new File([blob], 'easestudy-stats.png', { type: 'image/png' });
 
-        // Desktop / unsupported: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'easestudy-stats.png'; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast.success('Stats image downloaded!');
+      // Mobile: native share sheet with image — called synchronously within tap gesture
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'My Study Stats — easestudy' }).catch(e => {
+          if ((e as Error).name !== 'AbortError') toast.error('Share failed, try again');
+        });
         return;
-      } catch { /* fall through to text */ }
+      }
+
+      // Desktop: download the image
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'easestudy-stats.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success('Stats image downloaded!');
+      return;
     }
 
-    // Last resort: text share or clipboard
-    if (navigator.share) {
-      try { await navigator.share({ title: 'My Study Stats', text: fallbackText }); } catch { /* cancelled */ }
+    // Image not ready yet or capture failed — fall back to text
+    if (!shareReady) toast('Image preparing, try again in a moment…');
+    else if (navigator.share) {
+      navigator.share({ title: 'My Study Stats', text: fallbackText }).catch(() => {});
     } else {
-      await navigator.clipboard.writeText(fallbackText);
-      toast.success('Stats copied to clipboard!');
+      navigator.clipboard.writeText(fallbackText).then(() => toast.success('Stats copied to clipboard!'));
     }
   }
 
@@ -157,7 +158,7 @@ export function ProfileClient({ profile, stats }: Props) {
         <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">Study Stats</p>
           <Button onClick={shareStats} variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800 gap-1.5 h-7">
-            <Share2 className="h-3.5 w-3.5" /> Share
+            <Share2 className="h-3.5 w-3.5" /> {shareReady ? 'Share' : 'Share…'}
           </Button>
         </div>
         <CardContent className="p-5 space-y-4" ref={statsCardRef}>
