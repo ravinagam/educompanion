@@ -71,15 +71,23 @@ export function ProfileClient({ profile, stats }: Props) {
   // Pre-generate the share image in the background after mount so tap is instant
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!statsCardRef.current) return;
       try {
-        const h2c = (await import('html2canvas')).default;
-        const canvas = await h2c(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        canvas.toBlob(blob => {
-          if (blob) { shareBlobRef.current = blob; setShareReady(true); }
-        }, 'image/png');
-      } catch { /* silently skip */ }
-    }, 800); // wait for DOM to fully paint
+        if (statsCardRef.current) {
+          const h2c = (await import('html2canvas')).default;
+          const canvas = await h2c(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+          await new Promise<void>(resolve => {
+            canvas.toBlob(blob => {
+              if (blob) shareBlobRef.current = blob;
+              resolve();
+            }, 'image/png');
+          });
+        }
+      } catch (e) {
+        console.warn('[share] image generation failed:', e);
+      } finally {
+        setShareReady(true); // always unlock the button
+      }
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -161,7 +169,8 @@ export function ProfileClient({ profile, stats }: Props) {
             <Share2 className="h-3.5 w-3.5" /> {shareReady ? 'Share' : 'Share…'}
           </Button>
         </div>
-        <CardContent className="p-5 space-y-4" ref={statsCardRef}>
+        <CardContent className="p-5 space-y-4">
+          <div ref={statsCardRef} className="space-y-4">
           {stats.gamification ? (() => {
             const g = stats.gamification;
             const levelStart = xpForLevel(g.level);
@@ -236,6 +245,7 @@ export function ProfileClient({ profile, stats }: Props) {
               </div>
             </div>
           </div>
+          </div>{/* end statsCardRef div */}
         </CardContent>
       </Card>
 
