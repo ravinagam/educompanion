@@ -708,6 +708,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
 
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
+        {xpToast !== null && <XpToast xp={xpToast} onDone={() => setXpToast(null)} />}
         <div>
           <button onClick={() => setPhase('intro')} className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3">
             <ArrowLeft className="h-3 w-3" /> Back to Quiz Summary
@@ -803,9 +804,5 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     );
   }
 
-  return (
-    <>
-      {xpToast !== null && <XpToast xp={xpToast} onDone={() => setXpToast(null)} />}
-    </>
-  );
+  return null;
 }
