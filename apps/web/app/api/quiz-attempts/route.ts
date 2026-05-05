@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -70,7 +71,13 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Award XP (non-fatal)
+  let xpAwarded = XP_REWARDS.quiz_completed;
+  const pct = questions.length > 0 ? score / questions.length : 0;
+  if (pct >= 0.8) xpAwarded += XP_REWARDS.quiz_bonus_80pct;
+  awardXp(user.id, xpAwarded).catch(console.error);
+
   return NextResponse.json({
-    data: { attempt, results, score, total: questions.length },
+    data: { attempt, results, score, total: questions.length, xp_awarded: xpAwarded },
   });
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { XpToast } from '@/components/gamification/XpToast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -182,6 +183,15 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const [slideIdx, setSlideIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [xpToast, setXpToast] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!ended) return;
+    fetch('/api/gamification/xp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: 'video_watched' }) })
+      .then(r => r.json())
+      .then(d => { if (d.xp_awarded) setXpToast(d.xp_awarded); })
+      .catch(() => {});
+  }, [ended]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   // Driven by speech: bullet i appears right before it is spoken
   const [visibleBullets, setVisibleBullets] = useState(0);
@@ -749,6 +759,9 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
           </div>
         </div>
       </div>
+      {xpToast !== null && (
+        <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
+      )}
     </div>
   );
 }

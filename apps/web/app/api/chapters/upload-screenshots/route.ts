@@ -6,6 +6,7 @@ import { processTextContent } from '@/lib/chapters/process';
 import { generateVideoScriptFromImages, type ImageInput } from '@/lib/ai/claude';
 import { compressForApi } from '@/lib/utils/compress-image';
 import { logAiUsage } from '@/lib/ai/usage';
+import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
 // OCR 30 pages + embedding + video script = up to ~3 min; give headroom
 export const maxDuration = 300;
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
       await admin.from('video_scripts').update({ render_status: 'error', error_message: 'Auto-generation failed' }).eq('chapter_id', chapterId);
     }
 
+    awardXp(user.id, XP_REWARDS.chapter_uploaded).catch(console.error);
     const { data: readyChapter } = await admin.from('chapters').select().eq('id', chapterId).single();
     return NextResponse.json({ data: readyChapter ?? chapter });
   } catch (err) {

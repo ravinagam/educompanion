@@ -10,6 +10,7 @@ import {
 import { LogOut, User } from 'lucide-react';
 import type { User as UserType } from '@educompanion/shared';
 import { MobileNav } from './MobileNav';
+import { XpBar } from '@/components/gamification/XpBar';
 
 interface Props { user: UserType }
 
@@ -35,6 +36,8 @@ export function AppHeader({ user }: Props) {
       <MobileNav user={user} />
       <div className="hidden md:block" />
 
+      <div className="flex items-center gap-4">
+        <XpBar />
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-100 transition-colors outline-none">
           <Avatar className="h-8 w-8">
@@ -61,6 +64,7 @@ export function AppHeader({ user }: Props) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

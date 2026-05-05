@@ -12,6 +12,7 @@ import {
   RotateCcw, Loader2, ArrowLeft, ArrowRight, Target, Zap,
 } from 'lucide-react';
 import Link from 'next/link';
+import { XpToast } from '@/components/gamification/XpToast';
 
 interface Question {
   id: string;
@@ -71,6 +72,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [targetedQuestions, setTargetedQuestions] = useState<Question[]>([]);
   const [loadingTargeted, setLoadingTargeted] = useState(false);
   const [showingTargeted, setShowingTargeted] = useState(false);
+  const [xpToast, setXpToast] = useState<number | null>(null);
 
   const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
@@ -258,6 +260,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
       setResults(json.data.results);
       setFinalScore(json.data.score);
       setPhase('results');
+      if (json.data.xp_awarded) setXpToast(json.data.xp_awarded);
       router.refresh();
     } catch {
       toast.error('Network error. Please check your connection and try again.');
@@ -800,5 +803,9 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     );
   }
 
-  return null;
+  return (
+    <>
+      {xpToast !== null && <XpToast xp={xpToast} onDone={() => setXpToast(null)} />}
+    </>
+  );
 }

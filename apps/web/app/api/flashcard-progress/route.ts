@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { SRS_INTERVALS_HOURS } from '@educompanion/shared';
+import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -42,5 +43,11 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Award XP for marking 'known' (non-fatal)
+  if (status === 'known') {
+    awardXp(user.id, XP_REWARDS.flashcard_known).catch(console.error);
+  }
+
   return NextResponse.json({ data });
 }

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { processChapterAsync, MIME_FROM_EXT } from '@/lib/chapters/process';
 import { generateVideoScript } from '@/lib/ai/claude';
 import { logAiUsage } from '@/lib/ai/usage';
+import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
 export const maxDuration = 60;
 
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    awardXp(capturedUserId, XP_REWARDS.chapter_uploaded).catch(console.error);
     return NextResponse.json({ data: chapter });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Upload failed';

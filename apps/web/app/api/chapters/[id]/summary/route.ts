@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateChapterSummary, generateChapterSummaryFromImages, type ImageInput } from '@/lib/ai/claude';
 import { logAiUsage } from '@/lib/ai/usage';
 import { compressForApi } from '@/lib/utils/compress-image';
+import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
 export async function GET(
   _request: NextRequest,
@@ -83,6 +84,7 @@ export async function POST(
       .from('chapter_summaries')
       .insert({ chapter_id: chapterId, summary_json: summary });
 
+    awardXp(user.id, XP_REWARDS.summary_generated).catch(console.error);
     return NextResponse.json({ summary });
   } catch (e) {
     console.error('[summary]', e);
