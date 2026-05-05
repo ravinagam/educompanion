@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ interface Props { profile: Profile; stats: Stats }
 export function ProfileClient({ profile, stats }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  const statsCardRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -72,8 +73,8 @@ export function ProfileClient({ profile, stats }: Props) {
 
   async function shareStats() {
     const g = stats.gamification;
-    const lines = [
-      `📚 My EduCompanion Study Progress`,
+    const fallbackText = [
+      `📚 My easestudy Study Progress`,
       `👤 ${profile.name} · Class ${profile.grade} ${profile.board}`,
       ``,
       g ? `⭐ Level ${g.level} · ${g.total_xp.toLocaleString()} XP` : `⭐ Just getting started!`,
@@ -83,17 +84,37 @@ export function ProfileClient({ profile, stats }: Props) {
       `🃏 ${stats.flashcardsKnown} flashcard${stats.flashcardsKnown !== 1 ? 's' : ''} mastered`,
       `🏆 ${stats.chaptersMastered} chapter${stats.chaptersMastered !== 1 ? 's' : ''} fully mastered`,
       ``,
-      `Studied using EduCompanion`,
-    ].filter(l => l !== null).join('\n');
+      `Studied using easestudy`,
+    ].filter(Boolean).join('\n');
 
-    if (navigator.share) {
+    // Try to capture stats card as image
+    if (statsCardRef.current) {
       try {
-        await navigator.share({ title: 'My Study Stats', text: lines });
-      } catch {
-        // user cancelled — no error needed
-      }
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
+        if (blob) {
+          const file = new File([blob], 'easestudy-stats.png', { type: 'image/png' });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'My Study Stats — easestudy' });
+            return;
+          }
+          // Desktop: download the image
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'easestudy-stats.png'; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          toast.success('Stats image downloaded!');
+          return;
+        }
+      } catch { /* fall through to text share */ }
+    }
+
+    // Fallback: text share or clipboard
+    if (navigator.share) {
+      try { await navigator.share({ title: 'My Study Stats', text: fallbackText }); } catch { /* cancelled */ }
     } else {
-      await navigator.clipboard.writeText(lines);
+      await navigator.clipboard.writeText(fallbackText);
       toast.success('Stats copied to clipboard!');
     }
   }
@@ -124,7 +145,7 @@ export function ProfileClient({ profile, stats }: Props) {
             <Share2 className="h-3.5 w-3.5" /> Share
           </Button>
         </div>
-        <CardContent className="p-5 space-y-4">
+        <CardContent className="p-5 space-y-4" ref={statsCardRef}>
           {stats.gamification ? (() => {
             const g = stats.gamification;
             const levelStart = xpForLevel(g.level);
