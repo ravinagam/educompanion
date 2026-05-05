@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2 } from 'lucide-react';
 import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
 
 interface Profile {
@@ -70,6 +70,34 @@ export function ProfileClient({ profile, stats }: Props) {
     router.push('/auth/login');
   }
 
+  async function shareStats() {
+    const g = stats.gamification;
+    const lines = [
+      `📚 My EduCompanion Study Progress`,
+      `👤 ${profile.name} · Class ${profile.grade} ${profile.board}`,
+      ``,
+      g ? `⭐ Level ${g.level} · ${g.total_xp.toLocaleString()} XP` : `⭐ Just getting started!`,
+      g ? `🔥 ${g.current_streak}-day study streak (Best: ${g.longest_streak} days)` : null,
+      ``,
+      `📝 ${stats.totalQuizzes} quiz${stats.totalQuizzes !== 1 ? 'zes' : ''} taken${stats.totalQuizzes > 0 ? ` · ${stats.avgScore}% avg score` : ''}`,
+      `🃏 ${stats.flashcardsKnown} flashcard${stats.flashcardsKnown !== 1 ? 's' : ''} mastered`,
+      `🏆 ${stats.chaptersMastered} chapter${stats.chaptersMastered !== 1 ? 's' : ''} fully mastered`,
+      ``,
+      `Studied using EduCompanion`,
+    ].filter(l => l !== null).join('\n');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My Study Stats', text: lines });
+      } catch {
+        // user cancelled — no error needed
+      }
+    } else {
+      await navigator.clipboard.writeText(lines);
+      toast.success('Stats copied to clipboard!');
+    }
+  }
+
   return (
     <div className="max-w-lg mx-auto space-y-5">
       {/* Header */}
@@ -90,8 +118,11 @@ export function ProfileClient({ profile, stats }: Props) {
 
       {/* Study Stats */}
       <Card className="border-0 shadow-md overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3">
+        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">Study Stats</p>
+          <Button onClick={shareStats} variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800 gap-1.5 h-7">
+            <Share2 className="h-3.5 w-3.5" /> Share
+          </Button>
         </div>
         <CardContent className="p-5 space-y-4">
           {stats.gamification ? (() => {
