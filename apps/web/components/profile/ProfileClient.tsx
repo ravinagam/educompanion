@@ -100,7 +100,7 @@ export function ProfileClient({ profile, stats }: Props) {
     const g = stats.gamification;
     const fallbackText = [
       `📚 My Study Progress`,
-      `────────────────────`,
+      `─────────────`,
       `👤 ${profile.name} · Class ${profile.grade} ${profile.board}`,
       ``,
       g ? `⭐ Level ${g.level} · ${g.total_xp.toLocaleString()} XP` : `⭐ Just getting started!`,
@@ -110,9 +110,8 @@ export function ProfileClient({ profile, stats }: Props) {
       `🃏 ${stats.flashcardsKnown} flashcard${stats.flashcardsKnown !== 1 ? 's' : ''} mastered`,
       `🏆 ${stats.chaptersMastered} chapter${stats.chaptersMastered !== 1 ? 's' : ''} fully mastered`,
       ``,
-      ``,
       `Studied using easestudy.in`,
-    ].filter(Boolean).join('\n');
+    ].filter((l): l is string => l !== null).join('\n');
 
     const blob = shareBlobRef.current;
 
