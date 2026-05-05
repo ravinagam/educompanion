@@ -72,7 +72,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [targetedQuestions, setTargetedQuestions] = useState<Question[]>([]);
   const [loadingTargeted, setLoadingTargeted] = useState(false);
   const [showingTargeted, setShowingTargeted] = useState(false);
-  const [xpToast, setXpToast] = useState<number | null>(null);
+  const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number } | null>(null);
 
   const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
@@ -260,7 +260,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
       setResults(json.data.results);
       setFinalScore(json.data.score);
       setPhase('results');
-      if (json.data.xp_awarded) setXpToast(json.data.xp_awarded);
+      if (json.data.xp_awarded) setXpToast({ xp: json.data.xp_awarded, multiplier: json.data.xp_multiplier ?? 1 });
       router.refresh();
     } catch {
       toast.error('Network error. Please check your connection and try again.');
@@ -708,7 +708,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
 
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
-        {xpToast !== null && <XpToast xp={xpToast} onDone={() => setXpToast(null)} />}
+        {xpToast !== null && <XpToast xp={xpToast.xp} multiplier={xpToast.multiplier} onDone={() => setXpToast(null)} />}
         <div>
           <button onClick={() => setPhase('intro')} className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3">
             <ArrowLeft className="h-3 w-3" /> Back to Quiz Summary

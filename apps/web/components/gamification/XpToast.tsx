@@ -5,10 +5,11 @@ import { Star } from 'lucide-react';
 
 interface XpToastProps {
   xp: number;
+  multiplier?: number;
   onDone?: () => void;
 }
 
-export function XpToast({ xp, onDone }: XpToastProps) {
+export function XpToast({ xp, multiplier, onDone }: XpToastProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -27,6 +28,9 @@ export function XpToast({ xp, onDone }: XpToastProps) {
     >
       <Star className="h-3.5 w-3.5 fill-white" />
       +{xp} XP
+      {multiplier && multiplier > 1 && (
+        <span className="ml-0.5 text-yellow-300 text-xs">🔥 {multiplier}× streak!</span>
+      )}
     </div>
   );
 }

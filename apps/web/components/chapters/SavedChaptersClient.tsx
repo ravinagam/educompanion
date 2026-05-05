@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   BookOpen, Upload, CheckCircle2, AlertCircle, Clock,
   Loader2, FlaskConical, Layers, Trash2, Video, RefreshCw, Plus,
-  ClipboardList, MessageCircle,
+  ClipboardList, MessageCircle, Trophy,
 } from 'lucide-react';
 
 interface Chapter {
@@ -67,11 +67,12 @@ function formatBytes(bytes: number) {
 }
 
 function ChapterCard({
-  chapter, deleting, retrying, onDelete, onRetry,
+  chapter, deleting, retrying, mastered, onDelete, onRetry,
 }: {
   chapter: Chapter;
   deleting: boolean;
   retrying: boolean;
+  mastered: boolean;
   onDelete: () => void;
   onRetry: () => void;
 }) {
@@ -113,6 +114,11 @@ function ChapterCard({
         {/* Status */}
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={chapter.upload_status} />
+          {mastered && (
+            <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 gap-1 text-xs">
+              <Trophy className="h-3 w-3" />Mastered
+            </Badge>
+          )}
           {chapter.complexity_score && ready && (
             <span className="text-xs text-gray-400">Complexity: {chapter.complexity_score}/10</span>
           )}
@@ -188,6 +194,14 @@ export function SavedChaptersClient({ subjects }: Props) {
   }, [searchParams, subjects]);
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
+  const [masteredIds, setMasteredIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch('/api/gamification/mastery')
+      .then(r => r.json())
+      .then(({ mastered }) => { if (Array.isArray(mastered)) setMasteredIds(new Set(mastered)); })
+      .catch(() => {});
+  }, []);
 
   const hasSubjects = subjects.length > 0;
   const totalChapters = subjects.reduce((n, s) => n + s.chapters.length, 0);
@@ -298,6 +312,7 @@ export function SavedChaptersClient({ subjects }: Props) {
                   chapter={chapter}
                   deleting={!!deleting[chapter.id]}
                   retrying={!!retrying[chapter.id]}
+                  mastered={masteredIds.has(chapter.id)}
                   onDelete={() => deleteChapter(chapter.id)}
                   onRetry={() => retryChapter(chapter.id)}
                 />

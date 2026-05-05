@@ -9,16 +9,29 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star } from 'lucide-react';
+import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
 
 interface Profile {
   id: string; name: string; email: string; grade: number; board: string;
   contact_email: string | null; phone_number: string | null; created_at: string;
 }
 
-interface Props { profile: Profile }
+interface GamificationData {
+  total_xp: number; level: number; current_streak: number; longest_streak: number;
+}
 
-export function ProfileClient({ profile }: Props) {
+interface Stats {
+  gamification: GamificationData | null;
+  totalQuizzes: number;
+  avgScore: number;
+  flashcardsKnown: number;
+  chaptersMastered: number;
+}
+
+interface Props { profile: Profile; stats: Stats }
+
+export function ProfileClient({ profile, stats }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [editing, setEditing] = useState(false);
@@ -136,6 +149,89 @@ export function ProfileClient({ profile }: Props) {
           {/* Member since */}
           <div className="pt-1 border-t border-gray-100">
             <p className="text-xs text-gray-400">Member since {new Date(profile.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Study Stats */}
+      <Card className="border-0 shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3">
+          <p className="text-sm font-semibold text-gray-700">Study Stats</p>
+        </div>
+        <CardContent className="p-5 space-y-4">
+          {stats.gamification ? (() => {
+            const g = stats.gamification;
+            const levelStart = xpForLevel(g.level);
+            const levelEnd = xpForNextLevel(g.level);
+            const isMax = g.level >= 10;
+            const progress = !isMax && levelEnd > levelStart
+              ? Math.min(100, Math.round(((g.total_xp - levelStart) / (levelEnd - levelStart)) * 100))
+              : 100;
+            return (
+              <>
+                {/* Level + XP */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center h-14 w-14 rounded-full bg-blue-600 text-white text-xl font-bold shrink-0">
+                    {g.level}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">Level {g.level}</p>
+                    <p className="text-xs text-gray-500 mb-1">{g.total_xp.toLocaleString()} XP total</p>
+                    <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {isMax ? 'Max level reached!' : `${levelEnd - g.total_xp} XP to level ${g.level + 1}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Streak */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50 border border-orange-100">
+                  <Flame className="h-6 w-6 text-orange-500 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">{g.current_streak}-day streak</p>
+                    <p className="text-xs text-gray-500">Best: {g.longest_streak} days</p>
+                  </div>
+                  {g.current_streak >= 3 && (
+                    <Badge className="ml-auto bg-orange-100 text-orange-700 border-orange-200">
+                      {g.current_streak >= 7 ? '2× XP' : '1.5× XP'}
+                    </Badge>
+                  )}
+                </div>
+              </>
+            );
+          })() : (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+              <Star className="h-5 w-5 text-gray-300" />
+              <p className="text-sm text-gray-400">Complete your first activity to start earning XP!</p>
+            </div>
+          )}
+
+          {/* Activity stats grid */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 flex items-center gap-3">
+              <FlaskConical className="h-5 w-5 text-indigo-500 shrink-0" />
+              <div>
+                <p className="text-lg font-bold text-gray-900">{stats.totalQuizzes}</p>
+                <p className="text-xs text-gray-500">Quizzes taken</p>
+                {stats.totalQuizzes > 0 && <p className="text-[10px] text-indigo-500">{stats.avgScore}% avg score</p>}
+              </div>
+            </div>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-center gap-3">
+              <Layers className="h-5 w-5 text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-lg font-bold text-gray-900">{stats.flashcardsKnown}</p>
+                <p className="text-xs text-gray-500">Flashcards known</p>
+              </div>
+            </div>
+            <div className="col-span-2 rounded-xl bg-yellow-50 border border-yellow-100 p-3 flex items-center gap-3">
+              <Trophy className="h-5 w-5 text-yellow-500 shrink-0" />
+              <div>
+                <p className="text-lg font-bold text-gray-900">{stats.chaptersMastered}</p>
+                <p className="text-xs text-gray-500">Chapters mastered (quiz ≥60% + 3 flashcards known)</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

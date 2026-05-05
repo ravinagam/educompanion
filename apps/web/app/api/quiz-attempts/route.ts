@@ -71,13 +71,18 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Award XP (non-fatal)
-  let xpAwarded = XP_REWARDS.quiz_completed;
+  // Award XP with streak multiplier (non-fatal)
   const pct = questions.length > 0 ? score / questions.length : 0;
-  if (pct >= 0.8) xpAwarded += XP_REWARDS.quiz_bonus_80pct;
-  awardXp(user.id, xpAwarded).catch(console.error);
+  const xpBase = XP_REWARDS.quiz_completed + (pct >= 0.8 ? XP_REWARDS.quiz_bonus_80pct : 0);
+  let xpAwarded = xpBase;
+  let multiplier = 1;
+  try {
+    const award = await awardXp(user.id, xpBase);
+    xpAwarded = award.xp_awarded;
+    multiplier = award.multiplier;
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({
-    data: { attempt, results, score, total: questions.length, xp_awarded: xpAwarded },
+    data: { attempt, results, score, total: questions.length, xp_awarded: xpAwarded, xp_multiplier: multiplier },
   });
 }

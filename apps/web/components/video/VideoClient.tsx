@@ -183,13 +183,13 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
   const [slideIdx, setSlideIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
-  const [xpToast, setXpToast] = useState<number | null>(null);
+  const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number } | null>(null);
 
   useEffect(() => {
     if (!ended) return;
     fetch('/api/gamification/xp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: 'video_watched' }) })
       .then(r => r.json())
-      .then(d => { if (d.xp_awarded) setXpToast(d.xp_awarded); })
+      .then(d => { if (d.xp_awarded) setXpToast({ xp: d.xp_awarded, multiplier: d.xp_multiplier ?? 1 }); })
       .catch(() => {});
   }, [ended]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -760,7 +760,7 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
         </div>
       </div>
       {xpToast !== null && (
-        <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
+        <XpToast xp={xpToast.xp} multiplier={xpToast.multiplier} onDone={() => setXpToast(null)} />
       )}
     </div>
   );
