@@ -42,8 +42,11 @@ export function XpBar() {
       )}
 
       {/* Level badge + XP bar */}
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">
+      <div
+        className="flex items-center gap-1.5 group relative"
+        title={isMax ? `Level ${level} · ${data.total_xp} XP total (MAX)` : `Level ${level} · ${data.total_xp} XP total\n\nEarn XP by:\n+25 Upload a chapter\n+50 Complete a quiz\n+30 Score ≥80% on a quiz\n+5  Mark a flashcard known\n+30 Watch a video to the end\n+10 Generate a summary`}
+      >
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0 cursor-default">
           {level}
         </div>
         <div className="hidden sm:flex flex-col gap-0.5 w-20">
@@ -58,6 +61,21 @@ export function XpBar() {
           </span>
         </div>
         <Star className="sm:hidden h-3 w-3 text-blue-500" />
+
+        {/* Hover tooltip */}
+        <div className="pointer-events-none absolute top-8 right-0 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 text-white text-xs shadow-xl p-3 space-y-1.5">
+          <p className="font-semibold text-white">Level {level} · {data.total_xp.toLocaleString()} XP</p>
+          {!isMax && <p className="text-gray-400">{levelEnd - data.total_xp} XP to level {level + 1}</p>}
+          <div className="border-t border-white/10 pt-1.5 space-y-0.5 text-gray-300">
+            <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1">How to earn XP</p>
+            <p>+25 · Upload a chapter</p>
+            <p>+50 · Complete a quiz</p>
+            <p>+30 · Score ≥80% on a quiz</p>
+            <p>+5 · Mark a flashcard known</p>
+            <p>+30 · Watch a video to the end</p>
+            <p>+10 · Generate a summary</p>
+          </div>
+        </div>
       </div>
     </div>
   );
