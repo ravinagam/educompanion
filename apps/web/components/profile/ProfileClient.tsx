@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,9 @@ export function ProfileClient({ profile, stats }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const statsCardRef = useRef<HTMLDivElement>(null);
+  // Preload html2canvas on mount so first Share click works immediately
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const html2canvasRef = useRef<any>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -66,6 +69,10 @@ export function ProfileClient({ profile, stats }: Props) {
     setEditing(false);
   }
 
+  useEffect(() => {
+    import('html2canvas').then(m => { html2canvasRef.current = m.default; }).catch(() => {});
+  }, []);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.push('/auth/login');
@@ -87,30 +94,38 @@ export function ProfileClient({ profile, stats }: Props) {
       `Studied using easestudy`,
     ].filter(Boolean).join('\n');
 
-    // Try to capture stats card as image
-    if (statsCardRef.current) {
+    // Try image capture (use preloaded module for instant response)
+    const h2c = html2canvasRef.current ?? (await import('html2canvas').then(m => m.default).catch(() => null));
+    if (h2c && statsCardRef.current) {
       try {
-        const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-        const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
-        if (blob) {
-          const file = new File([blob], 'easestudy-stats.png', { type: 'image/png' });
-          if (navigator.canShare?.({ files: [file] })) {
+        const canvas = await h2c(statsCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const dataUrl = canvas.toDataURL('image/png');
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], 'easestudy-stats.png', { type: 'image/png' });
+
+        // Try native image share (mobile)
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
             await navigator.share({ files: [file], title: 'My Study Stats — easestudy' });
             return;
+          } catch (e) {
+            // user cancelled or share failed — fall through
+            if ((e as Error).name === 'AbortError') return;
           }
-          // Desktop: download the image
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = 'easestudy-stats.png'; a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          toast.success('Stats image downloaded!');
-          return;
         }
-      } catch { /* fall through to text share */ }
+
+        // Desktop / unsupported: download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'easestudy-stats.png'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast.success('Stats image downloaded!');
+        return;
+      } catch { /* fall through to text */ }
     }
 
-    // Fallback: text share or clipboard
+    // Last resort: text share or clipboard
     if (navigator.share) {
       try { await navigator.share({ title: 'My Study Stats', text: fallbackText }); } catch { /* cancelled */ }
     } else {
