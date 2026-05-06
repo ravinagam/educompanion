@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 
-// claude-sonnet-4-6 pricing (USD per million tokens)
-const INPUT_COST_PER_M  = 3.0;
-const OUTPUT_COST_PER_M = 15.0;
+function claudePricing(model: string): { input: number; output: number } {
+  if (model.includes('haiku')) return { input: 0.80, output: 4.0 };
+  return { input: 3.0, output: 15.0 }; // sonnet default
+}
 
 // Voyage AI: $0.06 per 1M tokens (voyage-multilingual-2)
 export const VOYAGE_COST_PER_M = 0.06;
@@ -17,6 +18,7 @@ export async function logAiUsage(
   inputTokens: number,
   outputTokens: number
 ): Promise<void> {
+  const { input: INPUT_COST_PER_M, output: OUTPUT_COST_PER_M } = claudePricing(model);
   const cost = (inputTokens * INPUT_COST_PER_M + outputTokens * OUTPUT_COST_PER_M) / 1_000_000;
   const { error } = await createAdminClient().from('ai_usage_logs').insert({
     user_id: userId,

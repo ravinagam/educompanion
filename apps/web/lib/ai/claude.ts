@@ -222,7 +222,7 @@ Return a JSON array:
 Return ONLY valid JSON, no markdown.`;
 
   const message = await getClaude().messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 1,
     messages: [{ role: 'user', content: prompt }],
@@ -260,7 +260,7 @@ Return a JSON array:
 Return ONLY valid JSON, no markdown.`;
 
   const message = await getClaude().messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 1,
     messages: [{

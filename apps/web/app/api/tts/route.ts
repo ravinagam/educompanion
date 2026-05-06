@@ -1,11 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { logCostDirect, SARVAM_COST_PER_CHAR } from '@/lib/ai/usage';
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY ?? '';
+const TTS_BUCKET = 'tts-cache';
 
 // Female-first speaker priority for English — tried in order until one succeeds
 const ENGLISH_SPEAKERS = ['anushka', 'meera', 'pavithra', 'maitreyi', 'vidya', 'arya', 'amol'];
+
+function cacheKey(text: string, lang: string): string {
+  return createHash('sha256').update(text.slice(0, 500) + lang).digest('hex') + '.wav';
+}
+
+async function getCached(key: string): Promise<string | null> {
+  try {
+    const { data, error } = await createAdminClient().storage.from(TTS_BUCKET).download(key);
+    if (error || !data) return null;
+    const buf = await data.arrayBuffer();
+    return Buffer.from(buf).toString('base64');
+  } catch {
+    return null;
+  }
+}
+
+async function setCache(key: string, base64: string): Promise<void> {
+  try {
+    const bytes = Buffer.from(base64, 'base64');
+    await createAdminClient().storage.from(TTS_BUCKET).upload(key, bytes, {
+      contentType: 'audio/wav',
+      upsert: false,
+    });
+  } catch {
+    // Cache write failure is non-fatal
+  }
+}
 
 async function sarvamTTS(text: string, language: string, speaker: string): Promise<Response> {
   return fetch('https://api.sarvam.ai/text-to-speech', {
@@ -43,6 +73,11 @@ export async function POST(request: NextRequest) {
 
   const isEnglish = !language || language.startsWith('en');
   const lang = isEnglish ? 'en-IN' : (language ?? 'hi-IN');
+  const key = cacheKey(text, lang);
+
+  // Cache hit — return immediately, no Sarvam call, no cost
+  const cached = await getCached(key);
+  if (cached) return NextResponse.json({ audio: cached, format: 'wav' });
 
   // ── English: try each speaker until one works ──────────────────────────────
   if (isEnglish) {
@@ -54,8 +89,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
       if (!res.ok) {
-        const err = await res.text();
-        console.warn(`[TTS] speaker "${speaker}" unavailable (${res.status}): ${err.slice(0, 120)}`);
+        console.warn(`[TTS] speaker "${speaker}" unavailable (${res.status})`);
         continue;
       }
       const data = await res.json() as { audios?: string[] };
@@ -63,9 +97,9 @@ export async function POST(request: NextRequest) {
       if (!audio) continue;
       const charCount = text.slice(0, 500).length;
       logCostDirect(user.id, 'tts', `bulbul:v2-${speaker}`, charCount, charCount * SARVAM_COST_PER_CHAR).catch(console.error);
+      setCache(key, audio).catch(console.error); // fire-and-forget
       return NextResponse.json({ audio, format: 'wav' });
     }
-    // All speakers exhausted — last resort: browser TTS
     console.error('[TTS] All Sarvam English speakers failed');
     return NextResponse.json({ error: 'use browser TTS' }, { status: 503 });
   }
@@ -83,5 +117,6 @@ export async function POST(request: NextRequest) {
 
   const charCount = text.slice(0, 500).length;
   logCostDirect(user.id, 'tts', 'bulbul:v2-anushka', charCount, charCount * SARVAM_COST_PER_CHAR).catch(console.error);
+  setCache(key, audio).catch(console.error); // fire-and-forget
   return NextResponse.json({ audio, format: 'wav' });
 }
