@@ -68,7 +68,23 @@ function statusColor(s: string) {
   return 'bg-gray-100 text-gray-600';
 }
 
-function FeedbackCard({ f }: { f: Feedback }) {
+const PAGE_LABELS: Record<string, string> = {
+  quiz: 'Quiz', flashcards: 'Flashcards', video: 'Video',
+  summary: 'Summary', chat: 'Ask AI', 'visual-summary': 'Visual Summary',
+};
+
+function formatPage(page: string, chapterMap: Map<string, string>): string {
+  // Match /chapters/<uuid>/<section>
+  const m = page.match(/^\/chapters\/([0-9a-f-]{36})(?:\/([^/]+))?/i);
+  if (m) {
+    const name = chapterMap.get(m[1]) ?? 'Unknown chapter';
+    const section = m[2] ? ` › ${PAGE_LABELS[m[2]] ?? m[2]}` : '';
+    return `${name}${section}`;
+  }
+  return page.replace(/^\//, '');
+}
+
+function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, string> }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -118,7 +134,7 @@ function FeedbackCard({ f }: { f: Feedback }) {
             </Badge>
             <div className="text-right">
               <p className="text-xs text-gray-400">{new Date(f.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-              {f.page && <p className="text-xs text-gray-300">{f.page}</p>}
+              {f.page && <p className="text-xs text-gray-300">{formatPage(f.page, chapterMap)}</p>}
             </div>
           </div>
         </div>
@@ -284,6 +300,9 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
   const [tab, setTab] = useState<'users' | 'feedback' | 'usage'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
+  const chapterMap = new Map<string, string>(
+    users.flatMap(u => u.subjects.flatMap(s => s.chapters.map(c => [c.id, c.name] as [string, string])))
+  );
 
   // Aggregate usage per user
   const userMap = new Map(users.map(u => [u.id, u]));
@@ -422,7 +441,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
             <p className="text-center text-gray-400 py-10">No feedback yet</p>
           ) : [...feedback].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ).map(f => <FeedbackCard key={f.id} f={f} />)}
+          ).map(f => <FeedbackCard key={f.id} f={f} chapterMap={chapterMap} />)}
         </div>
       )}
     </div>
