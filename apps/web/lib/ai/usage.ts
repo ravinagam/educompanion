@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 
-function claudePricing(model: string): { input: number; output: number } {
+export function claudePricing(model: string): { input: number; output: number } {
   if (model.includes('haiku')) return { input: 0.80, output: 4.0 };
   return { input: 3.0, output: 15.0 }; // sonnet default
 }
