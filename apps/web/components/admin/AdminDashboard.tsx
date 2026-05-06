@@ -420,11 +420,9 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
         <div className="space-y-3">
           {feedback.length === 0 ? (
             <p className="text-center text-gray-400 py-10">No feedback yet</p>
-          ) : [...feedback].sort((a, b) => {
-            // Open first, then by date descending
-            if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          }).map(f => <FeedbackCard key={f.id} f={f} />)}
+          ) : [...feedback].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ).map(f => <FeedbackCard key={f.id} f={f} />)}
         </div>
       )}
     </div>
