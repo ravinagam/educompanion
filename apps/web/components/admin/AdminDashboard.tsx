@@ -73,18 +73,19 @@ const PAGE_LABELS: Record<string, string> = {
   summary: 'Summary', chat: 'Ask AI', 'visual-summary': 'Visual Summary',
 };
 
-function formatPage(page: string, chapterMap: Map<string, string>): string {
-  // Match /chapters/<uuid>/<section>
+function formatPage(page: string, chapterMap: Map<string, { name: string; subject: string }>): string {
   const m = page.match(/^\/chapters\/([0-9a-f-]{36})(?:\/([^/]+))?/i);
   if (m) {
-    const name = chapterMap.get(m[1]) ?? 'Unknown chapter';
+    const entry = chapterMap.get(m[1]);
+    const subject = entry?.subject ?? '';
+    const chapter = entry?.name ?? 'Unknown chapter';
     const section = m[2] ? ` › ${PAGE_LABELS[m[2]] ?? m[2]}` : '';
-    return `${name}${section}`;
+    return subject ? `${subject} · ${chapter}${section}` : `${chapter}${section}`;
   }
   return page.replace(/^\//, '');
 }
 
-function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, string> }) {
+function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, { name: string; subject: string }> }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -300,8 +301,8 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
   const [tab, setTab] = useState<'users' | 'feedback' | 'usage'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
-  const chapterMap = new Map<string, string>(
-    users.flatMap(u => u.subjects.flatMap(s => s.chapters.map(c => [c.id, c.name] as [string, string])))
+  const chapterMap = new Map<string, { name: string; subject: string }>(
+    users.flatMap(u => u.subjects.flatMap(s => s.chapters.map(c => [c.id, { name: c.name, subject: s.name }])))
   );
 
   // Aggregate usage per user
