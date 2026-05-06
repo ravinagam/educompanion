@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -25,6 +26,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
+      </div>
+      {/* Floating feedback button — mobile only (desktop has it in sidebar) */}
+      <div className="md:hidden">
+        <FeedbackButton />
       </div>
     </div>
   );

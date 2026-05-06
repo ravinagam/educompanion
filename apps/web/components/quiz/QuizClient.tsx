@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { XpToast } from '@/components/gamification/XpToast';
+import { ActivityRatingPrompt, shouldShowActivityRating } from '@/components/feedback/ActivityRatingPrompt';
 
 interface Question {
   id: string;
@@ -73,6 +74,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [loadingTargeted, setLoadingTargeted] = useState(false);
   const [showingTargeted, setShowingTargeted] = useState(false);
   const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number } | null>(null);
+  const [showActivityRating, setShowActivityRating] = useState(false);
 
   const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
@@ -261,6 +263,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
       setFinalScore(json.data.score);
       setPhase('results');
       if (json.data.xp_awarded) setXpToast({ xp: json.data.xp_awarded, multiplier: json.data.xp_multiplier ?? 1 });
+      setShowActivityRating(shouldShowActivityRating(chapter.id, 'quiz'));
       router.refresh();
     } catch {
       toast.error('Network error. Please check your connection and try again.');
@@ -738,6 +741,10 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {showActivityRating && (
+          <ActivityRatingPrompt chapterId={chapter.id} activityType="quiz" onDone={() => setShowActivityRating(false)} />
+        )}
 
         {/* Weakness targeting */}
         {results.filter(r => !r.correct).length > 0 && !showingTargeted && (

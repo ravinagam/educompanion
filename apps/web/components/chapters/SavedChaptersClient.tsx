@@ -253,13 +253,44 @@ export function SavedChaptersClient({ subjects }: Props) {
       </div>
 
       {!hasSubjects ? (
-        <div className="text-center py-20 text-gray-400">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No chapters saved yet</p>
-          <p className="text-sm mb-4">Upload your first chapter to get started</p>
+        <div className="space-y-6 py-8 max-w-lg mx-auto text-center">
+          <div>
+            <BookOpen className="h-12 w-12 mx-auto mb-3 text-gray-200" />
+            <p className="font-semibold text-gray-700 text-lg">No chapters yet</p>
+            <p className="text-sm text-gray-400 mt-1">Upload a chapter PDF and get AI-generated quizzes, flashcards, video, and more.</p>
+          </div>
           <Link href="/upload">
-            <Button><Upload className="h-4 w-4 mr-2" />Upload Chapter</Button>
+            <Button className="gap-2 w-full max-w-xs"><Upload className="h-4 w-4" />Upload Your First Chapter</Button>
           </Link>
+          {process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID && (
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 text-left space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Try a Sample Chapter</p>
+                  <p className="text-xs text-gray-500">Laws of Motion — Class 9 Science (CBSE)</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">See how EaseStudy works before uploading your own material. Explore the full feature set on a ready-made chapter.</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: 'Quiz', href: `/chapters/${process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID}/quiz`, icon: <FlaskConical className="h-3.5 w-3.5" /> },
+                  { label: 'Flashcards', href: `/chapters/${process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID}/flashcards`, icon: <Layers className="h-3.5 w-3.5" /> },
+                  { label: 'Video', href: `/chapters/${process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID}/video`, icon: <Video className="h-3.5 w-3.5" /> },
+                  { label: 'Summary', href: `/chapters/${process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID}/summary`, icon: <ClipboardList className="h-3.5 w-3.5" /> },
+                  { label: 'Ask AI', href: `/chapters/${process.env.NEXT_PUBLIC_SAMPLE_CHAPTER_ID}/chat`, icon: <MessageCircle className="h-3.5 w-3.5" /> },
+                ].map(({ label, href, icon }) => (
+                  <Link key={label} href={href}>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-100">
+                      {icon}{label}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <>

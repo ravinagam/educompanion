@@ -20,13 +20,15 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { message, page } = await request.json();
+  const { message, page, rating, category } = await request.json();
   if (!message?.trim()) return NextResponse.json({ error: 'Message required' }, { status: 400 });
 
   const { error } = await supabase.from('feedback').insert({
     user_id: user.id,
     message: message.trim(),
     page: page ?? null,
+    rating: rating ?? null,
+    category: category ?? null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

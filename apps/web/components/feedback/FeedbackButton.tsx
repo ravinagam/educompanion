@@ -16,9 +16,29 @@ interface MyFeedback {
   status: string;
 }
 
+const EMOJI_RATINGS = [
+  { emoji: '😕', label: 'Bad',       value: 1 },
+  { emoji: '😐', label: 'Okay',      value: 2 },
+  { emoji: '🙂', label: 'Good',      value: 3 },
+  { emoji: '😊', label: 'Great',     value: 4 },
+  { emoji: '🤩', label: 'Excellent', value: 5 },
+];
+
+const CATEGORIES = [
+  { key: 'bug',        label: '🐛 Bug' },
+  { key: 'ui',         label: '🎨 UI/UX' },
+  { key: 'suggestion', label: '💡 Suggestion' },
+  { key: 'love',       label: '❤️ Love it' },
+] as const;
+
+type Category = typeof CATEGORIES[number]['key'];
+
 export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
   const [open, setOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<'submit' | 'history'>('submit');
+  const [rating, setRating] = useState<number | null>(null);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [myFeedback, setMyFeedback] = useState<MyFeedback[]>([]);
@@ -34,18 +54,15 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
     );
   }
 
-  // Check for unread responses on mount (for the dot)
   useEffect(() => {
     fetch('/api/feedback')
       .then(r => r.json())
       .then((data: { feedback?: MyFeedback[] }) => {
-        const list = data.feedback ?? [];
-        setHasUnread(checkUnread(list));
+        setHasUnread(checkUnread(data.feedback ?? []));
       })
       .catch(() => {});
   }, []);
 
-  // Fetch full feedback list when panel opens
   useEffect(() => {
     if (!open) return;
     setFetching(true);
@@ -66,18 +83,31 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
     setHasUnread(false);
   }
 
+  function resetForm() {
+    setRating(null);
+    setHoverRating(null);
+    setCategory(null);
+    setMessage('');
+  }
+
   async function submit() {
-    if (!message.trim()) return;
+    if (!message.trim() && rating === null) {
+      toast.error('Please rate your experience or write something');
+      return;
+    }
+    const text = message.trim() || (rating !== null
+      ? `Rating: ${EMOJI_RATINGS[rating - 1]?.label ?? rating}/5`
+      : '');
     setLoading(true);
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, page: pathname }),
+        body: JSON.stringify({ message: text, page: pathname, rating, category }),
       });
       if (res.ok) {
         toast.success('Thanks for your feedback!');
-        setMessage('');
+        resetForm();
         setOpen(false);
       } else {
         toast.error('Failed to send feedback. Please try again.');
@@ -88,9 +118,10 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
     setLoading(false);
   }
 
+  const displayRating = hoverRating ?? rating;
+
   return (
     <>
-      {/* Trigger button — sidebar nav item or floating button */}
       {sidebar ? (
         <button
           onClick={() => setOpen(true)}
@@ -105,8 +136,7 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 relative flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all"
-          title="Share feedback"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all"
         >
           <MessageSquarePlus className="h-4 w-4" />
           Feedback
@@ -116,9 +146,8 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
         </button>
       )}
 
-      {/* Backdrop + panel */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-6" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6" onClick={() => setOpen(false)}>
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-gray-100 overflow-hidden"
             onClick={e => e.stopPropagation()}
@@ -127,7 +156,7 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
             <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-white">
                 <Smile className="h-4 w-4" />
-                <span className="font-semibold text-sm">Feedback</span>
+                <span className="font-semibold text-sm">Share Feedback</span>
               </div>
               <button onClick={() => setOpen(false)} className="text-indigo-200 hover:text-white transition-colors">
                 <X className="h-4 w-4" />
@@ -159,22 +188,73 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
 
             {/* Submit tab */}
             {panelTab === 'submit' && (
-              <div className="p-4 space-y-3">
-                <p className="text-xs text-gray-500">Tell us what you like, what&apos;s broken, or what you&apos;d love to see next.</p>
-                <textarea
-                  autoFocus
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) submit(); }}
-                  placeholder="Your feedback here…"
-                  rows={4}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder:text-gray-300"
-                />
+              <div className="p-4 space-y-4">
+                {/* Emoji rating */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">How's your experience?</p>
+                  <div className="flex justify-between">
+                    {EMOJI_RATINGS.map(({ emoji, label, value }) => (
+                      <button
+                        key={value}
+                        onMouseEnter={() => setHoverRating(value)}
+                        onMouseLeave={() => setHoverRating(null)}
+                        onClick={() => setRating(r => r === value ? null : value)}
+                        className={`flex flex-col items-center gap-0.5 p-1.5 rounded-xl transition-all ${
+                          displayRating === value
+                            ? 'bg-indigo-50 scale-110'
+                            : 'hover:bg-gray-50'
+                        }`}
+                        title={label}
+                      >
+                        <span className={`text-2xl transition-all ${
+                          displayRating !== null && displayRating !== value ? 'opacity-40' : ''
+                        }`}>{emoji}</span>
+                        <span className={`text-[9px] font-medium transition-colors ${
+                          displayRating === value ? 'text-indigo-600' : 'text-gray-300'
+                        }`}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category chips */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">What's this about?</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CATEGORIES.map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setCategory(c => c === key ? null : key)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                          category === key
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'border-gray-200 text-gray-500 hover:border-indigo-300 hover:text-indigo-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Text */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Details <span className="font-normal text-gray-300">(optional)</span></p>
+                  <textarea
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) submit(); }}
+                    placeholder="Tell us more…"
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder:text-gray-300"
+                  />
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-300">Ctrl+Enter to send</span>
                   <Button
                     onClick={submit}
-                    disabled={loading || !message.trim()}
+                    disabled={loading || (!message.trim() && rating === null)}
                     className="bg-indigo-600 hover:bg-indigo-700 rounded-xl gap-1.5 text-sm"
                   >
                     {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -200,14 +280,12 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
                   <div className="p-4 space-y-4">
                     {myFeedback.map(f => (
                       <div key={f.id} className="space-y-2">
-                        {/* User message */}
                         <div className="bg-gray-50 rounded-xl p-3">
                           <p className="text-xs text-gray-400 mb-1.5">
                             {new Date(f.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>
                           <p className="text-sm text-gray-700 leading-relaxed">{f.message}</p>
                         </div>
-                        {/* Admin response */}
                         {f.admin_response ? (
                           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 ml-4">
                             <p className="text-xs font-semibold text-indigo-600 mb-1.5">Team reply</p>

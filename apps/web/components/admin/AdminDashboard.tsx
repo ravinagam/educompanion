@@ -20,6 +20,7 @@ interface User {
 interface Feedback {
   id: string; message: string; page: string | null; created_at: string;
   admin_response: string | null; admin_responded_at: string | null; status: string;
+  rating: number | null; category: string | null;
   user: { name: string; email: string } | null;
 }
 
@@ -122,7 +123,21 @@ function FeedbackCard({ f }: { f: Feedback }) {
           </div>
         </div>
 
-        <p className="text-sm text-gray-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">{f.message}</p>
+        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 space-y-1">
+          {(f.rating !== null || f.category) && (
+            <div className="flex items-center gap-2 text-xs mb-1">
+              {f.rating !== null && (
+                <span className="font-semibold text-amber-700">
+                  {'😕😐🙂😊🤩'.split('').filter((_, i) => i % 2 === 0)[f.rating - 1]} {f.rating}/5
+                </span>
+              )}
+              {f.category && (
+                <span className="bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full capitalize">{f.category}</span>
+              )}
+            </div>
+          )}
+          <p className="text-sm text-gray-700 leading-relaxed">{f.message}</p>
+        </div>
 
         {response ? (
           <div className="flex gap-2 ml-2">

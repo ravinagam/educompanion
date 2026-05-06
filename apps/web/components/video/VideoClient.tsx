@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { XpToast } from '@/components/gamification/XpToast';
+import { ActivityRatingPrompt, shouldShowActivityRating } from '@/components/feedback/ActivityRatingPrompt';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -179,11 +180,12 @@ function fetchTTSCached(
 
 // ── Slide Player ──────────────────────────────────────────────────────────────
 
-function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi: boolean }) {
+function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[]; isHindi: boolean; chapterId: string }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
   const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number } | null>(null);
+  const [showActivityRating, setShowActivityRating] = useState(false);
 
   useEffect(() => {
     if (!ended) return;
@@ -191,7 +193,8 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       .then(r => r.json())
       .then(d => { if (d.xp_awarded) setXpToast({ xp: d.xp_awarded, multiplier: d.xp_multiplier ?? 1 }); })
       .catch(() => {});
-  }, [ended]);
+    setShowActivityRating(shouldShowActivityRating(chapterId, 'video'));
+  }, [ended, chapterId]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   // Driven by speech: bullet i appears right before it is spoken
   const [visibleBullets, setVisibleBullets] = useState(0);
@@ -762,6 +765,9 @@ function SlidePlayer({ sections, isHindi }: { sections: VideoSection[]; isHindi:
       {xpToast !== null && (
         <XpToast xp={xpToast.xp} multiplier={xpToast.multiplier} onDone={() => setXpToast(null)} />
       )}
+      {showActivityRating && (
+        <ActivityRatingPrompt chapterId={chapterId} activityType="video" onDone={() => setShowActivityRating(false)} />
+      )}
     </div>
   );
 }
@@ -854,7 +860,7 @@ export function VideoClient({ chapter, subjectName, videoScript: initialScript }
             </CardHeader>
           </Card>
 
-          <SlidePlayer key={script?.id ?? 'player'} sections={sections} isHindi={subjectName.toLowerCase().includes('hindi')} />
+          <SlidePlayer key={script?.id ?? 'player'} sections={sections} isHindi={subjectName.toLowerCase().includes('hindi')} chapterId={chapter.id} />
 
           <div className="space-y-3">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
