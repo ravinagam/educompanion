@@ -30,11 +30,14 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-export function UploadClient({ subjects }: Props) {
+export function UploadClient({ subjects: initialSubjects }: Props) {
   // ── Shared state ────────────────────────────────────────────────
+  const [subjects, setSubjects] = useState(initialSubjects);
   const [uploadMode, setUploadMode] = useState<'file' | 'screenshots'>('file');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [chapterName, setChapterName] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [creatingSubject, setCreatingSubject] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [uploadedSourceType, setUploadedSourceType] = useState<'file' | 'screenshots'>('file');
@@ -277,6 +280,29 @@ export function UploadClient({ subjects }: Props) {
     );
   }
 
+  // ── Create subject inline ────────────────────────────────────────
+  async function handleCreateSubject() {
+    if (!newSubjectName.trim()) return;
+    setCreatingSubject(true);
+    try {
+      const res = await fetch('/api/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newSubjectName.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? 'Failed to create subject'); return; }
+      setSubjects(prev => [...prev, json.data]);
+      setSelectedSubjectId(json.data.id);
+      setNewSubjectName('');
+      toast.success(`Subject "${json.data.name}" created`);
+    } catch {
+      toast.error('Failed to create subject');
+    } finally {
+      setCreatingSubject(false);
+    }
+  }
+
   // ── Main form ────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto space-y-5">
@@ -307,12 +333,7 @@ export function UploadClient({ subjects }: Props) {
           {/* Subject */}
           <div className="space-y-1.5">
             <Label className="text-gray-700 font-medium">Subject</Label>
-            {subjects.length === 0 ? (
-              <p className="text-sm text-gray-400 py-2">
-                No subjects yet. Create a subject first from the{' '}
-                <Link href="/chapters" className="text-blue-600 underline">chapters</Link> page.
-              </p>
-            ) : (
+            {subjects.length > 0 && (
               <Select
                 onValueChange={(v: string | null) => setSelectedSubjectId(v ?? '')}
                 value={selectedSubjectId}
@@ -333,6 +354,25 @@ export function UploadClient({ subjects }: Props) {
                 </SelectContent>
               </Select>
             )}
+            <div className="flex gap-2">
+              <Input
+                placeholder={subjects.length === 0 ? 'e.g. Science, Maths…' : 'New subject name'}
+                value={newSubjectName}
+                onChange={e => setNewSubjectName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateSubject(); }}}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCreateSubject}
+                disabled={creatingSubject || !newSubjectName.trim()}
+                className="shrink-0"
+              >
+                {creatingSubject ? <Loader2 className="h-4 w-4 animate-spin" /> : '+ Add'}
+              </Button>
+            </div>
           </div>
 
           {/* Chapter Name */}

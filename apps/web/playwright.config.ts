@@ -1,5 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
+import dotenv from 'dotenv';
+import fs from 'fs';
+
+// Load .env.test.local so env vars are available both in this config
+// and forwarded to the Next.js dev server process.
+const testEnvPath = path.resolve('.env.test.local');
+const testEnv = fs.existsSync(testEnvPath) ? dotenv.parse(fs.readFileSync(testEnvPath)) : {};
+dotenv.config({ path: testEnvPath, override: true });
+
+const AUTH_FILE = 'e2e/fixtures/.auth/student.json';
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,9 +26,27 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
+    // 1. Log in once and save session to AUTH_FILE
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // 2. Auth-page tests — run without a saved session so we can test the login form
+    {
+      name: 'auth-pages',
+      testMatch: /auth\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // 3. Authenticated tests — reuse the saved session from setup
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      testMatch: /(?<!auth\.)spec\.ts$/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_FILE,
+      },
+      dependencies: ['setup'],
     },
   ],
   webServer: {
@@ -26,9 +54,8 @@ export default defineConfig({
     url: 'http://localhost:3006',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: {
-      ...process.env,
-      DOTENV_CONFIG_PATH: path.resolve('.env.test.local'),
-    },
+    env: Object.fromEntries(
+      Object.entries({ ...process.env, ...testEnv }).filter((e): e is [string, string] => e[1] !== undefined)
+    ),
   },
 });
