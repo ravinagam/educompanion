@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import {
   CalendarCheck, Trophy, BookOpen, Clock,
-  AlertCircle, CheckCircle2, BookMarked
+  AlertCircle, CheckCircle2, BookMarked, Gift
 } from 'lucide-react';
 
 interface StudyPlan {
@@ -44,6 +44,7 @@ interface Props {
   todayPlans: StudyPlan[];
   upcomingTests: UpcomingTest[];
   recentAttempts: RecentAttempt[];
+  nextReward: { label: string; xpNeeded: number } | null;
 }
 
 function urgencyBadge(days: number) {
@@ -52,7 +53,7 @@ function urgencyBadge(days: number) {
   return <Badge className="bg-green-500 text-white">🟢 On Track</Badge>;
 }
 
-export function DashboardClient({ userName, todayPlans, upcomingTests, recentAttempts }: Props) {
+export function DashboardClient({ userName, todayPlans, upcomingTests, recentAttempts, nextReward }: Props) {
   const completedToday = todayPlans.filter(p => p.is_completed).length;
   const totalToday = todayPlans.length;
   const todayPercent = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
@@ -66,6 +67,19 @@ export function DashboardClient({ userName, todayPlans, upcomingTests, recentAtt
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
+
+      {/* Next reward nudge */}
+      {nextReward && (
+        <Link href="/profile">
+          <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 hover:bg-amber-100 transition-colors">
+            <Gift className="h-4 w-4 text-amber-500 shrink-0" />
+            <p className="text-sm text-amber-800 font-medium flex-1">
+              <span className="font-semibold">{nextReward.xpNeeded.toLocaleString()} XP</span> away from a {nextReward.label} 🎁
+            </p>
+            <span className="text-xs text-amber-500 shrink-0">View →</span>
+          </div>
+        </Link>
+      )}
 
       {/* Quick Actions — compact strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

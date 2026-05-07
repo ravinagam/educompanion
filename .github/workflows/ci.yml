@@ -57,6 +57,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
+      - name: Seed test database
+        run: npm run seed:test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_STUDENT_PASSWORD: ${{ secrets.TEST_STUDENT_PASSWORD }}
+
       - name: Run E2E tests
         run: npm run test:e2e
         env:
@@ -69,8 +76,8 @@ jobs:
           SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
           TEST_STUDENT_USERNAME: ${{ secrets.TEST_STUDENT_USERNAME }}
           TEST_STUDENT_PASSWORD: ${{ secrets.TEST_STUDENT_PASSWORD }}
-          TEST_SAMPLE_CHAPTER_ID: ${{ secrets.TEST_SAMPLE_CHAPTER_ID }}
           NEXT_PUBLIC_APP_URL: http://localhost:3006
+          # TEST_SAMPLE_CHAPTER_ID is written to .env.test.local by the seed step above
 
       - name: Upload Playwright report
         if: failure()

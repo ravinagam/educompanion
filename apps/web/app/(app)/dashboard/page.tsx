@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { DashboardClient } from '@/components/dashboard/DashboardClient';
+import { nextMilestone } from '@/lib/gamification';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -8,8 +10,9 @@ export default async function DashboardPage() {
   if (!user) redirect('/auth/login');
 
   const today = new Date().toISOString().split('T')[0];
+  const admin = createAdminClient();
 
-  const [todayPlansRes, upcomingTestsRes, recentAttemptsRes] = await Promise.all([
+  const [todayPlansRes, upcomingTestsRes, recentAttemptsRes, gamificationRes, milestonesRes] = await Promise.all([
     supabase
       .from('study_plans')
       .select(`*, chapter:chapters(id, name, subjects(id, name)), test:tests!inner(id, name, test_date, user_id)`)
@@ -28,6 +31,8 @@ export default async function DashboardPage() {
       .eq('user_id', user.id)
       .order('taken_at', { ascending: false })
       .limit(8),
+    admin.from('user_gamification').select('total_xp').eq('user_id', user.id).single(),
+    admin.from('user_gift_milestones').select('xp_milestone').eq('user_id', user.id),
   ]);
 
   const todayDate = new Date();
@@ -45,6 +50,11 @@ export default async function DashboardPage() {
     difficulty: (a as { difficulty?: string }).difficulty ?? 'medium',
   }));
 
+  const totalXp = gamificationRes.data?.total_xp ?? 0;
+  const claimedXpLevels = (milestonesRes.data ?? []).map((r: { xp_milestone: number }) => r.xp_milestone);
+  const next = nextMilestone(totalXp, claimedXpLevels);
+  const nextReward = next ? { label: next.label, xpNeeded: next.xp - totalXp } : null;
+
   return (
     <DashboardClient
       userId={user.id}
@@ -52,6 +62,7 @@ export default async function DashboardPage() {
       todayPlans={todayPlansRes.data ?? []}
       upcomingTests={upcomingTests}
       recentAttempts={recentAttempts}
+      nextReward={nextReward}
     />
   );
 }

@@ -10,12 +10,13 @@ export default async function ProfilePage() {
 
   const admin = createAdminClient();
 
-  const [profileRes, gamificationRes, quizStatsRes, flashcardStatsRes, masteryRes] = await Promise.all([
+  const [profileRes, gamificationRes, quizStatsRes, flashcardStatsRes, masteryRes, milestonesRes] = await Promise.all([
     supabase.from('users').select('id, name, email, grade, board, contact_email, phone_number, created_at').eq('id', user.id).single(),
     admin.from('user_gamification').select('*').eq('user_id', user.id).single(),
     admin.from('quiz_attempts').select('score, total').eq('user_id', user.id),
     admin.from('flashcard_progress').select('id').eq('user_id', user.id).eq('status', 'known'),
     admin.from('chapter_mastery').select('chapter_id').eq('user_id', user.id).eq('mastered', true),
+    admin.from('user_gift_milestones').select('xp_milestone, gifted_at').eq('user_id', user.id),
   ]);
 
   if (!profileRes.data) redirect('/auth/login');
@@ -34,10 +35,13 @@ export default async function ProfilePage() {
     chaptersMastered: masteryRes.data?.length ?? 0,
   };
 
+  const claimedMilestones: { xp_milestone: number; gifted_at: string }[] = milestonesRes.data ?? [];
+
   return (
     <ProfileClient
       profile={profileRes.data as Parameters<typeof ProfileClient>[0]['profile']}
       stats={stats}
+      claimedMilestones={claimedMilestones}
     />
   );
 }

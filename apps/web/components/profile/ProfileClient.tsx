@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2 } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2 } from 'lucide-react';
 import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
+import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 
 interface Profile {
   id: string; name: string; email: string; grade: number; board: string;
@@ -29,9 +30,10 @@ interface Stats {
   chaptersMastered: number;
 }
 
-interface Props { profile: Profile; stats: Stats }
+interface ClaimedMilestone { xp_milestone: number; gifted_at: string }
+interface Props { profile: Profile; stats: Stats; claimedMilestones: ClaimedMilestone[] }
 
-export function ProfileClient({ profile, stats }: Props) {
+export function ProfileClient({ profile, stats, claimedMilestones }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const statsCardRef = useRef<HTMLDivElement>(null);
@@ -247,6 +249,53 @@ export function ProfileClient({ profile, stats }: Props) {
             </div>
           </div>
           </div>{/* end statsCardRef div */}
+        </CardContent>
+      </Card>
+
+      {/* Rewards Ladder */}
+      <Card className="border-0 shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 flex items-center gap-2 text-white font-semibold text-sm">
+          <Gift className="h-4 w-4" /> Study Rewards
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <p className="text-xs text-gray-400">Earn Amazon vouchers by reaching XP milestones. Rewards are sent to your registered email within 48 hours.</p>
+          {GIFT_MILESTONES.map(milestone => {
+            const totalXp = stats.gamification?.total_xp ?? 0;
+            const claimed = claimedMilestones.find(c => c.xp_milestone === milestone.xp);
+            const reached = totalXp >= milestone.xp;
+            const progress = Math.min(100, Math.round((totalXp / milestone.xp) * 100));
+            const remaining = milestone.xp - totalXp;
+            return (
+              <div key={milestone.xp} className={`rounded-xl border p-3 space-y-2 ${claimed ? 'bg-emerald-50 border-emerald-100' : reached ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {claimed
+                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                      : <Gift className={`h-4 w-4 shrink-0 ${reached ? 'text-amber-500' : 'text-gray-300'}`} />
+                    }
+                    <span className={`text-sm font-semibold ${claimed ? 'text-emerald-700' : reached ? 'text-amber-700' : 'text-gray-500'}`}>
+                      {milestone.label}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400 shrink-0">{milestone.xp.toLocaleString()} XP</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${claimed ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400">
+                  {claimed
+                    ? `Gifted on ${new Date(claimed.gifted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                    : reached
+                      ? 'Milestone reached! Voucher being processed.'
+                      : `${remaining.toLocaleString()} XP to go`
+                  }
+                </p>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

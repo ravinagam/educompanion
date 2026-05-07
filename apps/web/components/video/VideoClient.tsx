@@ -184,14 +184,14 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
   const [slideIdx, setSlideIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
-  const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number } | null>(null);
+  const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number; milestoneHint?: number | null } | null>(null);
   const [showActivityRating, setShowActivityRating] = useState(false);
 
   useEffect(() => {
     if (!ended) return;
     fetch('/api/gamification/xp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: 'video_watched' }) })
       .then(r => r.json())
-      .then(d => { if (d.xp_awarded) setXpToast({ xp: d.xp_awarded, multiplier: d.xp_multiplier ?? 1 }); })
+      .then(d => { if (d.xp_awarded) setXpToast({ xp: d.xp_awarded, multiplier: d.xp_multiplier ?? 1, milestoneHint: d.xp_to_next_milestone }); })
       .catch(() => {});
     setShowActivityRating(shouldShowActivityRating(chapterId, 'video'));
   }, [ended, chapterId]);
@@ -763,7 +763,7 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
         </div>
       </div>
       {xpToast !== null && (
-        <XpToast xp={xpToast.xp} multiplier={xpToast.multiplier} onDone={() => setXpToast(null)} />
+        <XpToast xp={xpToast.xp} multiplier={xpToast.multiplier} milestoneHint={xpToast.milestoneHint} onDone={() => setXpToast(null)} />
       )}
       {showActivityRating && (
         <ActivityRatingPrompt chapterId={chapterId} activityType="video" onDone={() => setShowActivityRating(false)} />

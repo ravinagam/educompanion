@@ -76,13 +76,17 @@ export async function POST(request: NextRequest) {
   const xpBase = XP_REWARDS.quiz_completed + (pct >= 0.8 ? XP_REWARDS.quiz_bonus_80pct : 0);
   let xpAwarded = xpBase;
   let multiplier = 1;
+  let milestoneReached = null;
+  let xpToNextMilestone = null;
   try {
     const award = await awardXp(user.id, xpBase);
     xpAwarded = award.xp_awarded;
     multiplier = award.multiplier;
+    milestoneReached = award.milestone_reached;
+    xpToNextMilestone = award.xp_to_next_milestone;
   } catch { /* non-fatal */ }
 
   return NextResponse.json({
-    data: { attempt, results, score, total: questions.length, xp_awarded: xpAwarded, xp_multiplier: multiplier },
+    data: { attempt, results, score, total: questions.length, xp_awarded: xpAwarded, xp_multiplier: multiplier, milestone_reached: milestoneReached, xp_to_next_milestone: xpToNextMilestone },
   });
 }

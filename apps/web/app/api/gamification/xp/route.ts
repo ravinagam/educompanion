@@ -34,5 +34,11 @@ export async function POST(request: NextRequest) {
 
   const xp = XP_REWARDS[event];
   const award = await awardXp(user.id, xp);
-  return NextResponse.json({ data: award.row, xp_awarded: award.xp_awarded, xp_multiplier: award.multiplier });
+  return NextResponse.json({
+    data: award.row,
+    xp_awarded: award.xp_awarded,
+    xp_multiplier: award.multiplier,
+    milestone_reached: award.milestone_reached,
+    xp_to_next_milestone: award.xp_to_next_milestone,
+  });
 }
