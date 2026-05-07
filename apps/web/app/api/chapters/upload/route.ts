@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processChapterAsync, MIME_FROM_EXT } from '@/lib/chapters/process';
 import { generateVideoScript } from '@/lib/ai/claude';
+import { splitChapterIntoSections } from '@/lib/ai/sections';
 import { logAiUsage } from '@/lib/ai/usage';
 import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
@@ -117,6 +118,31 @@ export async function POST(request: NextRequest) {
         console.log('[upload] Starting background processing for chapter', capturedId);
         await processChapterAsync(capturedId, capturedBuffer, capturedMime, capturedName, capturedUserId);
         console.log('[upload] Processing complete for chapter', capturedId);
+
+        // Split chapter into sections (non-fatal)
+        try {
+          const { data: ch } = await bgAdmin.from('chapters').select('name, content_text').eq('id', capturedId).single();
+          if (ch?.content_text) {
+            // Delete any old sections (e.g. on re-upload)
+            await bgAdmin.from('chapter_sections').delete().eq('chapter_id', capturedId);
+            const sectionsResult = await splitChapterIntoSections(ch.name, ch.content_text);
+            if (sectionsResult.data.length > 0) {
+              await bgAdmin.from('chapter_sections').insert(
+                sectionsResult.data.map(s => ({
+                  chapter_id: capturedId,
+                  title: s.title,
+                  content_text: s.content_text,
+                  order_index: s.order_index,
+                  estimated_minutes: s.estimated_minutes,
+                }))
+              );
+              logAiUsage(capturedUserId, 'section_split', sectionsResult.model, sectionsResult.input_tokens, sectionsResult.output_tokens).catch(console.error);
+              console.log('[upload] Sections generated:', sectionsResult.data.length, 'for chapter', capturedId);
+            }
+          }
+        } catch (secErr) {
+          console.warn('[upload] Section splitting skipped:', secErr instanceof Error ? secErr.message : secErr);
+        }
 
         // Auto-generate video script (non-fatal)
         try {

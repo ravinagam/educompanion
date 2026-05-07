@@ -44,6 +44,7 @@ const TAB_PALETTES = [
 
 // Action button colour styles per action
 const ACTION_STYLES = {
+  sections:   { ready: 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
   quiz:       { ready: 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
   flashcards: { ready: 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
   video:      { ready: 'border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300', disabled: 'border-gray-100 text-gray-300 bg-gray-50' },
@@ -80,6 +81,7 @@ function ChapterCard({
   const canRetry = chapter.upload_status === 'error' || chapter.upload_status === 'processing';
 
   const topActions = [
+    { key: 'sections',   href: `/chapters/${chapter.id}/sections`,   icon: <BookOpen className="h-4 w-4" />,      label: 'Sections' },
     { key: 'quiz',       href: `/chapters/${chapter.id}/quiz`,       icon: <FlaskConical className="h-4 w-4" />, label: 'Quiz' },
     { key: 'flashcards', href: `/chapters/${chapter.id}/flashcards`, icon: <Layers className="h-4 w-4" />,       label: 'Flashcards' },
     { key: 'video',      href: `/chapters/${chapter.id}/video`,      icon: <Video className="h-4 w-4" />,        label: 'Video' },
@@ -142,7 +144,7 @@ function ChapterCard({
         )}
 
         {/* Action buttons — top row */}
-        <div className="mt-auto grid grid-cols-3 gap-2">
+        <div className="mt-auto grid grid-cols-4 gap-2">
           {topActions.map(({ key, href, icon, label }) => {
             const style = ACTION_STYLES[key];
             const cls = `flex flex-col items-center justify-center gap-1 rounded-xl border py-3 text-xs font-semibold transition-colors ${
