@@ -64,7 +64,7 @@ describe('GET /api/gamification/xp', () => {
     expect(json.data).toEqual(MOCK_GAMIFICATION_ROW);
   });
 
-  it('returns null data when no gamification row exists', async () => {
+  it('returns default Level 1 / 0 XP when no gamification row exists', async () => {
     sb.getUser.mockResolvedValue({ data: { user: MOCK_USER } });
     admin.from.mockReturnValue(makeChain({ data: null, error: null }));
 
@@ -73,7 +73,12 @@ describe('GET /api/gamification/xp', () => {
 
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.data).toBeNull();
+    expect(json.data).toMatchObject({
+      user_id: MOCK_USER.id,
+      total_xp: 0,
+      level: 1,
+      current_streak: 0,
+    });
   });
 });
 
