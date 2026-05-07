@@ -13,7 +13,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/admin') ||
     pathname.startsWith('/api') ||
-    pathname.startsWith('/terms')
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/join')
   ) {
     return supabaseResponse;
   }

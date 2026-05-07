@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,16 @@ import { BookOpen, Loader2 } from 'lucide-react';
 
 function usernameToEmail(username: string) {
   return `${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}@students.educompanion.app`;
+}
+
+// Safety net: if someone lands on login with ?ref= (e.g. old links), save it
+function RefCapture() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) localStorage.setItem('ease_ref_code', ref.toUpperCase());
+  }, [searchParams]);
+  return null;
 }
 
 export default function LoginPage() {
@@ -40,6 +50,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      <Suspense fallback={null}><RefCapture /></Suspense>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
