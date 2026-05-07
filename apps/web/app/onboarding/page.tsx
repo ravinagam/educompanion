@@ -14,6 +14,13 @@ import { DEFAULT_SUBJECTS_BY_GRADE } from '@educompanion/shared';
 
 const STEPS = ['Welcome', 'Subjects'] as const;
 
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // omit ambiguous 0/O/1/I
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -57,6 +64,7 @@ export default function OnboardingPage() {
 
     const meta = user.user_metadata ?? {};
     const userGrade = Number(meta.grade) || grade;
+    const referralCode = generateReferralCode();
 
     // Upsert public.users — row may not exist yet after username/password signup
     const { error: profileError } = await supabase
@@ -70,6 +78,7 @@ export default function OnboardingPage() {
         contact_email: meta.contact_email ?? null,
         phone_number: meta.phone_number ?? null,
         onboarding_done: true,
+        referral_code: referralCode,
       }, { onConflict: 'id' });
 
     if (profileError) { toast.error(profileError.message); setLoading(false); return; }
@@ -81,6 +90,24 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
+    }
+
+    // Apply referral code if user arrived via a referral link
+    const pendingRef = localStorage.getItem('ease_ref_code');
+    if (pendingRef) {
+      try {
+        const res = await fetch('/api/referrals/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referral_code: pendingRef }),
+        });
+        if (res.ok) {
+          localStorage.removeItem('ease_ref_code');
+          toast.success('🎁 +100 XP welcome bonus applied!', { duration: 4000 });
+        }
+      } catch {
+        // Non-fatal — referral can be ignored if it fails
+      }
     }
 
     toast.success('Setup complete! Welcome to EaseStudy');

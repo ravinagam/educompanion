@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2 } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2, Copy, Users } from 'lucide-react';
 import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
 import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 
@@ -31,9 +31,15 @@ interface Stats {
 }
 
 interface ClaimedMilestone { xp_milestone: number; gifted_at: string }
-interface Props { profile: Profile; stats: Stats; claimedMilestones: ClaimedMilestone[] }
+interface Props {
+  profile: Profile;
+  stats: Stats;
+  claimedMilestones: ClaimedMilestone[];
+  referralCode: string | null;
+  referralCount: number;
+}
 
-export function ProfileClient({ profile, stats, claimedMilestones }: Props) {
+export function ProfileClient({ profile, stats, claimedMilestones, referralCode, referralCount }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const statsCardRef = useRef<HTMLDivElement>(null);
@@ -296,6 +302,49 @@ export function ProfileClient({ profile, stats, claimedMilestones }: Props) {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      {/* Refer a Friend */}
+      <Card className="border-0 shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-3 flex items-center gap-2 text-white font-semibold text-sm">
+          <Users className="h-4 w-4" /> Refer &amp; Earn
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <p className="text-sm text-gray-600">
+            Share your referral link with friends. When they sign up, you get <span className="font-semibold text-violet-700">+300 XP</span> and they get a <span className="font-semibold text-violet-700">+100 XP welcome bonus</span>.
+          </p>
+          {referralCode ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2.5">
+                  <p className="text-xs text-violet-400 leading-none mb-1">Your referral link</p>
+                  <p className="text-sm font-mono font-semibold text-violet-800 truncate">
+                    easestudy.in/join?ref={referralCode}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-12 px-3 border-violet-200 text-violet-700 hover:bg-violet-50"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://easestudy.in/join?ref=${referralCode}`);
+                    toast.success('Referral link copied!');
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Users className="h-4 w-4 text-violet-400 shrink-0" />
+                <span>{referralCount === 0 ? 'No friends referred yet' : `${referralCount} friend${referralCount !== 1 ? 's' : ''} referred`}</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
+              Your referral code is being generated. Please check back in a moment.
+            </div>
+          )}
         </CardContent>
       </Card>
 

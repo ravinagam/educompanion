@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,14 @@ function usernameToEmail(username: string) {
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) localStorage.setItem('ease_ref_code', ref.toUpperCase());
+  }, [searchParams]);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [form, setForm] = useState({
     name: '',
