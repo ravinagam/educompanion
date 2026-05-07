@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +46,20 @@ function stepsCompleted(p: SectionProgress | null): number {
 }
 
 export function SectionsClient({ chapter, subjectName, sections }: Props) {
+  const router = useRouter();
+
+  // Auto-poll while sections are still being generated (up to ~2 min)
+  useEffect(() => {
+    if (sections.length > 0 || chapter.upload_status !== 'ready') return;
+    let attempts = 0;
+    const id = setInterval(() => {
+      attempts++;
+      router.refresh();
+      if (attempts >= 24) clearInterval(id); // stop after ~2 min
+    }, 5000);
+    return () => clearInterval(id);
+  }, [sections.length, chapter.upload_status, router]);
+
   const completedCount = sections.filter(s => s.progress?.completed_at).length;
   const totalMinutes = sections.reduce((s, sec) => s + sec.estimated_minutes, 0);
   const progressPercent = sections.length > 0 ? Math.round((completedCount / sections.length) * 100) : 0;
