@@ -3,6 +3,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { ProfileClient } from '@/components/profile/ProfileClient';
 
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -28,6 +35,18 @@ export default async function ProfilePage() {
     admin.from('referrals').select('id').eq('referrer_id', user.id),
   ]);
 
+  // Auto-generate a referral code for existing users who don't have one yet
+  // (migration applied but user signed up before the referral feature)
+  let referralCode = (referralCodeRes.data as { referral_code?: string | null } | null)?.referral_code ?? null;
+  if (referralCodeRes.data !== null && referralCode === null) {
+    const newCode = generateReferralCode();
+    const { error: codeErr } = await admin
+      .from('users')
+      .update({ referral_code: newCode })
+      .eq('id', user.id);
+    if (!codeErr) referralCode = newCode;
+  }
+
   const quizAttempts = quizStatsRes.data ?? [];
   const totalQuizzes = quizAttempts.length;
   const avgScore = totalQuizzes > 0
@@ -44,7 +63,6 @@ export default async function ProfilePage() {
 
   const claimedMilestones: { xp_milestone: number; gifted_at: string }[] = milestonesRes.data ?? [];
   const referralCount = referralCountRes.data?.length ?? 0;
-  const referralCode = (referralCodeRes.data as { referral_code?: string | null } | null)?.referral_code ?? null;
 
   return (
     <ProfileClient
