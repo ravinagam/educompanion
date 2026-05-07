@@ -16,12 +16,15 @@ test.describe('Quiz', () => {
     skipIfNoChapter(testInfo);
     await page.goto(`/chapters/${chapterId}/quiz`);
     await expect(page).toHaveURL(/\/quiz/);
-    // h1 is always rendered regardless of whether a quiz exists yet
+    // h1 is always rendered regardless of quiz state
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 });
-    // Either a quiz is ready (radio options) or the generate button is shown
+    // Intro (quiz seeded): "Start Quiz →" button
+    // Empty (no quiz):     "Generate Quiz with AI" button
+    // Active quiz:         radio inputs
     await expect(
       page.getByRole('radio').first()
-        .or(page.getByRole('button', { name: /generate quiz/i })),
+        .or(page.getByRole('button', { name: /generate quiz/i }))
+        .or(page.getByRole('button', { name: /start quiz/i })),
     ).toBeVisible({ timeout: 15_000 });
   });
 });
@@ -31,10 +34,14 @@ test.describe('Flashcards', () => {
     skipIfNoChapter(testInfo);
     await page.goto(`/chapters/${chapterId}/flashcards`);
     await expect(page).toHaveURL(/\/flashcards/);
-    // A card face should be visible
-    await expect(page.locator('[data-card-face], .flashcard, [class*="card"]').first()).toBeVisible({
-      timeout: 15_000,
-    });
+    // Seeded cards: flip card front shows "Tap to reveal definition"
+    // Empty state:  "Generate Flashcards with AI" button
+    // All caught up (due mode, no due cards): "All caught up!" text
+    await expect(
+      page.getByText(/tap to reveal/i)
+        .or(page.getByRole('button', { name: /generate flashcards/i }))
+        .or(page.getByText(/all caught up/i)),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -43,22 +50,27 @@ test.describe('Summary', () => {
     skipIfNoChapter(testInfo);
     await page.goto(`/chapters/${chapterId}/summary`);
     await expect(page).toHaveURL(/\/summary/);
-    // Either a summary already exists (prose content) or the generate button is shown
+    // Seeded summary: renders "Quick Recap" section header
+    // Empty state:    "Generate Summary with AI" button (matches /generate/i)
+    // Both states:    header always has a Regenerate/Generate button
     await expect(
-      page.getByRole('button', { name: /generate summary/i })
-        .or(page.locator('article, [class*="prose"]').first()),
+      page.getByText(/quick recap/i)
+        .or(page.getByRole('button', { name: /generate summary/i })),
     ).toBeVisible({ timeout: 20_000 });
   });
 });
 
 test.describe('Video', () => {
-  test('page loads and shows the video player or slides', async ({ page }, testInfo) => {
+  test('page loads and shows the video player or generate button', async ({ page }, testInfo) => {
     skipIfNoChapter(testInfo);
     await page.goto(`/chapters/${chapterId}/video`);
     await expect(page).toHaveURL(/\/video/);
-    await expect(page.locator('video, canvas, [class*="slide"]').first()).toBeVisible({
-      timeout: 20_000,
-    });
+    // Generated video: canvas or slide elements
+    // Empty state:     "Generate Video Lesson" button
+    await expect(
+      page.locator('video, canvas, [class*="slide"]').first()
+        .or(page.getByRole('button', { name: /generate video/i })),
+    ).toBeVisible({ timeout: 20_000 });
   });
 });
 
