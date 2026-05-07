@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 import {
   ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Clock,
-  Lock, Play, Layers,
+  Lock, Play, Layers, Loader2, RefreshCw,
 } from 'lucide-react';
 
 interface SectionProgress {
@@ -47,18 +49,39 @@ function stepsCompleted(p: SectionProgress | null): number {
 
 export function SectionsClient({ chapter, subjectName, sections }: Props) {
   const router = useRouter();
+  const [pollAttempts, setPollAttempts] = useState(0);
+  const [generationKey, setGenerationKey] = useState(0);
+  const [generating, setGenerating] = useState(false);
 
-  // Auto-poll while sections are still being generated (up to ~2 min)
+  // Auto-poll for up to ~30s after upload; after that show a generate button
   useEffect(() => {
+    setPollAttempts(0);
     if (sections.length > 0 || chapter.upload_status !== 'ready') return;
     let attempts = 0;
     const id = setInterval(() => {
       attempts++;
+      setPollAttempts(attempts);
       router.refresh();
-      if (attempts >= 24) clearInterval(id); // stop after ~2 min
+      if (attempts >= 6) clearInterval(id); // stop after ~30 sec
     }, 5000);
     return () => clearInterval(id);
-  }, [sections.length, chapter.upload_status, router]);
+  }, [sections.length, chapter.upload_status, router, generationKey]);
+
+  async function generateSections() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/chapters/${chapter.id}/sections/generate`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error ?? 'Failed to start generation');
+      } else {
+        toast.success('Generating sections… this takes about 30 seconds.');
+        setGenerationKey(k => k + 1); // restart the poll cycle
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   const completedCount = sections.filter(s => s.progress?.completed_at).length;
   const totalMinutes = sections.reduce((s, sec) => s + sec.estimated_minutes, 0);
@@ -104,10 +127,29 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
 
       {/* Sections list */}
       {sections.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <Layers className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Sections are being generated…</p>
-          <p className="text-sm">Refresh in a moment.</p>
+        <div className="text-center py-16 text-gray-400 space-y-3">
+          {pollAttempts < 6 ? (
+            <>
+              <RefreshCw className="h-10 w-10 mx-auto animate-spin opacity-30" />
+              <p className="font-medium">Sections are being generated…</p>
+              <p className="text-sm">This usually takes under 30 seconds.</p>
+            </>
+          ) : (
+            <>
+              <Layers className="h-10 w-10 mx-auto opacity-30" />
+              <p className="font-medium">No sections found</p>
+              <p className="text-sm">Sections weren&apos;t generated for this chapter yet.</p>
+              <Button
+                onClick={generateSections}
+                disabled={generating}
+                className="mt-2"
+              >
+                {generating
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating…</>
+                  : 'Generate Sections'}
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

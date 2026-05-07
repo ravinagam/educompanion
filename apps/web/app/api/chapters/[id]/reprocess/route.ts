@@ -3,6 +3,8 @@ import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processChapterAsync, MIME_FROM_EXT } from '@/lib/chapters/process';
+import { splitChapterIntoSections } from '@/lib/ai/sections';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export const maxDuration = 60;
 
@@ -61,6 +63,30 @@ export async function POST(
       console.log('[reprocess] Starting for chapter', id, filename, mimeType);
       await processChapterAsync(id, buffer, mimeType, filename, user.id);
       console.log('[reprocess] Complete for chapter', id);
+
+      // Split chapter into sections (non-fatal)
+      try {
+        const { data: ch } = await bgAdmin.from('chapters').select('name, content_text').eq('id', id).single();
+        if (ch?.content_text) {
+          await bgAdmin.from('chapter_sections').delete().eq('chapter_id', id);
+          const sectionsResult = await splitChapterIntoSections(ch.name, ch.content_text);
+          if (sectionsResult.data.length > 0) {
+            await bgAdmin.from('chapter_sections').insert(
+              sectionsResult.data.map(s => ({
+                chapter_id: id,
+                title: s.title,
+                content_text: s.content_text,
+                order_index: s.order_index,
+                estimated_minutes: s.estimated_minutes,
+              }))
+            );
+            logAiUsage(user.id, 'section_split', sectionsResult.model, sectionsResult.input_tokens, sectionsResult.output_tokens).catch(console.error);
+            console.log('[reprocess] Sections generated:', sectionsResult.data.length, 'for chapter', id);
+          }
+        }
+      } catch (secErr) {
+        console.warn('[reprocess] Section splitting skipped:', secErr instanceof Error ? secErr.message : secErr);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Processing failed';
       console.error('[reprocess] Failed for chapter', id, ':', message);
