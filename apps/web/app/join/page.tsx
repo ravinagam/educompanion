@@ -1,23 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Isolated so useSearchParams() has a Suspense boundary above it at build time
+function RefCapture() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) localStorage.setItem('ease_ref_code', ref.toUpperCase());
+  }, [searchParams]);
+  return null;
+}
+
 export default function JoinPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const ref = searchParams.get('ref');
-
-  useEffect(() => {
-    if (ref) {
-      localStorage.setItem('ease_ref_code', ref.toUpperCase());
-    }
-  }, [ref]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Suspense fallback={null}><RefCapture /></Suspense>
       <div className="w-full max-w-md text-center space-y-8">
         <div className="flex justify-center">
           <div className="flex items-center gap-2 text-blue-600">

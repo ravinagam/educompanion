@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -13,22 +13,24 @@ import { toast } from 'sonner';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { BOARDS, GRADES } from '@educompanion/shared';
 
-// Derives a deterministic internal email from username so Supabase Auth works
-// without requiring users to provide or verify a real email address.
 function usernameToEmail(username: string) {
   return `${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}@students.educompanion.app`;
 }
 
-export default function SignupPage() {
-  const router = useRouter();
+// Isolated so useSearchParams() has a Suspense boundary above it at build time
+function RefCapture() {
   const searchParams = useSearchParams();
-  const supabase = createClient();
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     const ref = searchParams.get('ref');
     if (ref) localStorage.setItem('ease_ref_code', ref.toUpperCase());
   }, [searchParams]);
+  return null;
+}
+
+export default function SignupPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -88,6 +90,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      <Suspense fallback={null}><RefCapture /></Suspense>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
