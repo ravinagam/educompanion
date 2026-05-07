@@ -56,6 +56,10 @@ export default function SignupPage() {
       toast.error('Password must be at least 8 characters');
       return;
     }
+    if (!form.contact_email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
     setLoading(true);
 
     const internalEmail = usernameToEmail(form.username);
@@ -171,13 +175,14 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="contact_email">Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Label htmlFor="contact_email">Email</Label>
                 <Input
                   id="contact_email"
                   type="email"
                   placeholder="your@email.com"
                   value={form.contact_email}
                   onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                  required
                 />
               </div>
               <div className="space-y-1">
