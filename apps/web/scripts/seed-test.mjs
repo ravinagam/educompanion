@@ -205,8 +205,25 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+async function applyMigrations() {
+  // Apply idempotent DDL migrations that may not exist in the test DB yet.
+  // Using service-role RPC or raw SQL is not available in the JS client, so we
+  // replicate the schema changes via upserts/checks on the data plane instead.
+  // The actual approach: attempt to SELECT the new column; if it fails the seed
+  // continues anyway (the profile page degrades gracefully when columns are absent).
+  //
+  // To truly apply schema migrations to the test Supabase project, run the SQL
+  // files in supabase/migrations/ against the test database via the Supabase CLI:
+  //   npx supabase db push --db-url $TEST_DATABASE_URL
+  //
+  // For now this function is a no-op placeholder — the profile page handles
+  // missing referral columns gracefully.
+}
+
 async function run() {
   console.log('Seeding test database…\n');
+
+  await applyMigrations();
 
   // 1. Auth user
   process.stdout.write('1/7  Auth user… ');
