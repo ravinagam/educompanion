@@ -18,7 +18,18 @@ export async function GET() {
     .eq('user_id', user.id)
     .single();
 
-  return NextResponse.json({ data: data ?? null });
+  // Return a default row for new users who haven't earned XP yet
+  // so the XP bar always renders for authenticated users
+  return NextResponse.json({
+    data: data ?? {
+      user_id: user.id,
+      total_xp: 0,
+      level: 1,
+      current_streak: 0,
+      longest_streak: 0,
+      last_active_date: null,
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
