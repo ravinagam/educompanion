@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2 } from 'lucide-react';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2, Share2, Copy, Check, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ interface User {
   id: string; name: string; email: string;
   grade: number; board: string; created_at: string;
   contact_email: string | null; phone_number: string | null;
+  referral_code: string | null; referred_by: string | null;
   subjects: Subject[];
 }
 interface Feedback {
@@ -23,20 +24,27 @@ interface Feedback {
   rating: number | null; category: string | null;
   user: { name: string; email: string } | null;
 }
-
 interface UsageLog {
   user_id: string; feature: string;
   input_tokens: number; output_tokens: number; cost_usd: number; created_at: string;
 }
-
 interface UserUsage {
   userId: string; name: string; email: string;
   totalCalls: number; totalTokens: number; totalCost: number;
   byFeature: Record<string, { calls: number; tokens: number; cost: number }>;
   lastUsed: string | null;
 }
+interface Referral {
+  id: string; referrer_id: string; referred_id: string;
+  rewarded_at: string | null; created_at: string;
+}
+interface UserReferralInfo {
+  code: string | null;
+  referredByName: string | null;
+  referredCount: number;
+}
 
-interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[] }
+interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[]; referrals: Referral[] }
 
 const USD_TO_INR = 94;
 function inr(usd: number) { return `₹${(usd * USD_TO_INR).toFixed(2)}`; }
@@ -83,6 +91,19 @@ function formatPage(page: string, chapterMap: Map<string, { name: string; subjec
     return subject ? `${subject} · ${chapter}${section}` : `${chapter}${section}`;
   }
   return page.replace(/^\//, '');
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="ml-1 text-gray-400 hover:text-indigo-600 transition-colors align-middle"
+      title="Copy"
+    >
+      {copied ? <Check className="inline h-3 w-3 text-emerald-500" /> : <Copy className="inline h-3 w-3" />}
+    </button>
+  );
 }
 
 function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, { name: string; subject: string }> }) {
@@ -234,7 +255,7 @@ function ChapterBadge({ chapter, onDeleted }: { chapter: Chapter; onDeleted: (id
   );
 }
 
-function UserRow({ user }: { user: User }) {
+function UserRow({ user, referralInfo }: { user: User; referralInfo: UserReferralInfo }) {
   const [expanded, setExpanded] = useState(false);
   const [subjects, setSubjects] = useState(user.subjects);
 
@@ -276,6 +297,21 @@ function UserRow({ user }: { user: User }) {
             <span>📧 {user.contact_email || <span className="italic text-gray-300">no email</span>}</span>
             <span>📱 {user.phone_number || <span className="italic text-gray-300">no phone</span>}</span>
           </div>
+          {/* Referral details */}
+          <div className="flex flex-wrap gap-4 text-xs text-gray-500 pb-1 border-b border-gray-200">
+            <span>
+              🔗 Code:{' '}
+              {referralInfo.code
+                ? <><span className="font-mono font-semibold text-gray-700">{referralInfo.code}</span><CopyButton text={referralInfo.code} /></>
+                : <span className="italic text-gray-300">none</span>}
+            </span>
+            <span>
+              👤 {referralInfo.referredByName
+                ? <>Referred by <span className="font-semibold text-gray-700">{referralInfo.referredByName}</span></>
+                : 'Organic signup'}
+            </span>
+            <span>🎁 {referralInfo.referredCount} referral{referralInfo.referredCount !== 1 ? 's' : ''} sent</span>
+          </div>
           {subjects.length === 0 ? (
             <p className="text-xs text-gray-400">No subjects yet</p>
           ) : subjects.map(subj => (
@@ -297,8 +333,8 @@ function UserRow({ user }: { user: User }) {
   );
 }
 
-export function AdminDashboard({ users, feedback, usageLogs }: Props) {
-  const [tab, setTab] = useState<'users' | 'feedback' | 'usage'>('users');
+export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props) {
+  const [tab, setTab] = useState<'users' | 'feedback' | 'usage' | 'referrals'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
   const chapterMap = new Map<string, { name: string; subject: string }>(
@@ -325,6 +361,23 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
   }
   const userUsageList = [...usageByUser.values()].sort((a, b) => b.totalCost - a.totalCost);
   const totalCost = userUsageList.reduce((s, u) => s + u.totalCost, 0);
+
+  // Referral stats
+  const referralCountByUser = new Map<string, number>();
+  const referralLastByUser = new Map<string, string>();
+  for (const r of referrals) {
+    referralCountByUser.set(r.referrer_id, (referralCountByUser.get(r.referrer_id) ?? 0) + 1);
+    const last = referralLastByUser.get(r.referrer_id);
+    if (!last || r.created_at > last) referralLastByUser.set(r.referrer_id, r.created_at);
+  }
+  const topReferrers = [...referralCountByUser.entries()]
+    .map(([uid, count]) => ({ user: userMap.get(uid), count, lastAt: referralLastByUser.get(uid)! }))
+    .filter(r => r.user)
+    .sort((a, b) => b.count - a.count);
+  const usersViaReferral = users.filter(u => u.referred_by).length;
+  const totalXpFromReferrals = referrals.filter(r => r.rewarded_at).length * 400;
+  const avgPerReferrer = referralCountByUser.size > 0
+    ? (referrals.length / referralCountByUser.size).toFixed(1) : '0';
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -362,7 +415,7 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        {(['users', 'feedback', 'usage'] as const).map(t => (
+        {(['users', 'feedback', 'usage', 'referrals'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -372,7 +425,10 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
                 : 'border-transparent text-gray-500 hover:text-indigo-600'
             }`}
           >
-            {t === 'users' ? `Users (${users.length})` : t === 'feedback' ? `Feedback (${feedback.length})` : `AI Usage (${usageLogs.length})`}
+            {t === 'users' ? `Users (${users.length})`
+              : t === 'feedback' ? `Feedback (${feedback.length})`
+              : t === 'usage' ? `AI Usage (${usageLogs.length})`
+              : `Referrals (${referrals.length})`}
           </button>
         ))}
       </div>
@@ -382,7 +438,17 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
         <div className="space-y-2">
           {users.length === 0 ? (
             <p className="text-center text-gray-400 py-10">No users yet</p>
-          ) : users.map(u => <UserRow key={u.id} user={u} />)}
+          ) : users.map(u => (
+            <UserRow
+              key={u.id}
+              user={u}
+              referralInfo={{
+                code: u.referral_code,
+                referredByName: u.referred_by ? (userMap.get(u.referred_by)?.name ?? 'Unknown') : null,
+                referredCount: referralCountByUser.get(u.id) ?? 0,
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -432,6 +498,136 @@ export function AdminDashboard({ users, feedback, usageLogs }: Props) {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Referrals tab */}
+      {tab === 'referrals' && (
+        <div className="space-y-6">
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-0 shadow-md overflow-hidden">
+              <div className="px-5 py-4 bg-gradient-to-br from-violet-600 to-purple-700 text-white">
+                <p className="text-2xl font-bold">{referrals.length}</p>
+                <p className="text-xs opacity-80">Total Referrals</p>
+              </div>
+            </Card>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <div className="px-5 py-4 bg-gradient-to-br from-indigo-600 to-blue-600 text-white">
+                <p className="text-2xl font-bold">{usersViaReferral}</p>
+                <p className="text-xs opacity-80">
+                  Via Referral ({users.length > 0 ? Math.round(usersViaReferral / users.length * 100) : 0}% of users)
+                </p>
+              </div>
+            </Card>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <div className="px-5 py-4 bg-gradient-to-br from-amber-500 to-orange-500 text-white">
+                <p className="text-2xl font-bold">{totalXpFromReferrals.toLocaleString()}</p>
+                <p className="text-xs opacity-80">XP Awarded via Referrals</p>
+              </div>
+            </Card>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <div className="px-5 py-4 bg-gradient-to-br from-emerald-600 to-teal-600 text-white">
+                <p className="text-2xl font-bold">{avgPerReferrer}</p>
+                <p className="text-xs opacity-80">Avg Referrals / Referrer</p>
+              </div>
+            </Card>
+          </div>
+
+          {/* Top Referrers */}
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Share2 className="h-4 w-4 text-violet-500" /> Top Referrers
+            </h2>
+            {topReferrers.length === 0 ? (
+              <p className="text-center text-gray-400 py-8 text-sm">No referrals yet</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-left text-xs text-gray-500 font-semibold">
+                      <th className="px-4 py-3">#</th>
+                      <th className="px-4 py-3">Referrer</th>
+                      <th className="px-4 py-3">Code</th>
+                      <th className="px-4 py-3 text-right">Referred</th>
+                      <th className="px-4 py-3 text-right">XP Earned</th>
+                      <th className="px-4 py-3 text-right">Last Referral</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {topReferrers.map((r, i) => (
+                      <tr key={r.user!.id} className="bg-white hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-400 font-mono text-xs">#{i + 1}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs shrink-0">
+                              {r.user!.name[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{r.user!.name}</p>
+                              <p className="text-xs text-gray-400">{r.user!.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                            {r.user!.referral_code ?? '—'}
+                          </span>
+                          {r.user!.referral_code && <CopyButton text={r.user!.referral_code} />}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-violet-700">{r.count}</td>
+                        <td className="px-4 py-3 text-right text-amber-700 font-semibold">+{(r.count * 300).toLocaleString()} XP</td>
+                        <td className="px-4 py-3 text-right text-xs text-gray-400">
+                          {new Date(r.lastAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Recent Referrals */}
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <ArrowRight className="h-4 w-4 text-indigo-500" /> Recent Referrals
+            </h2>
+            {referrals.length === 0 ? (
+              <p className="text-center text-gray-400 py-8 text-sm">No referrals yet</p>
+            ) : (
+              <div className="space-y-2">
+                {referrals.slice(0, 30).map(r => {
+                  const referrer = userMap.get(r.referrer_id);
+                  const referred = userMap.get(r.referred_id);
+                  return (
+                    <div key={r.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-2.5">
+                      <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs shrink-0">
+                        {referrer?.name[0]?.toUpperCase() ?? '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900">{referrer?.name ?? 'Unknown'}</span>
+                        <span className="text-gray-400 text-xs mx-2">invited</span>
+                        <span className="text-sm font-medium text-gray-900">{referred?.name ?? 'Unknown'}</span>
+                        {referred?.email && <span className="text-xs text-gray-400 ml-1">({referred.email})</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {r.rewarded_at
+                          ? <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">+400 XP</span>
+                          : <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Pending</span>}
+                        <span className="text-xs text-gray-400">
+                          {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {referrals.length > 30 && (
+                  <p className="text-xs text-gray-400 text-center pt-1">Showing 30 of {referrals.length} referrals</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
