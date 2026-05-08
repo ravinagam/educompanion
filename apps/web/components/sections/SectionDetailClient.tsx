@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -129,6 +129,14 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
     : 'read';
   const [step, setStep] = useState<Step>(initialStep);
   const [saving, setSaving] = useState(false);
+
+  // Auto-poll when quiz step is active and quiz hasn't been generated yet.
+  // The page's after() triggers generation; we poll until it appears in the DB.
+  useEffect(() => {
+    if (step !== 'quiz' || section.mini_quiz) return;
+    const id = setInterval(() => router.refresh(), 5000);
+    return () => clearInterval(id);
+  }, [step, section.mini_quiz, router]);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizResult, setQuizResult] = useState<{ score: number; xp: number } | null>(
     initialProgress?.quiz_score != null
@@ -313,12 +321,10 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             </div>
 
             {section.quiz_generating || !section.mini_quiz ? (
-              <div className="text-center py-8 text-gray-400 space-y-3">
+              <div className="text-center py-8 text-gray-400 space-y-2">
                 <RefreshCw className="h-8 w-8 mx-auto animate-spin opacity-40" />
-                <p className="text-sm">Quiz is being generated…</p>
-                <Button variant="outline" size="sm" onClick={() => router.refresh()}>
-                  Refresh
-                </Button>
+                <p className="text-sm font-medium">Generating your quiz…</p>
+                <p className="text-xs">This takes about 15 seconds. Page will update automatically.</p>
               </div>
             ) : (
               <>

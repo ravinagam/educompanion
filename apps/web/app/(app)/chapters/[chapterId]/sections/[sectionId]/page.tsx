@@ -1,7 +1,10 @@
+import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect, notFound } from 'next/navigation';
 import { SectionDetailClient } from '@/components/sections/SectionDetailClient';
+import { generateSectionMiniQuiz } from '@/lib/ai/sections';
+import { logAiUsage } from '@/lib/ai/usage';
 
 export default async function SectionDetailPage({
   params,
@@ -45,6 +48,31 @@ export default async function SectionDetailPage({
   const allSections = allSectionsRes.data ?? [];
   const currentIdx = allSections.findIndex(s => s.id === sectionId);
   const nextSection = currentIdx >= 0 ? allSections[currentIdx + 1] ?? null : null;
+
+  // Trigger quiz generation the moment the page loads (if not yet generated).
+  // Uses after() so generation runs after response is sent (no latency impact).
+  if (!section.mini_quiz_json && section.content_text) {
+    const capturedSectionId = sectionId;
+    const capturedChapterName = (chapter.subjects as unknown as { name: string }).name; // subject name not chapter
+    const capturedChName = chapter.name;
+    const capturedTitle = section.title;
+    const capturedContent = section.content_text as string;
+    const capturedUserId = user.id;
+
+    after(async () => {
+      const bgAdmin = createAdminClient();
+      try {
+        const result = await generateSectionMiniQuiz(capturedChName, capturedTitle, capturedContent);
+        await bgAdmin.from('chapter_sections')
+          .update({ mini_quiz_json: result.data })
+          .eq('id', capturedSectionId);
+        logAiUsage(capturedUserId, 'section_mini_quiz', result.model, result.input_tokens, result.output_tokens).catch(console.error);
+        console.log('[page] Mini-quiz generated for section', capturedSectionId);
+      } catch (err) {
+        console.warn('[page] Mini-quiz generation failed:', err instanceof Error ? err.message : err);
+      }
+    });
+  }
 
   // Strip correct answers from quiz before sending to client
   const safeQuiz = section.mini_quiz_json
