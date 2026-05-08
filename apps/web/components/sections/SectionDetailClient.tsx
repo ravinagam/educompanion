@@ -226,11 +226,6 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
       </div>
 
       {/* Step progress bar — completed steps are clickable for review */}
-      {progress.completed_at && step !== 'done' && (
-        <p className="text-xs text-emerald-600 font-medium text-center -mb-2">
-          Review mode — click any step
-        </p>
-      )}
       <div className="flex items-center gap-0">
         {STEPS.map((s, i) => {
           // Determine "done" from actual progress, not current step position.
@@ -266,6 +261,11 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
           );
         })}
       </div>
+      {progress.completed_at && step !== 'done' && (
+        <p className="text-xs text-emerald-600 font-medium text-center bg-emerald-50 rounded-lg py-1.5">
+          Review mode — tap any step above to navigate
+        </p>
+      )}
 
       {/* ── Step 1: Read ── */}
       {step === 'read' && (
