@@ -38,13 +38,13 @@ interface Props {
 function sectionStatus(s: Section, isUnlocked: boolean): 'completed' | 'in_progress' | 'unlocked' | 'locked' {
   if (s.progress?.completed_at) return 'completed';
   if (!isUnlocked) return 'locked';
-  if (s.progress?.read_done || s.progress?.chat_done || s.progress?.quiz_score !== null) return 'in_progress';
+  if (s.progress?.read_done || s.progress?.chat_done || s.progress?.quiz_score != null) return 'in_progress';
   return 'unlocked';
 }
 
 function stepsCompleted(p: SectionProgress | null): number {
   if (!p) return 0;
-  return (p.read_done ? 1 : 0) + (p.chat_done ? 1 : 0) + (p.quiz_score !== null ? 1 : 0);
+  return (p.read_done ? 1 : 0) + (p.chat_done ? 1 : 0) + (p.quiz_score != null ? 1 : 0);
 }
 
 export function SectionsClient({ chapter, subjectName, sections }: Props) {
@@ -226,7 +226,7 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
                           {[
                             { label: 'Read', done: section.progress?.read_done ?? false, icon: BookOpen },
                             { label: 'Ask AI', done: section.progress?.chat_done ?? false, icon: BookOpen },
-                            { label: 'Quiz', done: section.progress?.quiz_score !== null, icon: BookOpen },
+                            { label: 'Quiz', done: section.progress?.quiz_score != null, icon: BookOpen },
                           ].map(({ label, done }) => (
                             <span
                               key={label}
