@@ -49,48 +49,49 @@ function stepIndex(step: Step) {
   return { read: 0, chat: 1, quiz: 2, done: 3 }[step];
 }
 
-// Common word endings that appear as short fragments when a word is split across
-// PDF lines (e.g. "shar\ned" → buffer ends with "shar", line = "ed").
-// These are almost never standalone words, so joining without a space is safe.
+type Para =
+  | { kind: 'body'; text: string }
+  | { kind: 'heading'; text: string }
+  | { kind: 'caption'; text: string }
+  | { kind: 'definition'; term: string; def: string };
+
 const WORD_SUFFIX_RE = /^(e|ed|er|es|ry|ly|nd|ty|al|ing|ion|ism|ent|ant|ive|ous|ial|tion|ness|ment|ity|ogy|acy|ary|ery|ory)$/;
 
-// Normalises raw PDF-extracted text for readable display.
-// PDF extraction preserves each visual line from the printed page, so raw text has
-// page numbers, hyphenated/non-hyphenated word splits, punctuation orphans, and
-// NO blank lines between paragraphs. Strategy: walk line-by-line.
-function normalisePdfText(raw: string): string[] {
-  const text = raw
-    .replace(/-\n[ \t]*/g, '')          // "emerg-\ne" → "emerge"
-    .replace(/^\s*\d{1,4}\s*$/gm, ''); // strip lines that are only a page number
+// Educational section markers that force a paragraph break and become headings.
+const SECTION_HEADER_RE = /^(New [Ww]ords?|Activities|Summary|Keywords?|Key [Tt]erms?|Introduction|Conclusion|Note|Did [Yy]ou [Kk]now|Let\s*'?s [Rr]ecall|Questions?|Exercises?)[:.]?\s*$/;
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+function buildParagraphs(raw: string): string[] {
+  const lines = raw
+    .replace(/-\n[ \t]*/g, '')                          // "emerg-\ne" → "emerge"
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0)
+    .filter(l => !/^\d{1,4}$/.test(l))                  // lone page numbers
+    .filter(l => !/\breprint\s+\d{4}[-–]\d{2,4}\b/i.test(l)); // "Reprint 2026-27"
+
   const paragraphs: string[] = [];
   let buffer = '';
 
   for (const line of lines) {
-    if (!buffer) { buffer = line; continue; }
-
-    // Single lowercase letter alone = orphaned word character (e.g. "emerg\ne")
-    if (/^[a-z]$/.test(line)) {
-      buffer += line;
+    // Known section markers force a break and become their own paragraph (heading)
+    if (SECTION_HEADER_RE.test(line)) {
+      if (buffer) { paragraphs.push(buffer.replace(/\s+/g, ' ').trim()); buffer = ''; }
+      paragraphs.push(line.trim());
       continue;
     }
 
-    // Common word-ending suffix alone = split word (e.g. "shar\ned" → "shared")
-    // Only join without space when the previous token is also short (partial stem)
+    if (!buffer) { buffer = line; continue; }
+
+    if (/^[a-z]$/.test(line)) { buffer += line; continue; }
+
     const lastToken = buffer.split(/\s+/).pop() ?? '';
     if (WORD_SUFFIX_RE.test(line) && lastToken.length >= 2 && lastToken.length <= 8 && /[a-z]$/.test(lastToken)) {
       buffer += line;
       continue;
     }
 
-    // Punctuation orphan = attach without space
-    if (/^[,;]$/.test(line)) {
-      buffer += line;
-      continue;
-    }
+    if (/^[,;]$/.test(line)) { buffer += line; continue; }
 
-    // Paragraph break: previous sentence ended (.?!) AND this line starts uppercase
     const prevEndsSentence = /[.!?]\s*$/.test(buffer);
     const lineStartsUpper  = /^[A-Z]/.test(line);
 
@@ -104,6 +105,68 @@ function normalisePdfText(raw: string): string[] {
 
   if (buffer) paragraphs.push(buffer.replace(/\s+/g, ' ').trim());
   return paragraphs.filter(p => p.length > 1);
+}
+
+function cleanText(t: string): string {
+  return t
+    .replace(/\b([B-HJ-Z]) ([a-z]{2,})/g, '$1$2') // OCR split: "T he" → "The", "Eur ope" → "Europe"
+    .replace(/(\w) ([,;:.])/g, '$1$2')              // space before punctuation: "history ," → "history,"
+    .replace(/  +/g, ' ')
+    .trim();
+}
+
+function classify(text: string): Para {
+  if (SECTION_HEADER_RE.test(text)) return { kind: 'heading', text };
+
+  // All-caps short line = chapter/section label from PDF
+  if (/^[A-Z][A-Z\s]{4,}$/.test(text) && text.length < 80) return { kind: 'heading', text };
+
+  // Figure caption: contains "Fig. N"
+  if (/\bFig\.?\s*\d/.test(text)) return { kind: 'caption', text };
+
+  // Glossary definition: "Term – explanation" where term is 1–3 title-case words
+  const defMatch = text.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*[–—]\s*(.{10,})$/);
+  if (defMatch) return { kind: 'definition', term: defMatch[1].trim(), def: defMatch[2].trim() };
+
+  return { kind: 'body', text };
+}
+
+function normalisePdfText(raw: string): Para[] {
+  return buildParagraphs(raw).map(p => classify(cleanText(p)));
+}
+
+function SectionReader({ text }: { text: string }) {
+  const paragraphs = normalisePdfText(text);
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] overflow-y-auto space-y-3.5 text-[15px] leading-7 text-gray-800">
+      {paragraphs.map((para, i) => {
+        if (para.kind === 'heading') {
+          return (
+            <h3 key={i} className={`font-bold text-gray-900 text-xs tracking-widest uppercase text-emerald-700 ${i > 0 ? 'pt-3 mt-1 border-t border-gray-100' : ''}`}>
+              {para.text}
+            </h3>
+          );
+        }
+        if (para.kind === 'caption') {
+          return (
+            <p key={i} className="text-xs italic text-gray-400 text-center bg-gray-50 rounded-lg px-4 py-2 border border-gray-100">
+              {para.text}
+            </p>
+          );
+        }
+        if (para.kind === 'definition') {
+          return (
+            <div key={i} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
+              <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
+              <span className="text-gray-400 mx-1.5 text-sm">—</span>
+              <span className="text-gray-700 text-sm leading-relaxed">{para.def}</span>
+            </div>
+          );
+        }
+        return <p key={i} className="text-gray-700">{para.text}</p>;
+      })}
+    </div>
+  );
 }
 
 export function SectionDetailClient({ chapter, subjectName, section, progress: initialProgress, nextSection }: Props) {
@@ -274,11 +337,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             <div className="flex items-center gap-2 text-blue-700 font-semibold">
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 max-h-[28rem] overflow-y-auto text-sm text-gray-700 leading-relaxed space-y-3">
-              {normalisePdfText(section.content_text).map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
-            </div>
+            <SectionReader text={section.content_text} />
             {progress.completed_at
               ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
               : <Button className="w-full" onClick={markReadDone} disabled={saving}>
