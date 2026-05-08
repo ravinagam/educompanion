@@ -50,26 +50,55 @@ function stepIndex(step: Step) {
 }
 
 // Normalises raw PDF-extracted text for readable display.
-// PDF extraction preserves visual line breaks, producing page numbers on their
-// own lines, mid-word splits ("emerg\ne"), and justified-text spacing artifacts.
+//
+// PDF extraction preserves each visual line from the printed page, so raw text has:
+//   - page numbers on their own line ("29")
+//   - hyphenated word breaks ("emerg-\ne")
+//   - rare non-hyphenated single-char word splits ("emerg\ne" where "e" is alone)
+//   - punctuation orphans (comma on its own line)
+//   - NO blank lines between paragraphs (PDF visual layout has no blank rows)
+//
+// Strategy: walk line-by-line, joining lines with a space unless a sentence ends
+// (.!?) and the next line starts uppercase — that marks a real paragraph break.
 function normalisePdfText(raw: string): string[] {
-  const cleaned = raw
-    .replace(/-\n[ \t]*/g, '')           // rejoin hyphenated line-breaks: "emerg-\ne" → "emerge"
-    .replace(/([a-z,;])\n([a-z])/g, '$1$2') // rejoin non-hyphenated splits: "emerg\ne" → "emerge"
-    .replace(/^\s*\d{1,4}\s*$/gm, '');  // strip lone page numbers
+  // Pre-pass: fix hyphenated breaks and strip lone page numbers
+  const text = raw
+    .replace(/-\n[ \t]*/g, '')          // "emerg-\ne" → "emerge"
+    .replace(/^\s*\d{1,4}\s*$/gm, ''); // strip lines that are only a number ("29")
 
-  return cleaned
-    .split(/\n{2,}/)                    // split on paragraph boundaries
-    .map(para =>
-      para
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-    )
-    .filter(Boolean);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const paragraphs: string[] = [];
+  let buffer = '';
+
+  for (const line of lines) {
+    if (!buffer) { buffer = line; continue; }
+
+    // Single lowercase letter alone on a line = orphaned word fragment ("emerg" + "e")
+    if (/^[a-z]$/.test(line)) {
+      buffer += line;   // join without space to complete the word
+      continue;
+    }
+
+    // Punctuation orphan (comma/semicolon alone) = attach to previous without space
+    if (/^[,;]$/.test(line)) {
+      buffer += line;
+      continue;
+    }
+
+    // Paragraph break: previous sentence ended with .?! AND this line starts uppercase
+    const prevEndsSentence = /[.!?]\s*$/.test(buffer);
+    const lineStartsUpper  = /^[A-Z]/.test(line);
+
+    if (prevEndsSentence && lineStartsUpper) {
+      paragraphs.push(buffer.replace(/\s+/g, ' ').trim());
+      buffer = line;
+    } else {
+      buffer += ' ' + line;  // same paragraph — join with a space
+    }
+  }
+
+  if (buffer) paragraphs.push(buffer.replace(/\s+/g, ' ').trim());
+  return paragraphs.filter(p => p.length > 1);
 }
 
 export function SectionDetailClient({ chapter, subjectName, section, progress: initialProgress, nextSection }: Props) {
