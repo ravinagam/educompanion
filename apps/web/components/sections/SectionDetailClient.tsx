@@ -49,6 +49,29 @@ function stepIndex(step: Step) {
   return { read: 0, chat: 1, quiz: 2, done: 3 }[step];
 }
 
+// Normalises raw PDF-extracted text for readable display.
+// PDF extraction preserves visual line breaks, producing page numbers on their
+// own lines, mid-word splits ("emerg\ne"), and justified-text spacing artifacts.
+function normalisePdfText(raw: string): string[] {
+  const cleaned = raw
+    .replace(/-\n[ \t]*/g, '')           // rejoin hyphenated line-breaks: "emerg-\ne" → "emerge"
+    .replace(/([a-z,;])\n([a-z])/g, '$1$2') // rejoin non-hyphenated splits: "emerg\ne" → "emerge"
+    .replace(/^\s*\d{1,4}\s*$/gm, '');  // strip lone page numbers
+
+  return cleaned
+    .split(/\n{2,}/)                    // split on paragraph boundaries
+    .map(para =>
+      para
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
+    .filter(Boolean);
+}
+
 export function SectionDetailClient({ chapter, subjectName, section, progress: initialProgress, nextSection }: Props) {
   const router = useRouter();
   const [progress, setProgress] = useState<Progress>(initialProgress ?? {
@@ -190,8 +213,10 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             <div className="flex items-center gap-2 text-blue-700 font-semibold">
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
-            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto text-sm">
-              {section.content_text}
+            <div className="bg-gray-50 rounded-lg p-4 max-h-[28rem] overflow-y-auto text-sm text-gray-700 leading-relaxed space-y-3">
+              {normalisePdfText(section.content_text).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
             </div>
             <Button className="w-full" onClick={markReadDone} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
