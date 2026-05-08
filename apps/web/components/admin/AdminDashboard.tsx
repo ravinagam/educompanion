@@ -38,13 +38,16 @@ interface Referral {
   id: string; referrer_id: string; referred_id: string;
   rewarded_at: string | null; created_at: string;
 }
+interface ReferralClick {
+  referral_code: string; clicked_at: string;
+}
 interface UserReferralInfo {
   code: string | null;
   referredByName: string | null;
   referredCount: number;
 }
 
-interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[]; referrals: Referral[] }
+interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[]; referrals: Referral[]; referralClicks: ReferralClick[] }
 
 const USD_TO_INR = 94;
 function inr(usd: number) { return `₹${(usd * USD_TO_INR).toFixed(2)}`; }
@@ -333,7 +336,7 @@ function UserRow({ user, referralInfo }: { user: User; referralInfo: UserReferra
   );
 }
 
-export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props) {
+export function AdminDashboard({ users, feedback, usageLogs, referrals, referralClicks }: Props) {
   const [tab, setTab] = useState<'users' | 'feedback' | 'usage' | 'referrals'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
@@ -378,6 +381,15 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props)
   const totalXpFromReferrals = referrals.filter(r => r.rewarded_at).length * 400;
   const avgPerReferrer = referralCountByUser.size > 0
     ? (referrals.length / referralCountByUser.size).toFixed(1) : '0';
+
+  // Click stats — keyed by referral_code
+  const clicksByCode = new Map<string, number>();
+  for (const c of referralClicks) {
+    clicksByCode.set(c.referral_code, (clicksByCode.get(c.referral_code) ?? 0) + 1);
+  }
+  const totalClicks = referralClicks.length;
+  const overallConversion = totalClicks > 0
+    ? Math.round(usersViaReferral / totalClicks * 100) : 0;
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -508,15 +520,15 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props)
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-0 shadow-md overflow-hidden">
               <div className="px-5 py-4 bg-gradient-to-br from-violet-600 to-purple-700 text-white">
-                <p className="text-2xl font-bold">{referrals.length}</p>
-                <p className="text-xs opacity-80">Total Referrals</p>
+                <p className="text-2xl font-bold">{totalClicks}</p>
+                <p className="text-xs opacity-80">Link Clicks</p>
               </div>
             </Card>
             <Card className="border-0 shadow-md overflow-hidden">
               <div className="px-5 py-4 bg-gradient-to-br from-indigo-600 to-blue-600 text-white">
                 <p className="text-2xl font-bold">{usersViaReferral}</p>
                 <p className="text-xs opacity-80">
-                  Via Referral ({users.length > 0 ? Math.round(usersViaReferral / users.length * 100) : 0}% of users)
+                  Signups via Referral ({overallConversion}% conversion)
                 </p>
               </div>
             </Card>
@@ -529,7 +541,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props)
             <Card className="border-0 shadow-md overflow-hidden">
               <div className="px-5 py-4 bg-gradient-to-br from-emerald-600 to-teal-600 text-white">
                 <p className="text-2xl font-bold">{avgPerReferrer}</p>
-                <p className="text-xs opacity-80">Avg Referrals / Referrer</p>
+                <p className="text-xs opacity-80">Avg Signups / Referrer</p>
               </div>
             </Card>
           </div>
@@ -549,39 +561,56 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals }: Props)
                       <th className="px-4 py-3">#</th>
                       <th className="px-4 py-3">Referrer</th>
                       <th className="px-4 py-3">Code</th>
-                      <th className="px-4 py-3 text-right">Referred</th>
+                      <th className="px-4 py-3 text-right">Clicks</th>
+                      <th className="px-4 py-3 text-right">Signups</th>
+                      <th className="px-4 py-3 text-right">Conv %</th>
                       <th className="px-4 py-3 text-right">XP Earned</th>
-                      <th className="px-4 py-3 text-right">Last Referral</th>
+                      <th className="px-4 py-3 text-right">Last Signup</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {topReferrers.map((r, i) => (
-                      <tr key={r.user!.id} className="bg-white hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-400 font-mono text-xs">#{i + 1}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs shrink-0">
-                              {r.user!.name[0]?.toUpperCase()}
+                    {topReferrers.map((r, i) => {
+                      const clicks = r.user!.referral_code ? (clicksByCode.get(r.user!.referral_code) ?? 0) : 0;
+                      const conv = clicks > 0 ? Math.round(r.count / clicks * 100) : 0;
+                      return (
+                        <tr key={r.user!.id} className="bg-white hover:bg-gray-50">
+                          <td className="px-4 py-3 text-gray-400 font-mono text-xs">#{i + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs shrink-0">
+                                {r.user!.name[0]?.toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{r.user!.name}</p>
+                                <p className="text-xs text-gray-400">{r.user!.email}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{r.user!.name}</p>
-                              <p className="text-xs text-gray-400">{r.user!.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-700">
-                            {r.user!.referral_code ?? '—'}
-                          </span>
-                          {r.user!.referral_code && <CopyButton text={r.user!.referral_code} />}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-violet-700">{r.count}</td>
-                        <td className="px-4 py-3 text-right text-amber-700 font-semibold">+{(r.count * 300).toLocaleString()} XP</td>
-                        <td className="px-4 py-3 text-right text-xs text-gray-400">
-                          {new Date(r.lastAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                              {r.user!.referral_code ?? '—'}
+                            </span>
+                            {r.user!.referral_code && <CopyButton text={r.user!.referral_code} />}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-600">{clicks}</td>
+                          <td className="px-4 py-3 text-right font-bold text-violet-700">{r.count}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                              conv >= 50 ? 'bg-emerald-100 text-emerald-700'
+                                : conv >= 20 ? 'bg-amber-100 text-amber-700'
+                                : clicks === 0 ? 'text-gray-300'
+                                : 'bg-red-50 text-red-500'
+                            }`}>
+                              {clicks === 0 ? '—' : `${conv}%`}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-amber-700 font-semibold">+{(r.count * 300).toLocaleString()} XP</td>
+                          <td className="px-4 py-3 text-right text-xs text-gray-400">
+                            {new Date(r.lastAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

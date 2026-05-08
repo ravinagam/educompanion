@@ -14,7 +14,7 @@ export default async function AdminPage() {
 
   const admin = createAdminClient();
 
-  const [usersRes, feedbackRes, usageRes, referralsRes] = await Promise.all([
+  const [usersRes, feedbackRes, usageRes, referralsRes, clicksRes] = await Promise.all([
     admin
       .from('users')
       .select('id, name, email, grade, board, created_at, contact_email, phone_number, referral_code, referred_by, subjects(id, name, chapters(id, name, upload_status))')
@@ -31,8 +31,11 @@ export default async function AdminPage() {
       .from('referrals')
       .select('id, referrer_id, referred_id, rewarded_at, created_at')
       .order('created_at', { ascending: false }),
+    admin
+      .from('referral_clicks')
+      .select('referral_code, clicked_at'),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={(feedbackRes.data ?? []) as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} />;
+  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={(feedbackRes.data ?? []) as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} />;
 }

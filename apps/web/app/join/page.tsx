@@ -15,6 +15,13 @@ function JoinContent() {
   useEffect(() => {
     if (ref) {
       localStorage.setItem('ease_ref_code', ref.toUpperCase());
+      // Record this click for conversion tracking
+      fetch('/api/referrals/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: ref }),
+      }).catch(() => {});
+      // Fetch referrer name for personalised message
       fetch(`/api/referrals/referrer?code=${encodeURIComponent(ref)}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data?.name) setReferrerName(data.name); })
