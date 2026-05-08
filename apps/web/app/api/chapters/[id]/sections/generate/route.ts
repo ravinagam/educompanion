@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { splitChapterIntoSections } from '@/lib/ai/sections';
 import { logAiUsage } from '@/lib/ai/usage';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(
   _request: NextRequest,

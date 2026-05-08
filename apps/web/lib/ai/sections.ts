@@ -15,6 +15,30 @@ export interface ChapterSection {
   estimated_minutes: number;
 }
 
+// Internal: what Claude actually returns (no verbatim content)
+interface AISectionMarker {
+  title: string;
+  start_text: string; // first ~60 chars of the section in the source content
+  estimated_minutes: number;
+}
+
+function buildSectionsFromMarkers(content: string, markers: AISectionMarker[]): ChapterSection[] {
+  // Locate each section's start position in the original content
+  const positions: number[] = markers.map((m, i) => {
+    if (i === 0) return 0;
+    const snippet = m.start_text.slice(0, 50).trim();
+    const pos = content.indexOf(snippet);
+    return pos >= 0 ? pos : Math.floor((i / markers.length) * content.length);
+  });
+
+  return markers.map((m, i) => ({
+    title: m.title,
+    order_index: i,
+    estimated_minutes: m.estimated_minutes,
+    content_text: content.slice(positions[i], i < positions.length - 1 ? positions[i + 1] : content.length).trim(),
+  }));
+}
+
 export interface SectionMiniQuizQuestion {
   id: string;
   type: 'mcq' | 'true_false';
@@ -24,50 +48,52 @@ export interface SectionMiniQuizQuestion {
   explanation: string;
 }
 
-// Split a chapter into logical sections (called once at upload time)
+// Split a chapter into logical sections (called once at upload/generate time).
+// Claude outputs only section titles + a short start marker; code slices the actual content.
+// This keeps output tokens tiny (~500) regardless of chapter length, avoiding truncation.
 export async function splitChapterIntoSections(
   chapterName: string,
   contentText: string,
 ): Promise<UsageResult<ChapterSection[]>> {
-  // Use full content — section splitting needs the whole chapter
   const content = contentText.slice(0, 120_000);
 
   const prompt = `You are an expert curriculum designer for Indian school students (grades 8–12).
 
-Split the following chapter into logical, self-contained sections that a student can study one at a time.
+Identify 3–8 logical, self-contained sections in this chapter that a student can study one at a time.
 
 Chapter: "${chapterName}"
 
 Content:
 ${content}
 
-Rules:
-- Identify 3–8 natural sections (headings, subtopics, or concept groups)
-- Each section must be genuinely self-contained — a student should understand it without reading ahead
-- Titles must be short and descriptive (≤ 8 words)
-- content_text must include ALL the relevant text from the chapter for that section — copy it verbatim, do not summarise
-- estimated_minutes: realistic reading time (5–20 min per section, based on content length and complexity)
-- order_index starts at 0
+For each section return:
+- title: short descriptive title (≤ 8 words)
+- start_text: copy the FIRST 60 characters EXACTLY as they appear in the content above where that section begins
+- estimated_minutes: realistic reading time (5–20 min)
+
+The first section always starts at position 0 of the content.
 
 Return ONLY a JSON array, no markdown, no explanation:
 [
   {
-    "title": "What is Inertia?",
-    "content_text": "...verbatim text from the chapter for this section...",
-    "order_index": 0,
+    "title": "Introduction to Inertia",
+    "start_text": "Inertia is the tendency of an object to resist",
     "estimated_minutes": 10
   }
 ]`;
 
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 8192,
+    max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
+  const markers = parseJSON<AISectionMarker[]>(text);
+  const sections = buildSectionsFromMarkers(content, markers);
+
   return {
-    data: parseJSON<ChapterSection[]>(text),
+    data: sections,
     input_tokens: message.usage.input_tokens,
     output_tokens: message.usage.output_tokens,
     model: message.model,

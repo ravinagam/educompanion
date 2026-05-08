@@ -53,19 +53,34 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
   const [generationKey, setGenerationKey] = useState(0);
   const [generating, setGenerating] = useState(false);
 
-  // Auto-poll for up to ~30s after upload; after that show a generate button
+  // When sections are missing for a ready chapter, auto-trigger generation once, then poll
   useEffect(() => {
     setPollAttempts(0);
     if (sections.length > 0 || chapter.upload_status !== 'ready') return;
+
+    // Auto-trigger generation immediately (covers both fresh uploads and existing chapters)
+    let cancelled = false;
+    fetch(`/api/chapters/${chapter.id}/sections/generate`, { method: 'POST' })
+      .then(r => r.json())
+      .then(json => {
+        if (!cancelled && json.error) console.warn('[sections] Auto-generate failed:', json.error);
+      })
+      .catch(err => console.warn('[sections] Auto-generate error:', err));
+
+    // Poll every 5s until sections appear (up to ~60s)
     let attempts = 0;
     const id = setInterval(() => {
       attempts++;
       setPollAttempts(attempts);
       router.refresh();
-      if (attempts >= 6) clearInterval(id); // stop after ~30 sec
+      if (attempts >= 12) clearInterval(id); // stop after ~60s
     }, 5000);
-    return () => clearInterval(id);
-  }, [sections.length, chapter.upload_status, router, generationKey]);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [sections.length, chapter.upload_status, chapter.id, router, generationKey]);
 
   async function generateSections() {
     setGenerating(true);
@@ -128,17 +143,17 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
       {/* Sections list */}
       {sections.length === 0 ? (
         <div className="text-center py-16 text-gray-400 space-y-3">
-          {pollAttempts < 6 ? (
+          {pollAttempts < 12 ? (
             <>
               <RefreshCw className="h-10 w-10 mx-auto animate-spin opacity-30" />
-              <p className="font-medium">Sections are being generated…</p>
-              <p className="text-sm">This usually takes under 30 seconds.</p>
+              <p className="font-medium">Generating sections…</p>
+              <p className="text-sm">This usually takes under 60 seconds.</p>
             </>
           ) : (
             <>
               <Layers className="h-10 w-10 mx-auto opacity-30" />
-              <p className="font-medium">No sections found</p>
-              <p className="text-sm">Sections weren&apos;t generated for this chapter yet.</p>
+              <p className="font-medium">Generation is taking longer than expected</p>
+              <p className="text-sm">Click below to try again.</p>
               <Button
                 onClick={generateSections}
                 disabled={generating}
@@ -146,7 +161,7 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
               >
                 {generating
                   ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating…</>
-                  : 'Generate Sections'}
+                  : 'Retry Generate Sections'}
               </Button>
             </>
           )}
