@@ -56,11 +56,19 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
   });
 
   // Determine active step from progress
-  const initialStep: Step = initialProgress?.completed_at
+  // NOTE: must check !initialProgress first — optional chaining like
+  // `initialProgress?.quiz_score !== null` evaluates to `undefined !== null` = true
+  // when initialProgress is null, incorrectly jumping to 'done'.
+  const initialStep: Step = !initialProgress
+    ? 'read'
+    : initialProgress.completed_at
     ? 'done'
-    : initialProgress?.quiz_score !== null ? 'done'
-    : initialProgress?.chat_done ? 'quiz'
-    : initialProgress?.read_done ? 'chat'
+    : initialProgress.quiz_score !== null
+    ? 'done'
+    : initialProgress.chat_done
+    ? 'quiz'
+    : initialProgress.read_done
+    ? 'chat'
     : 'read';
   const [step, setStep] = useState<Step>(initialStep);
   const [saving, setSaving] = useState(false);
