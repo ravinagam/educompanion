@@ -225,23 +225,42 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
         <p className="text-sm text-gray-500">Estimated: {section.estimated_minutes} min</p>
       </div>
 
-      {/* Step progress bar */}
+      {/* Step progress bar — completed steps are clickable for review */}
+      {progress.completed_at && step !== 'done' && (
+        <p className="text-xs text-emerald-600 font-medium text-center -mb-2">
+          Review mode — click any step
+        </p>
+      )}
       <div className="flex items-center gap-0">
         {STEPS.map((s, i) => {
-          const done = i < currentStepIdx || (s.key === 'done' && step === 'done');
+          // Determine "done" from actual progress, not current step position.
+          // This keeps steps green even when navigating back in review mode.
+          const doneByProgress =
+            s.key === 'read' ? progress.read_done :
+            s.key === 'chat' ? progress.chat_done :
+            s.key === 'quiz' ? progress.quiz_score !== null :
+            !!progress.completed_at;
           const active = s.key === step;
+          // Allow clicking back to Read / Ask AI / Quiz when section is complete
+          const clickable = !!progress.completed_at && s.key !== 'done' && !active;
+
           return (
             <div key={s.key} className="flex items-center flex-1">
-              <div className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium flex-1 justify-center transition-all ${
-                done ? 'bg-emerald-100 text-emerald-700' :
-                active ? 'bg-blue-600 text-white' :
-                'bg-gray-100 text-gray-400'
-              }`}>
+              <button
+                type="button"
+                disabled={!clickable}
+                onClick={clickable ? () => setStep(s.key as Step) : undefined}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium flex-1 justify-center transition-all ${
+                  active         ? 'bg-blue-600 text-white' :
+                  doneByProgress ? 'bg-emerald-100 text-emerald-700' :
+                                   'bg-gray-100 text-gray-400'
+                } ${clickable ? 'hover:bg-emerald-200 cursor-pointer' : 'cursor-default'}`}
+              >
                 <s.icon className="h-3.5 w-3.5" />
                 {s.label}
-              </div>
+              </button>
               {i < STEPS.length - 1 && (
-                <div className={`h-0.5 w-3 ${i < currentStepIdx ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                <div className={`h-0.5 w-3 ${doneByProgress ? 'bg-emerald-300' : 'bg-gray-200'}`} />
               )}
             </div>
           );
@@ -260,10 +279,13 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
                 <p key={i}>{para}</p>
               ))}
             </div>
-            <Button className="w-full" onClick={markReadDone} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              I&apos;ve read this section →
-            </Button>
+            {progress.completed_at
+              ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
+              : <Button className="w-full" onClick={markReadDone} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  I&apos;ve read this section →
+                </Button>
+            }
           </CardContent>
         </Card>
       )}
@@ -303,10 +325,13 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
                   <MessageCircle className="h-4 w-4" /> Open AI Chat
                 </Button>
               </Link>
-              <Button className="flex-1" onClick={markChatDone} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Done, take the quiz →
-              </Button>
+              {progress.completed_at
+                ? <Button variant="outline" className="flex-1" onClick={() => setStep('done')}>Back to Summary</Button>
+                : <Button className="flex-1" onClick={markChatDone} disabled={saving}>
+                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Done, take the quiz →
+                  </Button>
+              }
             </div>
           </CardContent>
         </Card>

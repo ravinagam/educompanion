@@ -6,6 +6,96 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, Send, Loader2, Bot, User, Lightbulb } from 'lucide-react';
 
+// Renders AI markdown responses: bold, italic, headers, bullet/numbered lists, code, dividers.
+function MarkdownMessage({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  // Inline formatting: **bold**, *italic*, `code`
+  function renderInline(raw: string): React.ReactNode {
+    const parts = raw.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+    return parts.map((p, idx) => {
+      if (p.startsWith('**') && p.endsWith('**'))
+        return <strong key={idx}>{p.slice(2, -2)}</strong>;
+      if (p.startsWith('*') && p.endsWith('*'))
+        return <em key={idx}>{p.slice(1, -1)}</em>;
+      if (p.startsWith('`') && p.endsWith('`'))
+        return <code key={idx} className="bg-black/10 rounded px-1 py-0.5 font-mono text-xs">{p.slice(1, -1)}</code>;
+      return p;
+    });
+  }
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      elements.push(<div key={i} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    // Heading
+    const h3 = trimmed.match(/^###\s+(.+)/);
+    const h2 = trimmed.match(/^##\s+(.+)/);
+    const h1 = trimmed.match(/^#\s+(.+)/);
+    if (h1) { elements.push(<p key={i} className="font-bold text-base mt-1">{renderInline(h1[1])}</p>); i++; continue; }
+    if (h2) { elements.push(<p key={i} className="font-bold mt-1">{renderInline(h2[1])}</p>); i++; continue; }
+    if (h3) { elements.push(<p key={i} className="font-semibold mt-0.5">{renderInline(h3[1])}</p>); i++; continue; }
+
+    // Horizontal rule
+    if (/^---+$/.test(trimmed)) { elements.push(<hr key={i} className="border-current opacity-20 my-1" />); i++; continue; }
+
+    // Bullet list — collect consecutive items
+    if (/^[-*•]\s/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*•]\s/, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} className="space-y-0.5 my-1 pl-1">
+          {items.map((item, j) => (
+            <li key={j} className="flex gap-1.5 items-start">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current shrink-0 opacity-60" />
+              <span>{renderInline(item)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list — collect consecutive items
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: string[] = [];
+      let num = 1;
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} className="space-y-0.5 my-1 pl-1">
+          {items.map((item, j) => (
+            <li key={j} className="flex gap-1.5 items-start">
+              <span className="shrink-0 font-semibold opacity-70">{num++}.</span>
+              <span>{renderInline(item)}</span>
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Plain paragraph
+    elements.push(<p key={i}>{renderInline(trimmed)}</p>);
+    i++;
+  }
+
+  return <div className="space-y-1 leading-relaxed text-sm">{elements}</div>;
+}
+
 interface Message { role: 'user' | 'assistant'; content: string }
 
 interface Props {
@@ -139,12 +229,14 @@ export function ChapterChatClient({ chapter, subjectName, apiUrl, backHref, cont
                 ? <User className="h-4 w-4 text-indigo-600" />
                 : <Bot className="h-4 w-4 text-emerald-600" />}
             </div>
-            <div className={`rounded-2xl px-4 py-3 shadow-sm max-w-[80%] text-sm leading-relaxed whitespace-pre-wrap ${
+            <div className={`rounded-2xl px-4 py-3 shadow-sm max-w-[80%] ${
               m.role === 'user'
-                ? 'bg-indigo-600 text-white rounded-tr-none'
+                ? 'bg-indigo-600 text-white rounded-tr-none text-sm leading-relaxed'
                 : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
             }`}>
-              {m.content}
+              {m.role === 'user'
+                ? m.content
+                : <MarkdownMessage text={m.content} />}
             </div>
           </div>
         ))}
