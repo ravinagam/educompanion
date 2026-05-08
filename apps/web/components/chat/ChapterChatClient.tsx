@@ -11,6 +11,11 @@ interface Message { role: 'user' | 'assistant'; content: string }
 interface Props {
   chapter: { id: string; name: string };
   subjectName: string;
+  apiUrl?: string;          // override POST endpoint (defaults to /api/chapters/{id}/chat)
+  backHref?: string;        // override back link
+  contextLabel?: string;    // "this chapter" | "this section" shown in placeholder
+  sectionTitle?: string;    // shown in header when scoped to a section
+  initialQuestion?: string; // auto-send this question on mount
 }
 
 const STARTER_QUESTIONS = [
@@ -20,16 +25,25 @@ const STARTER_QUESTIONS = [
   'What exam questions are usually asked from this chapter?',
 ];
 
-export function ChapterChatClient({ chapter, subjectName }: Props) {
+export function ChapterChatClient({ chapter, subjectName, apiUrl, backHref, contextLabel = 'this chapter', sectionTitle, initialQuestion }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const didSendInitial = useRef(false);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (initialQuestion && !didSendInitial.current) {
+      didSendInitial.current = true;
+      send(initialQuestion);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,7 +60,7 @@ export function ChapterChatClient({ chapter, subjectName }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/chapters/${chapter.id}/chat`, {
+      const res = await fetch(apiUrl ?? `/api/chapters/${chapter.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next }),
@@ -68,16 +82,16 @@ export function ChapterChatClient({ chapter, subjectName }: Props) {
     <div className="flex flex-col max-w-2xl mx-auto h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 px-5 py-4 text-white shadow-md mb-4 shrink-0">
-        <Link href={`/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
-          <ArrowLeft className="h-3 w-3" /> My Saved Chapters
+        <Link href={backHref ?? `/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
+          <ArrowLeft className="h-3 w-3" /> {sectionTitle ? 'Back to Section' : 'My Saved Chapters'}
         </Link>
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="font-bold text-sm">{subjectName} — {chapter.name}</p>
-            <p className="text-emerald-100 text-xs">Ask anything about this chapter</p>
+            <p className="font-bold text-sm">{subjectName} — {sectionTitle ?? chapter.name}</p>
+            <p className="text-emerald-100 text-xs">Ask anything about {contextLabel}</p>
           </div>
         </div>
       </div>
@@ -92,7 +106,7 @@ export function ChapterChatClient({ chapter, subjectName }: Props) {
               </div>
               <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-sm">
                 <p className="text-sm text-gray-800">
-                  Hi! I&apos;m your study assistant for <span className="font-semibold">{chapter.name}</span>. Ask me anything about this chapter!
+                  Hi! I&apos;m your study assistant for <span className="font-semibold">{sectionTitle ?? chapter.name}</span>. Ask me anything about {contextLabel}!
                 </p>
               </div>
             </div>
@@ -155,7 +169,7 @@ export function ChapterChatClient({ chapter, subjectName }: Props) {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Ask a question about this chapter…"
+            placeholder={`Ask a question about ${contextLabel}…`}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}

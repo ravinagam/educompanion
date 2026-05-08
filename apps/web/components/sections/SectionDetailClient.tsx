@@ -49,22 +49,19 @@ function stepIndex(step: Step) {
   return { read: 0, chat: 1, quiz: 2, done: 3 }[step];
 }
 
+// Common word endings that appear as short fragments when a word is split across
+// PDF lines (e.g. "shar\ned" → buffer ends with "shar", line = "ed").
+// These are almost never standalone words, so joining without a space is safe.
+const WORD_SUFFIX_RE = /^(e|ed|er|es|ry|ly|nd|ty|al|ing|ion|ism|ent|ant|ive|ous|ial|tion|ness|ment|ity|ogy|acy|ary|ery|ory)$/;
+
 // Normalises raw PDF-extracted text for readable display.
-//
-// PDF extraction preserves each visual line from the printed page, so raw text has:
-//   - page numbers on their own line ("29")
-//   - hyphenated word breaks ("emerg-\ne")
-//   - rare non-hyphenated single-char word splits ("emerg\ne" where "e" is alone)
-//   - punctuation orphans (comma on its own line)
-//   - NO blank lines between paragraphs (PDF visual layout has no blank rows)
-//
-// Strategy: walk line-by-line, joining lines with a space unless a sentence ends
-// (.!?) and the next line starts uppercase — that marks a real paragraph break.
+// PDF extraction preserves each visual line from the printed page, so raw text has
+// page numbers, hyphenated/non-hyphenated word splits, punctuation orphans, and
+// NO blank lines between paragraphs. Strategy: walk line-by-line.
 function normalisePdfText(raw: string): string[] {
-  // Pre-pass: fix hyphenated breaks and strip lone page numbers
   const text = raw
     .replace(/-\n[ \t]*/g, '')          // "emerg-\ne" → "emerge"
-    .replace(/^\s*\d{1,4}\s*$/gm, ''); // strip lines that are only a number ("29")
+    .replace(/^\s*\d{1,4}\s*$/gm, ''); // strip lines that are only a page number
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const paragraphs: string[] = [];
@@ -73,19 +70,27 @@ function normalisePdfText(raw: string): string[] {
   for (const line of lines) {
     if (!buffer) { buffer = line; continue; }
 
-    // Single lowercase letter alone on a line = orphaned word fragment ("emerg" + "e")
+    // Single lowercase letter alone = orphaned word character (e.g. "emerg\ne")
     if (/^[a-z]$/.test(line)) {
-      buffer += line;   // join without space to complete the word
+      buffer += line;
       continue;
     }
 
-    // Punctuation orphan (comma/semicolon alone) = attach to previous without space
+    // Common word-ending suffix alone = split word (e.g. "shar\ned" → "shared")
+    // Only join without space when the previous token is also short (partial stem)
+    const lastToken = buffer.split(/\s+/).pop() ?? '';
+    if (WORD_SUFFIX_RE.test(line) && lastToken.length >= 2 && lastToken.length <= 8 && /[a-z]$/.test(lastToken)) {
+      buffer += line;
+      continue;
+    }
+
+    // Punctuation orphan = attach without space
     if (/^[,;]$/.test(line)) {
       buffer += line;
       continue;
     }
 
-    // Paragraph break: previous sentence ended with .?! AND this line starts uppercase
+    // Paragraph break: previous sentence ended (.?!) AND this line starts uppercase
     const prevEndsSentence = /[.!?]\s*$/.test(buffer);
     const lineStartsUpper  = /^[A-Z]/.test(line);
 
@@ -93,7 +98,7 @@ function normalisePdfText(raw: string): string[] {
       paragraphs.push(buffer.replace(/\s+/g, ' ').trim());
       buffer = line;
     } else {
-      buffer += ' ' + line;  // same paragraph — join with a space
+      buffer += ' ' + line;
     }
   }
 
@@ -274,7 +279,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
               ].map(q => (
                 <Link
                   key={q}
-                  href={`/chapters/${chapter.id}/chat?q=${encodeURIComponent(q)}&section=${section.id}`}
+                  href={`/chapters/${chapter.id}/sections/${section.id}/chat?q=${encodeURIComponent(q)}`}
                   className="block text-xs text-blue-700 hover:underline"
                 >
                   → {q}
@@ -283,7 +288,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             </div>
             <div className="flex gap-3">
               <Link
-                href={`/chapters/${chapter.id}/chat?section=${section.id}`}
+                href={`/chapters/${chapter.id}/sections/${section.id}/chat`}
                 className="flex-1"
               >
                 <Button variant="outline" className="w-full gap-1.5">
