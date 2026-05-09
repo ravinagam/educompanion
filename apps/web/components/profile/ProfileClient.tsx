@@ -306,7 +306,7 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
       </Card>
 
       {/* Refer a Friend */}
-      <Card className="border-0 shadow-md overflow-hidden">
+      <Card id="refer" className="border-0 shadow-md overflow-hidden">
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-3 flex items-center gap-2 text-white font-semibold text-sm">
           <Users className="h-4 w-4" /> Refer &amp; Earn
         </div>
