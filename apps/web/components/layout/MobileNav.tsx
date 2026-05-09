@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { Menu, BookMarked, LayoutDashboard, Upload, CalendarCheck, BookOpen } from 'lucide-react';
+import { Menu, BookMarked, LayoutDashboard, Upload, CalendarCheck, BookOpen, HelpCircle } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 
 const nav = [
@@ -13,6 +13,7 @@ const nav = [
   { label: 'Upload Chapter', href: '/upload', icon: Upload },
   { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
   { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
+  { label: 'How to Use', href: '/how-to-use', icon: HelpCircle },
 ];
 
 interface Props { user: User }
