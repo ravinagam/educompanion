@@ -5,6 +5,33 @@ import { logCostDirect, VOYAGE_COST_PER_M } from '@/lib/ai/usage';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
+// Throws a user-visible error message when extracted text is too short, too sparse,
+// or looks garbled (e.g. scanned PDF that partially extracted, words jammed together).
+function validateContent(text: string): void {
+  const trimmed = text.trim();
+
+  if (trimmed.length < 300) {
+    throw new Error('This document has too little text to process. Please upload a more complete chapter (at least a few paragraphs).');
+  }
+
+  const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 50) {
+    throw new Error('This document has too few words to create study materials from. Please upload a more detailed document.');
+  }
+
+  // Low ratio of readable chars (letters, digits, spaces) suggests garbled extraction
+  const readableChars = (trimmed.match(/[a-zA-Z0-9 \n]/g) ?? []).length;
+  if (readableChars / trimmed.length < 0.45) {
+    throw new Error('Text could not be read clearly from this document — it may be a scanned image PDF without selectable text. Try uploading the pages as photos instead.');
+  }
+
+  // Very high average word length means words are jammed together (OCR/export artifact)
+  const avgWordLen = trimmed.length / words.length;
+  if (avgWordLen > 25) {
+    throw new Error('Document text appears garbled with words joined together — this can happen with some exported or scanned PDFs. Try re-exporting or saving the document in a different format.');
+  }
+}
+
 export async function processChapterAsync(
   chapterId: string,
   buffer: Buffer,
@@ -45,12 +72,18 @@ export async function processTextContent(
   contentText: string,
   userId?: string
 ) {
+  validateContent(contentText);
+
   console.log('[process] Computing complexity');
   const complexityScore = computeComplexityScore(contentText);
 
   console.log('[process] Chunking text');
   const chunks = chunkText(contentText);
   console.log('[process]', chunks.length, 'chunks created');
+
+  if (chunks.length < 2) {
+    throw new Error('This document does not have enough structured content to generate learning materials from. Please upload a more complete chapter.');
+  };
 
   await admin.from('chapter_embeddings').delete().eq('chapter_id', chapterId);
 

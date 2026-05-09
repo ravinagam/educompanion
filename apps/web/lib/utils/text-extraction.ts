@@ -9,11 +9,14 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     result = await pdfParse(buffer);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`PDF parsing failed: ${msg}`);
+    const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+    if (msg.includes('password') || msg.includes('encrypt')) {
+      throw new Error('This PDF is password-protected. Please remove the password and re-upload.');
+    }
+    throw new Error('Could not read this PDF — it may be corrupted or in an unsupported format. Try re-exporting it from the original application.');
   }
   if (!result.text?.trim()) {
-    throw new Error('PDF appears to be scanned/image-only or encrypted — no text could be extracted');
+    throw new Error('This PDF contains no selectable text. It is likely a scanned image PDF — try uploading the pages as photos instead using the "Upload as Photos" option.');
   }
   return result.text;
 }
@@ -27,6 +30,7 @@ export async function extractTextFromBuffer(
 
   if (mimeType === 'text/plain') {
     text = buffer.toString('utf-8');
+    if (!text.trim()) throw new Error('This text file appears to be empty.');
   } else if (mimeType === 'application/pdf') {
     text = await extractPdfText(buffer);
   } else if (
@@ -35,11 +39,12 @@ export async function extractTextFromBuffer(
   ) {
     const mammoth = await import('mammoth');
     const result = await mammoth.extractRawText({ buffer });
+    if (!result.value.trim()) throw new Error('This Word document appears to be empty or contains no readable text.');
     text = result.value;
   } else if (mimeType.startsWith('image/')) {
-    return `[Image file: ${filename}] - Image content uploaded. AI will reference this visual material.`;
+    throw new Error('Images cannot be processed as documents. Use the "Upload as Photos" option to let AI read your page images.');
   } else {
-    throw new Error(`Unsupported file type: ${mimeType}`);
+    throw new Error('File type not supported. Please upload a PDF, Word document (.docx/.doc), or text file (.txt).');
   }
 
   // Cap text to prevent excessive chunking for very large files
