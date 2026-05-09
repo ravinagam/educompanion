@@ -7,7 +7,7 @@ const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
 // Throws a user-visible error message when extracted text is too short, too sparse,
 // or looks garbled (e.g. scanned PDF that partially extracted, words jammed together).
-function validateContent(text: string): void {
+export function validateContent(text: string): void {
   const trimmed = text.trim();
 
   if (trimmed.length < 300) {
