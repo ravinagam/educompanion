@@ -414,6 +414,10 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
               </button>
             </div>
 
+            <p className="text-xs text-gray-400 text-center">
+              File: PDF · Word (.docx) · Text (.txt) · max 50 MB &nbsp;|&nbsp; Photos: PNG · JPG · WEBP · max 30 pages
+            </p>
+
             {/* ── File mode ── */}
             {uploadMode === 'file' && (
               <div className="space-y-3">

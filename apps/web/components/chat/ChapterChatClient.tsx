@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, Send, Loader2, Bot, User, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Bot, User, Lightbulb, Trash2 } from 'lucide-react';
 
 // Renders AI markdown responses: bold, italic, headers, bullet/numbered lists, code, dividers.
 function MarkdownMessage({ text }: { text: string }) {
@@ -115,13 +115,40 @@ const STARTER_QUESTIONS = [
   'What exam questions are usually asked from this chapter?',
 ];
 
+function chatStorageKey(chapterId: string, section?: string) {
+  return `easestudy_chat_v1_${chapterId}${section ? `_${section.slice(0, 40)}` : ''}`;
+}
+
 export function ChapterChatClient({ chapter, subjectName, apiUrl, backHref, contextLabel = 'this chapter', sectionTitle, initialQuestion }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const storageKey = chatStorageKey(chapter.id, sectionTitle);
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const didSendInitial = useRef(false);
+
+  // Persist messages to localStorage (keep last 30 to avoid bloat)
+  useEffect(() => {
+    if (messages.length === 0) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(messages.slice(-30))); } catch {}
+  }, [messages, storageKey]);
+
+  function clearChat() {
+    try { localStorage.removeItem(storageKey); } catch {}
+    setMessages([]);
+  }
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -172,9 +199,20 @@ export function ChapterChatClient({ chapter, subjectName, apiUrl, backHref, cont
     <div className="flex flex-col max-w-2xl mx-auto h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 px-5 py-4 text-white shadow-md mb-4 shrink-0">
-        <Link href={backHref ?? `/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs mb-1 transition-colors">
-          <ArrowLeft className="h-3 w-3" /> {sectionTitle ? 'Back to Section' : 'My Saved Chapters'}
-        </Link>
+        <div className="flex items-center justify-between mb-1">
+          <Link href={backHref ?? `/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs transition-colors">
+            <ArrowLeft className="h-3 w-3" /> {sectionTitle ? 'Back to Section' : 'My Saved Chapters'}
+          </Link>
+          {messages.length > 0 && (
+            <button
+              onClick={clearChat}
+              className="text-emerald-200 hover:text-white flex items-center gap-1 text-xs transition-colors"
+              title="Clear chat history"
+            >
+              <Trash2 className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <Bot className="h-5 w-5 text-white" />

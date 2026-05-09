@@ -22,6 +22,19 @@ interface Chapter {
   file_name: string | null;
   file_size_bytes: number | null;
   error_message: string | null;
+  section_total: number;
+  section_completed: number;
+}
+
+function isContentError(msg: string | null): boolean {
+  if (!msg) return false;
+  const phrases = [
+    'too little text', 'too few words', 'could not be read clearly',
+    'appears garbled', 'not enough structured', 'contains no selectable text',
+    'password-protected', 'Could not read this PDF', 'appears to be empty',
+    'cannot be processed as documents', 'File type not supported',
+  ];
+  return phrases.some(p => msg.toLowerCase().includes(p.toLowerCase()));
 }
 
 interface Subject {
@@ -77,8 +90,33 @@ function ChapterCard({
   onDelete: () => void;
   onRetry: () => void;
 }) {
+  const router = useRouter();
   const ready = chapter.upload_status === 'ready';
-  const canRetry = chapter.upload_status === 'error' || chapter.upload_status === 'processing';
+  const canRetry = (chapter.upload_status === 'error' || chapter.upload_status === 'processing') && !isContentError(chapter.error_message);
+  const [displayName, setDisplayName] = useState(chapter.name);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(chapter.name);
+  const [renaming, setRenaming] = useState(false);
+
+  async function saveRename() {
+    const name = editName.trim();
+    setEditing(false);
+    if (!name || name === displayName) { setEditName(displayName); return; }
+    setRenaming(true);
+    const res = await fetch(`/api/chapters/${chapter.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    setRenaming(false);
+    if (res.ok) {
+      setDisplayName(name);
+      setEditName(name);
+    } else {
+      toast.error('Failed to rename chapter');
+      setEditName(displayName);
+    }
+  }
 
   const topActions = [
     { key: 'sections',   href: `/chapters/${chapter.id}/sections`,   icon: <BookOpen className="h-4 w-4" />,      label: 'Sections' },
@@ -98,7 +136,29 @@ function ChapterCard({
         {/* Title row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">{chapter.name}</p>
+            {editing ? (
+              <input
+                autoFocus
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                onBlur={saveRename}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') saveRename();
+                  if (e.key === 'Escape') { setEditing(false); setEditName(displayName); }
+                }}
+                disabled={renaming}
+                className="font-semibold text-gray-900 text-sm w-full border-b border-indigo-400 outline-none bg-transparent pb-0.5"
+              />
+            ) : (
+              <p
+                className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 cursor-text hover:text-indigo-700 transition-colors"
+                onClick={() => { setEditing(true); setEditName(displayName); }}
+                title="Click to rename"
+              >
+                {displayName}
+                {renaming && <Loader2 className="inline h-3 w-3 animate-spin ml-1 text-gray-400" />}
+              </p>
+            )}
             {chapter.file_size_bytes && (
               <p className="text-xs text-gray-400 mt-0.5">{formatBytes(chapter.file_size_bytes)}</p>
             )}
@@ -116,6 +176,9 @@ function ChapterCard({
         {/* Status */}
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={chapter.upload_status} />
+          {chapter.upload_status === 'processing' && (
+            <span className="text-xs text-gray-400">Usually ready in ~30 sec</span>
+          )}
           {mastered && (
             <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 gap-1 text-xs">
               <Trophy className="h-3 w-3" />Mastered
@@ -134,6 +197,9 @@ function ChapterCard({
               {retrying ? 'Retrying…' : 'Retry'}
             </button>
           )}
+          {chapter.upload_status === 'error' && isContentError(chapter.error_message) && (
+            <span className="text-xs text-red-400 italic">Delete and re-upload a different file</span>
+          )}
         </div>
 
         {/* Error detail */}
@@ -141,6 +207,35 @@ function ChapterCard({
           <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2 leading-relaxed">
             {chapter.error_message}
           </p>
+        )}
+
+        {/* Section progress + "what to study next" nudge */}
+        {ready && chapter.section_total > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">{chapter.section_completed}/{chapter.section_total} sections done</span>
+              {chapter.section_completed === chapter.section_total ? (
+                <Link href={`/chapters/${chapter.id}/quiz`} className="text-amber-600 font-semibold hover:underline">
+                  Take Chapter Quiz 🎯
+                </Link>
+              ) : (
+                <Link href={`/chapters/${chapter.id}/sections`} className="text-blue-600 font-semibold hover:underline">
+                  {chapter.section_completed === 0 ? 'Start here →' : 'Continue →'}
+                </Link>
+              )}
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${chapter.section_completed === chapter.section_total ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                style={{ width: `${Math.round(chapter.section_completed / chapter.section_total * 100)}%` }}
+              />
+            </div>
+            {chapter.section_completed === chapter.section_total && (
+              <p className="text-xs text-amber-700 font-medium text-center bg-amber-50 rounded-lg py-1">
+                All sections complete — ready for the chapter quiz!
+              </p>
+            )}
+          </div>
         )}
 
         {/* Action buttons — top row */}
@@ -204,6 +299,14 @@ export function SavedChaptersClient({ subjects }: Props) {
       .then(({ mastered }) => { if (Array.isArray(mastered)) setMasteredIds(new Set(mastered)); })
       .catch(() => {});
   }, []);
+
+  // Auto-refresh while any chapter is still processing
+  const hasProcessing = subjects.some(s => s.chapters.some(c => c.upload_status === 'processing'));
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const id = setInterval(() => router.refresh(), 5000);
+    return () => clearInterval(id);
+  }, [hasProcessing, router]);
 
   const hasSubjects = subjects.length > 0;
   const totalChapters = subjects.reduce((n, s) => n + s.chapters.length, 0);
