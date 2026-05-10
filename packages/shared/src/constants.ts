@@ -1,7 +1,9 @@
 export const BOARDS = ['CBSE', 'ICSE', 'State', 'Custom'] as const;
-export const GRADES = [8, 9, 10, 11, 12] as const;
+export const GRADES = [6, 7, 8, 9, 10, 11, 12] as const;
 
 export const DEFAULT_SUBJECTS_BY_GRADE: Record<number, string[]> = {
+  6: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
+  7: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
   8: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
   9: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
   10: ['Mathematics', 'Science', 'Social Studies', 'English', 'Hindi'],
