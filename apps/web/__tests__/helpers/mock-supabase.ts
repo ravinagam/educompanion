@@ -5,7 +5,7 @@ export type MockResult = { data?: unknown; error?: { message: string } | null };
 /** Returns a chainable Supabase query builder that resolves to `result`. */
 export function makeChain(result: MockResult = { data: null, error: null }) {
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'neq', 'order', 'limit', 'insert', 'update', 'delete', 'upsert', 'in']) {
+  for (const m of ['select', 'eq', 'neq', 'or', 'gte', 'lte', 'gt', 'lt', 'not', 'filter', 'order', 'limit', 'insert', 'update', 'delete', 'upsert', 'in']) {
     chain[m] = () => chain;
   }
   chain['single'] = () => Promise.resolve(result);

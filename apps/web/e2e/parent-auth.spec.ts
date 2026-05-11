@@ -44,7 +44,6 @@ test.describe('Parent login page', () => {
 
   test('renders Parent Portal heading and form', async ({ page }) => {
     await expect(page.getByText('Parent Portal')).toBeVisible();
-    await expect(page.getByText('Sign In')).toBeVisible();
     await expect(page.getByLabel('Parent Phone Number')).toBeVisible();
     await expect(page.getByLabel('Password')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
@@ -56,13 +55,14 @@ test.describe('Parent login page', () => {
 
   test('switches to register mode when "Create parent account" is clicked', async ({ page }) => {
     await page.getByRole('button', { name: /create parent account/i }).click();
-    await expect(page.getByText('Create Account')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
     await expect(page.getByLabel('Confirm Password')).toBeVisible();
   });
 
   test('switches back to login mode from register mode', async ({ page }) => {
     await page.getByRole('button', { name: /create parent account/i }).click();
-    await page.getByRole('button', { name: /already have an account/i }).click();
+    // In register mode the toggle button text is "Sign in"
+    await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page.getByLabel('Parent Phone Number')).toBeVisible();
     await expect(page.getByLabel('Confirm Password')).not.toBeVisible();
   });
