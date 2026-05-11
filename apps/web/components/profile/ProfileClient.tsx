@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2, Copy, Users } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, BookOpen, Pencil, Check, X, LogOut, Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2, Copy, Users, UserCheck } from 'lucide-react';
 import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
 import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 
@@ -363,6 +363,56 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
           ) : (
             <div className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
               Your referral code is being generated. Please check back in a moment.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Invite Parent */}
+      <Card className="border-0 shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-teal-500 to-emerald-600 px-5 py-3 flex items-center gap-2 text-white font-semibold text-sm">
+          <UserCheck className="h-4 w-4" /> Invite Your Parent
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <p className="text-sm text-gray-600">
+            Let your parent track your progress — quizzes, streaks, mastery, and AI-powered study insights — from their own dashboard.
+          </p>
+          <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 space-y-2 text-sm">
+            <p className="text-teal-700 font-medium">How it works:</p>
+            <ol className="text-teal-600 space-y-1 list-decimal list-inside text-xs leading-relaxed">
+              <li>Share this message with your parent</li>
+              <li>They visit <span className="font-mono font-semibold">easestudy.in/parent-login</span></li>
+              <li>They register using your phone number as their login ID</li>
+            </ol>
+          </div>
+          {profile.phone_number ? (
+            <div className="space-y-2">
+              <div className="bg-white border border-teal-100 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-teal-400 leading-none mb-1">Your phone number (parent&apos;s login ID)</p>
+                <p className="text-sm font-mono font-semibold text-teal-800">{profile.phone_number}</p>
+              </div>
+              <Button
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2"
+                onClick={async () => {
+                  const msg = `Hi! You can track my EaseStudy study progress from the Parent Portal.\n\n👉 Visit: https://easestudy.in/parent-login\n📱 Register using my phone number: ${profile.phone_number}\n\nYou'll see my quiz scores, study streaks, chapter mastery, and personalised AI insights!`;
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({ title: 'Track my EaseStudy progress', text: msg });
+                    } catch {
+                      // user cancelled
+                    }
+                  } else {
+                    navigator.clipboard.writeText(msg);
+                    toast.success('Message copied! Send it to your parent.');
+                  }
+                }}
+              >
+                <Share2 className="h-4 w-4" /> Share with Parent
+              </Button>
+            </div>
+          ) : (
+            <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-3">
+              Add your parent&apos;s phone number in Profile Details below to enable the Parent Portal.
             </div>
           )}
         </CardContent>
