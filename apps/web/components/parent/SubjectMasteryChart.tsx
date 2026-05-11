@@ -46,8 +46,8 @@ export function SubjectMasteryChart({ subjects }: { subjects: SubjectData[] }) {
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`} />
             <Tooltip
-              formatter={(val: number, name: string) => [`${val}%`, name === 'mastery' ? 'Mastery' : 'Quiz Avg']}
-              labelFormatter={(label: string) => chartData.find(d => d.name === label)?.fullName ?? label}
+              formatter={(val, name) => [`${val}%`, name === 'mastery' ? 'Mastery' : 'Quiz Avg']}
+              labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName ?? String(label)}
               contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: 12 }}
             />
             <Bar dataKey="mastery" radius={[6, 6, 0, 0]} name="mastery">

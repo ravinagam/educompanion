@@ -92,21 +92,21 @@ export async function POST(_req: Request, { params }: Params) {
     const chapterIds = new Set((subj.chapters ?? []).map((c: { id: string }) => c.id));
     const masteredCount = [...chapterIds].filter(id => masterySet.has(id)).length;
 
-    const subjAttempts = (quizAttempts ?? []).filter((a: { quizzes: { subjects: { name: string } } }) =>
-      (a.quizzes as unknown as { subjects: { name: string } })?.subjects?.name === subj.name
+    const subjAttempts = (quizAttempts ?? []).filter((a: any) =>
+      (a.quizzes as { subjects: { name: string } })?.subjects?.name === subj.name
     );
     const avgScore = subjAttempts.length > 0
-      ? Math.round(subjAttempts.reduce((sum: number, a: { score: number; total: number }) =>
+      ? Math.round(subjAttempts.reduce((sum: number, a: any) =>
           sum + (a.total > 0 ? (a.score / a.total) * 100 : 0), 0) / subjAttempts.length)
       : null;
 
     const recent14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    const attemptsLast14 = subjAttempts.filter((a: { taken_at: string }) => new Date(a.taken_at) >= recent14d).length;
+    const attemptsLast14 = subjAttempts.filter((a: any) => new Date(a.taken_at) >= recent14d).length;
 
-    const subjFlashcards = (flashcardProgress ?? []).filter((fp: { flashcards: { chapters: { subjects: { name: string } } } }) =>
-      (fp.flashcards as unknown as { chapters: { subjects: { name: string } } })?.chapters?.subjects?.name === subj.name
+    const subjFlashcards = (flashcardProgress ?? []).filter((fp: any) =>
+      (fp.flashcards as { chapters: { subjects: { name: string } } })?.chapters?.subjects?.name === subj.name
     );
-    const known = subjFlashcards.filter((fp: { status: string }) => fp.status === 'known').length;
+    const known = subjFlashcards.filter((fp: any) => fp.status === 'known').length;
 
     return {
       name: subj.name,
@@ -123,8 +123,8 @@ export async function POST(_req: Request, { params }: Params) {
   const totalChapters = subjectSnapshots.reduce((s, x) => s + x.chapters_total, 0);
   const masteredChapters = subjectSnapshots.reduce((s, x) => s + x.chapters_mastered, 0);
   const allScores = (quizAttempts ?? [])
-    .filter((a: { total: number }) => a.total > 0)
-    .map((a: { score: number; total: number }) => (a.score / a.total) * 100);
+    .filter((a: any) => a.total > 0)
+    .map((a: any) => (a.score / a.total) * 100);
   const overallAvg = allScores.length > 0
     ? Math.round(allScores.reduce((s: number, x: number) => s + x, 0) / allScores.length)
     : null;

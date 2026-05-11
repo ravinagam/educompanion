@@ -43,7 +43,7 @@ export function QuizTrendChart({ points }: { points: QuizTrendPoint[] }) {
           <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
           <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`} />
           <Tooltip
-            formatter={(val: number) => [`${val}%`, 'Score']}
+            formatter={(val) => [`${val}%`, 'Score']}
             contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: 12 }}
           />
           <ReferenceLine y={avg} stroke="#a5b4fc" strokeDasharray="4 4" label={{ value: `Avg ${avg}%`, fill: '#6366f1', fontSize: 11, position: 'insideTopRight' }} />
