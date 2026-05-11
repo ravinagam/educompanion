@@ -59,12 +59,6 @@ export default async function LandingPage() {
               <div className="flex items-center gap-1.5 text-sm font-semibold">
                 Sign In <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </div>
-              <p className="text-blue-200 text-xs mt-2">
-                New?{' '}
-                <Link href="/auth/signup" className="underline" onClick={e => e.stopPropagation()}>
-                  Create student account
-                </Link>
-              </p>
             </div>
           </Link>
 
@@ -88,6 +82,13 @@ export default async function LandingPage() {
             </div>
           </Link>
         </div>
+
+        <p className="text-sm text-gray-400 mt-1">
+          New student?{' '}
+          <Link href="/auth/signup" className="text-indigo-600 hover:underline font-medium">
+            Create a free account
+          </Link>
+        </p>
 
         {/* Feature pills */}
         <div className="flex flex-wrap justify-center gap-2 mt-10">
