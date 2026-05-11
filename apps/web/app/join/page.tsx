@@ -77,6 +77,14 @@ function JoinContent() {
             Sign in
           </button>
         </p>
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-400">
+            Are you a parent?{' '}
+            <button className="text-violet-600 hover:underline font-medium" onClick={() => router.push('/parent-login')}>
+              Go to Parent Portal →
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
