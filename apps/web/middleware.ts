@@ -6,15 +6,14 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Admin, API, and terms routes don't need the student session check.
-  // Running getUser() on these routes would let the middleware refresh or
-  // clear student cookies as a side-effect of admin navigation — which can
-  // silently log the student out while they're mid-quiz.
+  // Routes that bypass session checks entirely
   if (
     pathname.startsWith('/admin') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/terms') ||
-    pathname.startsWith('/join')
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/parent-login') ||
+    pathname === '/'
   ) {
     return supabaseResponse;
   }
@@ -41,8 +40,28 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  const isParent = user?.user_metadata?.role === 'parent';
+  const isParentRoute = pathname.startsWith('/parent');
   const isAuthRoute = pathname.startsWith('/auth');
 
+  // Parent user trying to access student routes → send to parent dashboard
+  if (user && isParent && !isParentRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/parent';
+    return NextResponse.redirect(url);
+  }
+
+  // Unauthenticated or non-parent user trying to access parent routes → parent login
+  if (isParentRoute) {
+    if (!user || !isParent) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/parent-login';
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
+
+  // Student auth flow
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';

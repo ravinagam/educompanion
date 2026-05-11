@@ -186,7 +186,10 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="phone_number">Phone Number <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Label htmlFor="phone_number">
+                  Parent&apos;s Phone Number{' '}
+                  <span className="text-gray-400 font-normal">(optional — used for Parent Login)</span>
+                </Label>
                 <Input
                   id="phone_number"
                   type="tel"

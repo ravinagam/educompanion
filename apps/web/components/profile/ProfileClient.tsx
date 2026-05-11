@@ -418,7 +418,7 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
 
           {/* Phone */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Phone <span className="normal-case text-gray-300">(optional)</span></Label>
+            <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Parent&apos;s Phone <span className="normal-case text-gray-300">(used for Parent Login)</span></Label>
             {editing ? (
               <Input type="tel" placeholder="+91 98765 43210" value={form.phone_number} onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))} />
             ) : (
