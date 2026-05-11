@@ -130,7 +130,8 @@ function toSpeechText(text: string): string {
     // + between terms → "plus"
     .replace(/(?<=\S)\s*\+\s*(?=\S)/g, ' plus ')
     .replace(/\s{2,}/g, ' ')
-    .trim();
+    .trim()
+    .replace(/([^.!?])$/, '$1.');
 }
 
 // Try Wikipedia summary API (exact title), fall back to search

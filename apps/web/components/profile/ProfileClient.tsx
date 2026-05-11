@@ -334,6 +334,26 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-12 px-3 border-violet-200 text-violet-700 hover:bg-violet-50"
+                  onClick={async () => {
+                    const url = `https://easestudy.in/join?ref=${referralCode}`;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({ title: 'Join EaseStudy', text: 'Sign up with my referral link and get +100 XP!', url });
+                      } catch {
+                        // user cancelled or share failed — no-op
+                      }
+                    } else {
+                      navigator.clipboard.writeText(url);
+                      toast.success('Referral link copied!');
+                    }
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Users className="h-4 w-4 text-violet-400 shrink-0" />
