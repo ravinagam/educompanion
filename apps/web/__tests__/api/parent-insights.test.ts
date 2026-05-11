@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeChain } from '../helpers/mock-supabase';
+import { generateParentInsights } from '@/lib/ai/parent-insights';
 
 // Module-level mock state
 const sb = { getUser: vi.fn(), from: vi.fn() };
@@ -14,16 +15,18 @@ vi.mock('@/lib/supabase/admin', () => ({
 }));
 
 vi.mock('@/lib/ai/parent-insights', () => ({
-  generateParentInsights: vi.fn().mockResolvedValue({
-    strengths: ['Good quiz performance in Maths'],
-    weaknesses: ['Science needs more practice'],
-    opportunities: ['Near mastery in Social Studies'],
-    threats: ['Inconsistent study streak'],
-    recommendations: ['Revise Science this week'],
-    alerts: [],
-    parent_message: 'Arjun is doing well overall.',
-  }),
+  generateParentInsights: vi.fn(),
 }));
+
+const MOCK_INSIGHTS = {
+  strengths: ['Good quiz performance in Maths'],
+  weaknesses: ['Science needs more practice'],
+  opportunities: ['Near mastery in Social Studies'],
+  threats: ['Inconsistent study streak'],
+  recommendations: ['Revise Science this week'],
+  alerts: [],
+  parent_message: 'Arjun is doing well overall.',
+};
 
 const PARENT_USER = {
   id: 'parent-1',
@@ -117,6 +120,7 @@ describe('GET /api/parent/insights/[studentId]', () => {
 describe('POST /api/parent/insights/[studentId]', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(generateParentInsights).mockResolvedValue(MOCK_INSIGHTS);
   });
 
   it('returns 401 when not a parent', async () => {
@@ -139,8 +143,21 @@ describe('POST /api/parent/insights/[studentId]', () => {
   it('generates and returns insights for verified parent', async () => {
     sb.getUser.mockResolvedValue({ data: { user: PARENT_USER } });
 
-    // All admin.from calls return safe empty data
-    admin.from.mockReturnValue(makeChain({ data: STUDENT_ROW, error: null }));
+    // Calls happen in this order inside the POST handler:
+    // 1. student lookup (.single()) — phone verification
+    admin.from.mockReturnValueOnce(makeChain({ data: STUDENT_ROW, error: null }));
+    // 2a. user_gamification (.single())
+    admin.from.mockReturnValueOnce(makeChain({ data: { current_streak: 2, last_active_date: null }, error: null }));
+    // 2b. subjects (array)
+    admin.from.mockReturnValueOnce(makeChain({ data: [], error: null }));
+    // 2c. chapter_mastery (array)
+    admin.from.mockReturnValueOnce(makeChain({ data: [], error: null }));
+    // 2d. quiz_attempts (array) — must be array so .filter() works
+    admin.from.mockReturnValueOnce(makeChain({ data: [], error: null }));
+    // 2e. flashcard_progress (array)
+    admin.from.mockReturnValueOnce(makeChain({ data: [], error: null }));
+    // 3. parent_insights upsert
+    admin.from.mockReturnValue(makeChain({ data: null, error: null }));
 
     const { POST } = await import('@/app/api/parent/insights/[studentId]/route');
     const res = await POST(new Request('http://localhost') as any, makeParams() as any);
