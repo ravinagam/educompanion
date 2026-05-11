@@ -582,7 +582,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">{r.user!.name}</p>
-                                <p className="text-xs text-gray-400">{r.user!.email}</p>
+                                <p className="text-xs text-gray-400">{r.user!.contact_email || r.user!.email}</p>
                               </div>
                             </div>
                           </td>
@@ -638,7 +638,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
                         <span className="text-sm font-medium text-gray-900">{referrer?.name ?? 'Unknown'}</span>
                         <span className="text-gray-400 text-xs mx-2">invited</span>
                         <span className="text-sm font-medium text-gray-900">{referred?.name ?? 'Unknown'}</span>
-                        {referred?.email && <span className="text-xs text-gray-400 ml-1">({referred.email})</span>}
+                        {(referred?.contact_email || referred?.email) && <span className="text-xs text-gray-400 ml-1">({referred?.contact_email || referred?.email})</span>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {r.rewarded_at
