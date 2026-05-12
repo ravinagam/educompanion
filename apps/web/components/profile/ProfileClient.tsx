@@ -446,52 +446,47 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
             </div>
           )}
         </div>
-        <CardContent className="p-5 space-y-4">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Full Name</Label>
-            {editing ? (
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            ) : (
-              <p className="text-sm font-medium text-gray-900">{profile.name}</p>
-            )}
-          </div>
-
-          {/* Grade & Board — read only */}
-          <div className="flex gap-4">
-            <div className="space-y-1.5 flex-1">
+        <CardContent className="p-5">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+            {/* Row 1: Name | Class | Board */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Full Name</Label>
+              {editing ? (
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              ) : (
+                <p className="text-sm font-medium text-gray-900">{profile.name}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" />Class</Label>
               <Badge className="bg-indigo-50 text-indigo-700 border-0">Class {profile.grade}</Badge>
             </div>
-            <div className="space-y-1.5 flex-1">
+            <div className="space-y-1.5">
               <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" />Board</Label>
               <Badge className="bg-violet-50 text-violet-700 border-0">{profile.board}</Badge>
             </div>
-          </div>
 
-          {/* Contact Email */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />Email <span className="normal-case text-gray-300">(optional)</span></Label>
-            {editing ? (
-              <Input type="email" placeholder="your@email.com" value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} />
-            ) : (
-              <p className="text-sm text-gray-700">{profile.contact_email || <span className="text-gray-300 italic">Not provided</span>}</p>
-            )}
-          </div>
-
-          {/* Phone */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Parent&apos;s Phone <span className="normal-case text-gray-300">(used for Parent Login)</span></Label>
-            {editing ? (
-              <Input type="tel" placeholder="+91 98765 43210" value={form.phone_number} onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))} />
-            ) : (
-              <p className="text-sm text-gray-700">{profile.phone_number || <span className="text-gray-300 italic">Not provided</span>}</p>
-            )}
-          </div>
-
-          {/* Member since */}
-          <div className="pt-1 border-t border-gray-100">
-            <p className="text-xs text-gray-400">Member since {new Date(profile.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            {/* Row 2: Email | Parent's Phone | Member since */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />Email <span className="normal-case text-gray-300">(optional)</span></Label>
+              {editing ? (
+                <Input type="email" placeholder="your@email.com" value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} />
+              ) : (
+                <p className="text-sm text-gray-700">{profile.contact_email || <span className="text-gray-300 italic">Not provided</span>}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Parent&apos;s Phone <span className="normal-case text-gray-300">(Parent Login)</span></Label>
+              {editing ? (
+                <Input type="tel" placeholder="+91 98765 43210" value={form.phone_number} onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))} />
+              ) : (
+                <p className="text-sm text-gray-700">{profile.phone_number || <span className="text-gray-300 italic">Not provided</span>}</p>
+              )}
+            </div>
+            <div className="space-y-1.5 flex flex-col justify-end">
+              <p className="text-xs text-gray-400">Member since</p>
+              <p className="text-sm text-gray-600">{new Date(profile.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
