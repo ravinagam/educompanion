@@ -13,7 +13,7 @@ test.describe('Landing page', () => {
 
   test('renders EaseStudy brand and tagline', async ({ page }) => {
     await expect(page.getByText('EaseStudy').first()).toBeVisible();
-    await expect(page.getByText(/smart learning/i)).toBeVisible();
+    await expect(page.getByText(/your ai study partner/i)).toBeVisible();
   });
 
   test('shows both Student and Parent login options', async ({ page }) => {
