@@ -5,14 +5,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('How to Use page', () => {
-  test('loads and shows all five steps', async ({ page }) => {
+  test('loads and shows student and parent sections', async ({ page }) => {
     await page.goto('/how-to-use');
     await expect(page).toHaveURL(/\/how-to-use/);
-    await expect(page.getByRole('heading', { name: /how to use/i })).toBeVisible();
-    // All 5 step headings should be present
-    for (const heading of ['Upload a chapter', 'Read it section by section', 'Test yourself', 'Ask AI anything', 'Track your progress']) {
-      await expect(page.getByText(heading)).toBeVisible();
-    }
+    await expect(page.getByRole('heading', { name: /see how easestudy works/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /for students/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /for parents/i })).toBeVisible();
   });
 
   test('nav link is visible in the sidebar', async ({ page }) => {
@@ -20,11 +18,11 @@ test.describe('How to Use page', () => {
     await expect(page.getByRole('link', { name: /how to use/i })).toBeVisible();
   });
 
-  test('CTA button links to /upload', async ({ page }) => {
+  test('student Sign Up Free link points to /auth/signup', async ({ page }) => {
     await page.goto('/how-to-use');
-    const cta = page.getByRole('link', { name: /upload your first chapter/i });
+    const cta = page.getByRole('link', { name: /sign up free/i });
     await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute('href', '/upload');
+    await expect(cta).toHaveAttribute('href', '/auth/signup');
   });
 });
 
