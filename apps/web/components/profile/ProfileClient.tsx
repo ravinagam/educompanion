@@ -431,16 +431,18 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
 
       {/* Profile Details — full width */}
       <Card className="border-0 shadow-md overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700">Profile Details</p>
+        <div className="bg-gradient-to-r from-slate-600 to-indigo-700 px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-semibold text-sm">
+            <User className="h-4 w-4" /> Profile Details
+          </div>
           {!editing ? (
-            <Button onClick={() => setEditing(true)} variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800 gap-1.5 h-7">
+            <Button onClick={() => setEditing(true)} variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 gap-1.5 h-7">
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Button onClick={cancel} variant="ghost" size="sm" className="text-gray-500 h-7 gap-1"><X className="h-3.5 w-3.5" />Cancel</Button>
-              <Button onClick={save} disabled={saving} size="sm" className="bg-indigo-600 hover:bg-indigo-700 h-7 gap-1"><Check className="h-3.5 w-3.5" />Save</Button>
+              <Button onClick={cancel} variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 h-7 gap-1"><X className="h-3.5 w-3.5" />Cancel</Button>
+              <Button onClick={save} disabled={saving} size="sm" className="bg-white text-indigo-700 hover:bg-white/90 h-7 gap-1"><Check className="h-3.5 w-3.5" />Save</Button>
             </div>
           )}
         </div>

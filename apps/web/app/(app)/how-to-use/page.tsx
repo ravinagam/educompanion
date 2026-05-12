@@ -79,7 +79,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; badge
 
 export default function HowToUsePage() {
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-10">
 
       {/* Hero */}
       <div className="text-center space-y-2">
@@ -93,12 +93,12 @@ export default function HowToUsePage() {
       </div>
 
       {/* Steps */}
-      <div className="space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {steps.map((step) => {
           const Icon = step.icon;
           const c = colorMap[step.color];
           return (
-            <div key={step.number} className={`rounded-2xl border ${c.border} ${c.bg} p-5`}>
+            <div key={step.number} className={`rounded-2xl border ${c.border} ${c.bg} p-5${step.number === 5 ? ' md:col-span-2' : ''}`}>
               <div className="flex items-start gap-4">
                 {/* Number badge */}
                 <div className={`h-8 w-8 rounded-full ${c.badge} text-white text-sm font-bold flex items-center justify-center shrink-0 mt-0.5`}>
@@ -135,7 +135,7 @@ export default function HowToUsePage() {
       {/* Feature grid */}
       <div>
         <h2 className="text-base font-bold text-gray-900 mb-3">All the tools at a glance</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {features.map(({ icon: Icon, color, name, desc }) => {
             const c = colorMap[color];
             return (
@@ -150,6 +150,9 @@ export default function HowToUsePage() {
           })}
         </div>
       </div>
+
+      {/* Tips + Screenshot callout side-by-side on desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
 
       {/* Tips box */}
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
@@ -174,7 +177,7 @@ export default function HowToUsePage() {
       </div>
 
       {/* Screenshot mode callout */}
-      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 flex gap-4 items-start">
+      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 flex gap-4 items-start h-full">
         <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
           <Camera className="h-5 w-5 text-white" />
         </div>
@@ -185,6 +188,8 @@ export default function HowToUsePage() {
           </p>
         </div>
       </div>
+
+      </div>{/* end tips + callout grid */}
 
       {/* CTA */}
       <div className="text-center pb-4">
