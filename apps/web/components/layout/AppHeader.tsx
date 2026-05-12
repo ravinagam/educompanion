@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Trophy } from 'lucide-react';
 import type { User as UserType } from '@educompanion/shared';
 import { MobileNav } from './MobileNav';
 import { XpBar } from '@/components/gamification/XpBar';
@@ -56,6 +56,10 @@ export function AppHeader({ user }: Props) {
           <DropdownMenuItem onClick={() => router.push('/profile')} className="flex items-center gap-2 cursor-pointer">
             <User className="h-4 w-4" />
             My Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push('/rewards')} className="flex items-center gap-2 cursor-pointer">
+            <Trophy className="h-4 w-4" />
+            Rewards
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-red-600 cursor-pointer">

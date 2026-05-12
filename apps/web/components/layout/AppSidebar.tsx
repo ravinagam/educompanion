@@ -5,18 +5,16 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Upload, CalendarCheck, BookOpen,
-  BookMarked, HelpCircle, Trophy, User as UserIcon,
+  BookMarked, HelpCircle,
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 const nav = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Upload Chapter', href: '/upload', icon: Upload },
-  { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
-  { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
-  { label: 'Rewards', href: '/rewards', icon: Trophy },
-  { label: 'Profile', href: '/profile', icon: UserIcon },
+  { label: 'Dashboard',         href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Upload Chapter',    href: '/upload',    icon: Upload },
+  { label: 'Study Planner',     href: '/tests',     icon: CalendarCheck },
+  { label: 'My Saved Chapters', href: '/chapters',  icon: BookOpen },
 ];
 
 interface Props { user: User }
@@ -60,10 +58,10 @@ export function AppSidebar({ user }: Props) {
 
       <div className="px-3 pb-2 border-t border-gray-100 pt-3">
         <Link
-          href="/how-to-use"
+          href="/guide"
           className={cn(
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-            pathname === '/how-to-use'
+            pathname === '/guide'
               ? 'bg-blue-50 text-blue-700'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           )}
