@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
-  BookOpen, Users, ChevronRight, Brain, Zap, Trophy,
+  BookOpen, Users, Brain, Zap, Trophy,
   MessageCircle, Play, CheckCircle2, BarChart2, Video,
 } from 'lucide-react';
 
@@ -67,17 +67,15 @@ export default async function LandingPage() {
               {/* Login cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg lg:max-w-none">
 
-                <Link
-                  href="/auth/login"
-                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 p-5 text-white shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-200"
-                >
+                {/* Student card */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 p-5 text-white shadow-lg">
                   <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
                   <div className="relative">
                     <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <h2 className="text-lg font-bold mb-2">I&apos;m a Student</h2>
-                    <ul className="space-y-1 mb-3">
+                    <ul className="space-y-1 mb-4">
                       {[
                         'Quizzes, flashcards & video lessons',
                         'AI tutor for any chapter question',
@@ -89,23 +87,26 @@ export default async function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <div className="flex items-center gap-1 text-sm font-semibold">
-                      Sign In <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    <div className="flex gap-2">
+                      <Link href="/auth/login" className="flex-1 text-center text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg py-2 transition-colors">
+                        Sign In
+                      </Link>
+                      <Link href="/auth/signup" className="flex-1 text-center text-xs font-semibold bg-white hover:bg-blue-50 text-indigo-700 rounded-lg py-2 transition-colors">
+                        Sign Up Free
+                      </Link>
                     </div>
                   </div>
-                </Link>
+                </div>
 
-                <Link
-                  href="/parent-login"
-                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-200"
-                >
+                {/* Parent card */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-lg">
                   <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
                   <div className="relative">
                     <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
                       <Users className="h-5 w-5" />
                     </div>
                     <h2 className="text-lg font-bold mb-2">I&apos;m a Parent</h2>
-                    <ul className="space-y-1 mb-3">
+                    <ul className="space-y-1 mb-4">
                       {[
                         'Track quiz scores & study streaks',
                         'Daily AI insights & recommendations',
@@ -117,20 +118,25 @@ export default async function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <div className="flex items-center gap-1 text-sm font-semibold">
-                      View Dashboard <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    <div className="flex gap-2">
+                      <Link href="/parent-login" className="flex-1 text-center text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg py-2 transition-colors">
+                        Sign In
+                      </Link>
+                      <Link href="/parent-login" className="flex-1 text-center text-xs font-semibold bg-white hover:bg-purple-50 text-violet-700 rounded-lg py-2 transition-colors">
+                        Register
+                      </Link>
                     </div>
                   </div>
-                </Link>
+                </div>
               </div>
 
               {/* Trust badges — single row */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-4">
                 {[
-                  { icon: Trophy,        label: 'Free Forever' },
+                  { icon: Trophy,        label: 'Free First 100' },
                   { icon: BookOpen,      label: 'Class 7–12' },
                   { icon: MessageCircle, label: 'Hindi & English' },
-                  { icon: Zap,           label: 'No App Needed' },
+                  { icon: Zap,           label: 'Works on Mobile' },
                 ].map(({ icon: Icon, label }) => (
                   <span key={label} className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm font-medium">
                     <Icon className="h-3.5 w-3.5 text-indigo-500" />

@@ -21,18 +21,24 @@ test.describe('Landing page', () => {
     await expect(page.getByText("I'm a Parent")).toBeVisible();
   });
 
-  test('Student card links to /auth/login', async ({ page }) => {
-    await page.getByText("I'm a Student").click();
+  test('Student card Sign In links to /auth/login', async ({ page }) => {
+    // Student card is first; its Sign In link is the first on the page
+    await page.getByRole('link', { name: 'Sign In' }).first().click();
     await expect(page).toHaveURL(/\/auth\/login/);
   });
 
-  test('Parent card links to /parent-login', async ({ page }) => {
-    await page.getByText("I'm a Parent").click();
+  test('Student card Sign Up links to /auth/signup', async ({ page }) => {
+    await page.getByRole('link', { name: /sign up free/i }).click();
+    await expect(page).toHaveURL(/\/auth\/signup/);
+  });
+
+  test('Parent card Register links to /parent-login', async ({ page }) => {
+    await page.getByRole('link', { name: /register/i }).click();
     await expect(page).toHaveURL(/\/parent-login/);
   });
 
-  test('signup link navigates to /auth/signup', async ({ page }) => {
-    await page.getByRole('link', { name: /get started free/i }).click();
+  test('nav signup link navigates to /auth/signup', async ({ page }) => {
+    await page.getByRole('link', { name: /get started free/i }).first().click();
     await expect(page).toHaveURL(/\/auth\/signup/);
   });
 });
