@@ -90,6 +90,18 @@ export default function GuidePage() {
         <p className="text-gray-500 text-sm">Five steps and you&apos;re set. Takes about two minutes to get started.</p>
       </div>
 
+      {/* Demo video */}
+      <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-black">
+        <video
+          controls
+          preload="metadata"
+          className="w-full max-h-[480px]"
+          poster=""
+        >
+          <source src="/easestudy-demo.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       {/* Steps */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {steps.map((step) => {

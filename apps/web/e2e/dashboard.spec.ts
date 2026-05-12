@@ -28,11 +28,11 @@ test.describe('How to Use page', () => {
 });
 
 test.describe('Dashboard', () => {
-  test('loads and shows the dashboard heading', async ({ page }) => {
+  test('loads and shows the dashboard greeting', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/dashboard/);
-    // Heading pattern: "{FirstName}'s Dashboard"
-    await expect(page.getByRole('heading', { level: 1 })).toContainText("Dashboard");
+    // Greeting heading: "Good morning/afternoon/evening, {FirstName}!"
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/good (morning|afternoon|evening)/i);
   });
 
   test('has navigation links for key sections', async ({ page }) => {
