@@ -55,9 +55,9 @@ function JoinContent() {
 
         <p className="text-gray-600">
           {referrerName ? (
-            <>{referrerName} thinks you&apos;ll love EaseStudy — the AI-powered study app for Class 8–10 students.</>
+            <>{referrerName} thinks you&apos;ll love EaseStudy — the AI-powered study app for Class 7–12 students.</>
           ) : (
-            <>Your friend invited you to join EaseStudy — the AI-powered study app for Class 8–10 students.</>
+            <>Your friend invited you to join EaseStudy — the AI-powered study app for Class 7–12 students.</>
           )}
         </p>
 

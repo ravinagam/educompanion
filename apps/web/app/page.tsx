@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
-  BookOpen, Users, ChevronRight, Brain, Zap, Trophy, MessageCircle, Play,
-  CheckCircle2, BarChart2, Video,
+  BookOpen, Users, ChevronRight, Brain, Zap, Trophy,
+  MessageCircle, Play, CheckCircle2, BarChart2, Video,
 } from 'lucide-react';
 
 export default async function LandingPage() {
@@ -20,10 +20,9 @@ export default async function LandingPage() {
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-200 opacity-30 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-200 opacity-30 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-blue-100 opacity-20 blur-3xl" />
 
       {/* Nav */}
-      <header className="relative z-10 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
+      <header className="relative z-10 px-6 py-3 flex items-center justify-between max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-2 text-indigo-700">
           <BookOpen className="h-6 w-6" />
           <span className="text-xl font-bold">EaseStudy</span>
@@ -42,35 +41,32 @@ export default async function LandingPage() {
       </header>
 
       {/* Hero */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-6 lg:py-10">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-3">
         <div className="w-full max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
             {/* ── Left: CTA ── */}
             <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
 
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-bold px-4 py-1.5 rounded-full mb-5 tracking-wide uppercase">
-                <Brain className="h-3.5 w-3.5" /> AI-Powered · Class 8–10 · India
+              <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-bold px-4 py-1.5 rounded-full mb-3 tracking-wide uppercase">
+                <Brain className="h-3.5 w-3.5" /> AI-Powered · Class 7–12 · India
               </div>
 
-              {/* Headline */}
-              <h1 className="text-4xl md:text-5xl lg:text-5xl font-black text-gray-900 leading-tight mb-4">
+              <h1 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight mb-3">
                 Your AI study<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600">
                   partner for exams.
                 </span>
               </h1>
 
-              <p className="text-gray-500 text-base lg:text-lg mb-8 max-w-md">
+              <p className="text-gray-500 text-base mb-5 max-w-md">
                 Upload any chapter. Get quizzes, flashcards, a video lesson, AI tutor,
                 and progress tracking — free, in under 30 seconds.
               </p>
 
               {/* Login cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg lg:max-w-none">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg lg:max-w-none">
 
-                {/* Student */}
                 <Link
                   href="/auth/login"
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 p-5 text-white shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-200"
@@ -81,7 +77,7 @@ export default async function LandingPage() {
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <h2 className="text-lg font-bold mb-2">I&apos;m a Student</h2>
-                    <ul className="space-y-1 mb-4">
+                    <ul className="space-y-1 mb-3">
                       {[
                         'Quizzes, flashcards & video lessons',
                         'AI tutor for any chapter question',
@@ -99,7 +95,6 @@ export default async function LandingPage() {
                   </div>
                 </Link>
 
-                {/* Parent */}
                 <Link
                   href="/parent-login"
                   className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-200"
@@ -110,7 +105,7 @@ export default async function LandingPage() {
                       <Users className="h-5 w-5" />
                     </div>
                     <h2 className="text-lg font-bold mb-2">I&apos;m a Parent</h2>
-                    <ul className="space-y-1 mb-4">
+                    <ul className="space-y-1 mb-3">
                       {[
                         'Track quiz scores & study streaks',
                         'Daily AI insights & recommendations',
@@ -129,21 +124,13 @@ export default async function LandingPage() {
                 </Link>
               </div>
 
-              <p className="text-sm text-gray-400 mt-3">
-                New student?{' '}
-                <Link href="/auth/signup" className="text-indigo-600 hover:underline font-semibold">
-                  Create a free account →
-                </Link>
-              </p>
-
-              {/* Trust badges */}
-              <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-6">
+              {/* Trust badges — single row */}
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-4">
                 {[
-                  { icon: Trophy,         label: 'Free Forever' },
-                  { icon: BookOpen,       label: 'Class 8–10' },
-                  { icon: MessageCircle,  label: 'Hindi & English' },
-                  { icon: Zap,            label: 'No App Needed' },
-                  { icon: BarChart2,      label: 'Parent Portal' },
+                  { icon: Trophy,        label: 'Free Forever' },
+                  { icon: BookOpen,      label: 'Class 7–12' },
+                  { icon: MessageCircle, label: 'Hindi & English' },
+                  { icon: Zap,           label: 'No App Needed' },
                 ].map(({ icon: Icon, label }) => (
                   <span key={label} className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm font-medium">
                     <Icon className="h-3.5 w-3.5 text-indigo-500" />
@@ -154,16 +141,15 @@ export default async function LandingPage() {
             </div>
 
             {/* ── Right: Feature video ── */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-center gap-2">
                 <Play className="h-4 w-4 text-indigo-600 fill-indigo-600" />
                 <p className="text-sm font-semibold text-gray-700">4-minute feature tour — see everything before you sign up</p>
               </div>
 
-              {/* Browser mockup frame */}
+              {/* Browser mockup */}
               <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-gray-200 bg-white">
-                {/* Chrome bar */}
-                <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-3 border-b border-gray-200">
+                <div className="bg-gray-100 px-4 py-2 flex items-center gap-3 border-b border-gray-200">
                   <div className="flex gap-1.5 shrink-0">
                     <div className="h-3 w-3 rounded-full bg-red-400" />
                     <div className="h-3 w-3 rounded-full bg-yellow-400" />
@@ -174,7 +160,6 @@ export default async function LandingPage() {
                   </div>
                 </div>
 
-                {/* Video */}
                 <video
                   controls
                   playsInline
@@ -186,15 +171,14 @@ export default async function LandingPage() {
                   Your browser does not support video playback.
                 </video>
 
-                {/* Feature tag strip */}
-                <div className="bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
+                <div className="bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex flex-wrap gap-1.5">
                     {[
-                      { icon: Brain,   label: 'Quiz' },
-                      { icon: Zap,     label: 'Flashcards' },
-                      { icon: Video,   label: 'Video' },
-                      { icon: MessageCircle, label: 'AI Tutor' },
-                      { icon: Users,   label: 'Parent Portal' },
+                      { icon: Brain,          label: 'Quiz' },
+                      { icon: Zap,            label: 'Flashcards' },
+                      { icon: Video,          label: 'Video' },
+                      { icon: MessageCircle,  label: 'AI Tutor' },
+                      { icon: BarChart2,      label: 'Parent Portal' },
                     ].map(({ icon: Icon, label }) => (
                       <span key={label} className="inline-flex items-center gap-1 text-[11px] bg-white border border-indigo-100 text-indigo-700 rounded-full px-2.5 py-0.5 font-semibold shadow-sm">
                         <Icon className="h-3 w-3" />
@@ -218,7 +202,7 @@ export default async function LandingPage() {
         </div>
       </main>
 
-      <footer className="relative z-10 text-center py-5 text-xs text-gray-400">
+      <footer className="relative z-10 text-center py-3 text-xs text-gray-400">
         © 2026 EaseStudy ·{' '}
         <Link href="/terms" className="hover:underline">Terms</Link>
       </footer>

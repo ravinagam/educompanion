@@ -13,6 +13,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/terms') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/parent-login') ||
+    pathname.startsWith('/how-to-use') ||
     pathname === '/'
   ) {
     return supabaseResponse;
@@ -79,6 +80,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4)$).*)',
   ],
 };
