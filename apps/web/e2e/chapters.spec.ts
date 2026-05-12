@@ -26,7 +26,7 @@ test.describe('Chapters page', () => {
   test('profile link is reachable', async ({ page }) => {
     await page.goto('/profile');
     await expect(page).toHaveURL(/\/profile/);
-    // Profile page renders a heading or study stats section
-    await expect(page.getByRole('heading', { level: 1 }).or(page.getByText(/study stats/i))).toBeVisible();
+    // Profile page renders the Profile Details card
+    await expect(page.getByText(/profile details/i)).toBeVisible();
   });
 });
