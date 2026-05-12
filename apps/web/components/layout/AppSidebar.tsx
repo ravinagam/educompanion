@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Upload, CalendarCheck, BookOpen,
-  BookMarked, HelpCircle, Trophy, User,
+  BookMarked, HelpCircle, Trophy, User as UserIcon,
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
@@ -16,7 +16,7 @@ const nav = [
   { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
   { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
   { label: 'Rewards', href: '/rewards', icon: Trophy },
-  { label: 'Profile', href: '/profile', icon: User },
+  { label: 'Profile', href: '/profile', icon: UserIcon },
 ];
 
 interface Props { user: User }
