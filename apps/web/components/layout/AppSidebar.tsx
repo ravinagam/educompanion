@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Upload, CalendarCheck, BookOpen,
-  FlaskConical, Layers, BookMarked, HelpCircle, Gift,
+  BookMarked, HelpCircle, Trophy, User,
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
@@ -15,6 +15,8 @@ const nav = [
   { label: 'Upload Chapter', href: '/upload', icon: Upload },
   { label: 'Study Planner', href: '/tests', icon: CalendarCheck },
   { label: 'My Saved Chapters', href: '/chapters', icon: BookOpen },
+  { label: 'Rewards', href: '/rewards', icon: Trophy },
+  { label: 'Profile', href: '/profile', icon: User },
 ];
 
 interface Props { user: User }
@@ -68,13 +70,6 @@ export function AppSidebar({ user }: Props) {
         >
           <HelpCircle className="h-4 w-4 shrink-0" />
           How to Use
-        </Link>
-        <Link
-          href="/profile#refer"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900 mb-1"
-        >
-          <Gift className="h-4 w-4 shrink-0" />
-          Refer &amp; Earn
         </Link>
         <FeedbackButton sidebar />
         <p className="text-xs text-gray-400 text-center mt-2">AI-powered learning</p>
