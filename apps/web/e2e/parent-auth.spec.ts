@@ -28,7 +28,7 @@ test.describe('Landing page', () => {
   });
 
   test('Student card Sign Up links to /auth/signup', async ({ page }) => {
-    await page.getByRole('link', { name: /sign up free/i }).click();
+    await page.getByRole('link', { name: /sign up free/i }).first().click();
     await expect(page).toHaveURL(/\/auth\/signup/);
   });
 
