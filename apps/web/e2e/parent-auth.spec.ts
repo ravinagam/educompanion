@@ -32,7 +32,7 @@ test.describe('Landing page', () => {
   });
 
   test('signup link navigates to /auth/signup', async ({ page }) => {
-    await page.getByRole('link', { name: /create a free account/i }).click();
+    await page.getByRole('link', { name: /get started free/i }).click();
     await expect(page).toHaveURL(/\/auth\/signup/);
   });
 });
