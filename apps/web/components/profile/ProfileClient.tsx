@@ -324,28 +324,28 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
           </p>
           {referralCode ? (
             <>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2.5">
-                  <p className="text-xs text-violet-400 leading-none mb-1">Your referral link</p>
-                  <p className="text-sm font-mono font-semibold text-violet-800 truncate">
-                    easestudy.in/join?ref={referralCode}
-                  </p>
-                </div>
+              <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-violet-400 leading-none mb-1">Your referral link</p>
+                <p className="text-sm font-mono font-semibold text-violet-800 break-all">
+                  easestudy.in/join?ref={referralCode}
+                </p>
+              </div>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-12 px-3 border-violet-200 text-violet-700 hover:bg-violet-50"
+                  className="flex-1 h-9 border-violet-200 text-violet-700 hover:bg-violet-50 gap-1.5"
                   onClick={() => {
                     navigator.clipboard.writeText(`https://easestudy.in/join?ref=${referralCode}`);
                     toast.success('Referral link copied!');
                   }}
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" /> Copy Link
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-12 px-3 border-violet-200 text-violet-700 hover:bg-violet-50"
+                  className="flex-1 h-9 border-violet-200 text-violet-700 hover:bg-violet-50 gap-1.5"
                   onClick={async () => {
                     const url = `https://easestudy.in/join?ref=${referralCode}`;
                     if (navigator.share) {
@@ -360,7 +360,7 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
                     }
                   }}
                 >
-                  <Share2 className="h-4 w-4" />
+                  <Share2 className="h-3.5 w-3.5" /> Share
                 </Button>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">

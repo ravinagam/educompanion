@@ -110,7 +110,7 @@ export default async function LandingPage() {
                       {[
                         'Track quiz scores & study streaks',
                         'Daily AI insights & recommendations',
-                        "Login with child's phone number",
+                        'See what your child studied today',
                       ].map(pt => (
                         <li key={pt} className="flex items-start gap-1.5 text-xs text-purple-100">
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-purple-200" />

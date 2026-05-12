@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {
   BookOpen, Users, Brain, Zap, Trophy, MessageCircle, Video,
-  Upload, Layers, FileText, BarChart2, CalendarCheck, Play,
+  Upload, Layers, FileText, BarChart2, CalendarCheck,
   CheckCircle2, ArrowRight,
 } from 'lucide-react';
 
@@ -142,34 +142,6 @@ export default function HowToUsePage() {
           <p className="text-gray-500 text-base max-w-xl mx-auto">
             AI-powered study tools for students in Class 7–12, with a parent portal so families stay in the loop.
           </p>
-        </div>
-
-        {/* Feature video */}
-        <div className="rounded-2xl overflow-hidden shadow-xl border border-indigo-100 max-w-3xl mx-auto">
-          <div className="bg-gray-100 px-4 py-2 flex items-center gap-3 border-b border-gray-200">
-            <div className="flex gap-1.5 shrink-0">
-              <div className="h-3 w-3 rounded-full bg-red-400" />
-              <div className="h-3 w-3 rounded-full bg-yellow-400" />
-              <div className="h-3 w-3 rounded-full bg-green-400" />
-            </div>
-            <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-gray-400 text-center border border-gray-100 truncate">
-              easestudy.in — Feature Tour
-            </div>
-          </div>
-          <video
-            controls
-            playsInline
-            preload="metadata"
-            className="w-full block bg-gray-900"
-            style={{ aspectRatio: '16/9' }}
-          >
-            <source src="/easestudy-features-v3.mp4" type="video/mp4" />
-            Your browser does not support video playback.
-          </video>
-          <div className="bg-indigo-50 px-4 py-2 flex items-center gap-2">
-            <Play className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500 shrink-0" />
-            <p className="text-xs text-indigo-600 font-medium">4-minute feature tour — see everything before you sign up</p>
-          </div>
         </div>
 
         {/* Two sections side by side */}
