@@ -153,8 +153,8 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-5">
-      {/* Header */}
+    <div className="max-w-5xl mx-auto space-y-5 px-4 md:px-6">
+      {/* Header — full width */}
       <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 px-6 py-5 text-white shadow-md flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
@@ -170,7 +170,10 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
         </Button>
       </div>
 
-      {/* Study Stats */}
+      {/* 3-column grid on desktop, single column on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+
+      {/* Col 1 — Study Stats */}
       <Card className="border-0 shadow-md overflow-hidden">
         <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">Study Stats</p>
@@ -257,8 +260,9 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
           </div>{/* end statsCardRef div */}
         </CardContent>
       </Card>
+      {/* end col 1 */}
 
-      {/* Rewards Ladder */}
+      {/* Col 2 — Study Rewards */}
       <Card className="border-0 shadow-md overflow-hidden">
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 flex items-center gap-2 text-white font-semibold text-sm">
           <Gift className="h-4 w-4" /> Study Rewards
@@ -304,6 +308,10 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
           })}
         </CardContent>
       </Card>
+      {/* end col 2 */}
+
+      {/* Col 3 — Refer & Earn + Invite Parent stacked */}
+      <div className="space-y-5">
 
       {/* Refer a Friend */}
       <Card id="refer" className="border-0 shadow-md overflow-hidden">
@@ -418,7 +426,10 @@ export function ProfileClient({ profile, stats, claimedMilestones, referralCode,
         </CardContent>
       </Card>
 
-      {/* Details card */}
+      </div>{/* end col 3 */}
+      </div>{/* end 3-col grid */}
+
+      {/* Profile Details — full width */}
       <Card className="border-0 shadow-md overflow-hidden">
         <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-blue-100 px-5 py-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700">Profile Details</p>
