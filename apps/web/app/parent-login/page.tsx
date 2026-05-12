@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,13 @@ import { toast } from 'sonner';
 import { Users, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
 import { phoneToParentEmail } from '@/lib/parent-auth';
 
-export default function ParentLoginPage() {
+function ParentLoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(
+    searchParams.get('mode') === 'register' ? 'register' : 'login'
+  );
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ phone: '', password: '', confirmPassword: '' });
 
@@ -204,5 +207,21 @@ export default function ParentLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ParentLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-md px-4">
+          <div className="h-14 w-14 rounded-2xl bg-violet-100 mx-auto" />
+          <div className="h-8 bg-gray-100 rounded w-1/2 mx-auto" />
+          <div className="h-64 bg-gray-100 rounded-2xl" />
+        </div>
+      </div>
+    }>
+      <ParentLoginContent />
+    </Suspense>
   );
 }

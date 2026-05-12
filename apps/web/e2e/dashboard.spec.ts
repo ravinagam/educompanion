@@ -20,7 +20,8 @@ test.describe('How to Use page', () => {
 
   test('student Sign Up Free link points to /auth/signup', async ({ page }) => {
     await page.goto('/how-to-use');
-    const cta = page.getByRole('link', { name: /sign up free/i });
+    // First "Sign Up Free" is in the student section
+    const cta = page.getByRole('link', { name: /sign up free/i }).first();
     await expect(cta).toBeVisible();
     await expect(cta).toHaveAttribute('href', '/auth/signup');
   });

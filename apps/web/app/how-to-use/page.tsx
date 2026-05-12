@@ -218,7 +218,7 @@ export default function HowToUsePage() {
             </div>
 
             <div className="flex flex-wrap gap-2 pt-1">
-              {['Free First 100', 'Class 7–12', 'Hindi & English', 'Works on Mobile'].map(label => (
+              {['Free First 100', 'Class 7–12', 'Hindi in Hindi', 'Works on Mobile'].map(label => (
                 <span key={label} className="inline-flex items-center gap-1 text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1 font-medium">
                   <CheckCircle2 className="h-3 w-3 text-indigo-500" /> {label}
                 </span>
@@ -261,10 +261,10 @@ export default function HowToUsePage() {
                 Sign In
               </Link>
               <Link
-                href="/parent-login"
+                href="/parent-login?mode=register"
                 className="flex-1 text-center text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl py-2.5 transition-colors flex items-center justify-center gap-1"
               >
-                Register <ArrowRight className="h-3.5 w-3.5" />
+                Sign Up Free <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 

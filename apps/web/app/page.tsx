@@ -122,8 +122,8 @@ export default async function LandingPage() {
                       <Link href="/parent-login" className="flex-1 text-center text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg py-2 transition-colors">
                         Sign In
                       </Link>
-                      <Link href="/parent-login" className="flex-1 text-center text-xs font-semibold bg-white hover:bg-purple-50 text-violet-700 rounded-lg py-2 transition-colors">
-                        Register
+                      <Link href="/parent-login?mode=register" className="flex-1 text-center text-xs font-semibold bg-white hover:bg-purple-50 text-violet-700 rounded-lg py-2 transition-colors">
+                        Sign Up Free
                       </Link>
                     </div>
                   </div>
@@ -135,7 +135,7 @@ export default async function LandingPage() {
                 {[
                   { icon: Trophy,        label: 'Free First 100' },
                   { icon: BookOpen,      label: 'Class 7–12' },
-                  { icon: MessageCircle, label: 'Hindi & English' },
+                  { icon: MessageCircle, label: 'Hindi in Hindi' },
                   { icon: Zap,           label: 'Works on Mobile' },
                 ].map(({ icon: Icon, label }) => (
                   <span key={label} className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5 shadow-sm font-medium">

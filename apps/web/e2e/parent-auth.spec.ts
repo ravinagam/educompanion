@@ -32,9 +32,9 @@ test.describe('Landing page', () => {
     await expect(page).toHaveURL(/\/auth\/signup/);
   });
 
-  test('Parent card Register links to /parent-login', async ({ page }) => {
-    await page.getByRole('link', { name: /register/i }).click();
-    await expect(page).toHaveURL(/\/parent-login/);
+  test('Parent card Sign Up Free links to /parent-login register mode', async ({ page }) => {
+    await page.getByRole('link', { name: /sign up free/i }).last().click();
+    await expect(page).toHaveURL(/\/parent-login\?mode=register/);
   });
 
   test('nav signup link navigates to /auth/signup', async ({ page }) => {
