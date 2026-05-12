@@ -92,6 +92,24 @@ export default function HowToUsePage() {
         </p>
       </div>
 
+      {/* Feature video */}
+      <div className="rounded-2xl overflow-hidden shadow-lg border border-indigo-100">
+        <video
+          src="/easestudy-features-v3.mp4"
+          controls
+          playsInline
+          preload="metadata"
+          className="w-full"
+          style={{ display: 'block' }}
+        >
+          Your browser does not support video playback.
+        </video>
+        <div className="bg-indigo-50 px-4 py-2 flex items-center justify-between">
+          <p className="text-xs text-indigo-600 font-medium">Watch this 4-min overview to see all features in action</p>
+          <p className="text-xs text-indigo-400">EaseStudy Feature Tour · v3</p>
+        </div>
+      </div>
+
       {/* Steps */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {steps.map((step) => {
