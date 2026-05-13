@@ -123,6 +123,7 @@ Rules:
 - Questions must be based ONLY on the section content above
 - Include a clear correct_answer and a concise explanation
 - Difficulty: mix of recall and simple application
+- CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", or any textbook-specific label the student cannot see. Embed any required data directly in the question text.
 
 Return ONLY a JSON array, no markdown:
 [

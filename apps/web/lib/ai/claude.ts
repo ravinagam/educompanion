@@ -58,6 +58,7 @@ ${content}
 Rules:
 - Use ONLY information from the provided content. Do not add external facts.
 - IMPORTANT: Cover ALL sections and topics from across the entire chapter — not just the beginning. The content above may include excerpts from start, middle, and end of the chapter.
+- CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", "from the solution table", or any textbook label the student cannot see during the quiz. If a question depends on data from a specific example or table, embed that data directly in the question text (e.g., "Given that point F has coordinates (4, 0)..."), or rephrase it as a concept question instead.
 - Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
 - MCQs must have exactly 4 options (A, B, C, D)
 - Every question must have a clear correct answer and a concise explanation
@@ -123,6 +124,7 @@ Chapter: "${chapterName}"
 Rules:
 - Use ONLY information visible in the screenshots. Do not add external facts.
 - Cover ALL pages shown, not just the first one.
+- CRITICAL — Self-contained questions: Every question must make complete sense on its own without the student seeing the textbook. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", or any textbook label. If a question depends on data from a specific example or table visible in the screenshots, embed that data directly in the question text (e.g., "If a triangle has sides 3 cm, 4 cm and 5 cm..."), or rephrase it as a concept question instead.
 - Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
 - MCQs must have exactly 4 options (A, B, C, D)
 - Every question must have a clear correct answer and a concise explanation
@@ -510,6 +512,8 @@ Chapter Content:
 ${content}
 
 Generate exactly 5 questions focused on those weak areas. Use MCQ and True/False types only.
+Rules:
+- CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", or any textbook-specific label. Embed any required data directly in the question text.
 Return this JSON format:
 [
   {
