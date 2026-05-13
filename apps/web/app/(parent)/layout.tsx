@@ -5,8 +5,7 @@ import { ParentHeader } from '@/components/parent/ParentHeader';
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');
+  if (!user) redirect('/parent-login');
 
   return (
     <div className="min-h-screen bg-gray-50">

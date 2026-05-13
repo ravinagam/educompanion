@@ -16,7 +16,7 @@ export default async function ParentChildPage({ params }: Params) {
 
   const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');
+  if (!user) redirect('/parent-login');
 
   const parentPhone = normalizePhone(user.user_metadata?.phone ?? '');
   const admin = createAdminClient();

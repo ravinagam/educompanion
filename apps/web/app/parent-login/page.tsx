@@ -27,7 +27,7 @@ function ParentLoginContent() {
     if (!form.phone.trim()) { toast.error('Enter your phone number'); return; }
     setLoading(true);
     const digits = form.phone.replace(/\D/g, '');
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email: phoneToParentEmail(digits),
       password: form.password,
     });
@@ -37,11 +37,14 @@ function ParentLoginContent() {
       } else {
         toast.error(error.message);
       }
+      setLoading(false);
+    } else if (data.session) {
+      // Hard navigation ensures the new sb-parent cookie reaches the server
+      window.location.href = '/parent';
     } else {
-      router.push('/parent');
-      router.refresh();
+      toast.error('Sign in succeeded but no session was returned. Please try again.');
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handleRegister(e: React.FormEvent) {
@@ -79,8 +82,7 @@ function ParentLoginContent() {
       toast.success('Account created! Please sign in.');
       setMode('login');
     } else {
-      router.push('/parent');
-      router.refresh();
+      window.location.href = '/parent';
     }
     setLoading(false);
   }

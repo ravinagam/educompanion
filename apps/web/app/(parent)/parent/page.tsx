@@ -7,7 +7,7 @@ import { ChildrenGrid } from '@/components/parent/ChildrenGrid';
 export default async function ParentHomePage() {
   const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');
+  if (!user) redirect('/parent-login');
 
   const parentPhone = normalizePhone(user.user_metadata?.phone ?? '');
   const admin = createAdminClient();
