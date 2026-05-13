@@ -1,13 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createParentBrowserClient } from '@/lib/supabase/parent-browser';
 import { BookOpen, LogOut, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function ParentHeader() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createParentBrowserClient();
 
   async function signOut() {
     await supabase.auth.signOut();

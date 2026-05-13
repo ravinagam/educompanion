@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createParentServerClient } from '@/lib/supabase/parent-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/parent-auth';
 import { ChildrenGrid } from '@/components/parent/ChildrenGrid';
 
 export default async function ParentHomePage() {
-  const supabase = await createClient();
+  const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');
 

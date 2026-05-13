@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createParentServerClient } from '@/lib/supabase/parent-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/parent-auth';
 import { generateParentInsights, type InsightInput } from '@/lib/ai/parent-insights';
@@ -7,7 +7,7 @@ import { generateParentInsights, type InsightInput } from '@/lib/ai/parent-insig
 type Params = { params: Promise<{ studentId: string }> };
 
 async function verifyParentAccess(studentId: string) {
-  const supabase = await createClient();
+  const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'parent') return null;
 

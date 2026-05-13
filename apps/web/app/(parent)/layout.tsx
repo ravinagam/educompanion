@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createParentServerClient } from '@/lib/supabase/parent-server';
 import { ParentHeader } from '@/components/parent/ParentHeader';
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
+  const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');

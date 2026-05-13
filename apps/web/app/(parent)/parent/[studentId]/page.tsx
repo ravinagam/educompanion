@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createParentServerClient } from '@/lib/supabase/parent-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/parent-auth';
 import { ParentDashboardClient } from '@/components/parent/ParentDashboardClient';
@@ -14,7 +14,7 @@ type Params = { params: Promise<{ studentId: string }> };
 export default async function ParentChildPage({ params }: Params) {
   const { studentId } = await params;
 
-  const supabase = await createClient();
+  const supabase = await createParentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.user_metadata?.role !== 'parent') redirect('/parent-login');
 
