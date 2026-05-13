@@ -6,6 +6,8 @@ export interface QuizTrendPoint {
   date: string;
   score_pct: number;
   subject: string;
+  chapter_name?: string;
+  score_raw?: string;
 }
 
 export function QuizTrendChart({ points }: { points: QuizTrendPoint[] }) {

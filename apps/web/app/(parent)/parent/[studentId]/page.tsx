@@ -121,6 +121,14 @@ export default async function ParentChildPage({ params }: Params) {
     };
   });
 
+  // Build chapter name map
+  const chapterNameMap = new Map<string, string>();
+  (subjectsRaw ?? []).forEach(subj => {
+    (subj.chapters ?? []).forEach((ch: { id: string; name: string }) => {
+      chapterNameMap.set(ch.id, ch.name);
+    });
+  });
+
   // Quiz trend points
   const quizTrend: QuizTrendPoint[] = (quizAttemptsRaw ?? [])
     .filter(a => a.total > 0)
@@ -133,6 +141,8 @@ export default async function ParentChildPage({ params }: Params) {
         date: a.taken_at,
         score_pct: Math.round((a.score / a.total) * 100),
         subject,
+        chapter_name: chapterNameMap.get(chapterId),
+        score_raw: `${a.score}/${a.total}`,
       };
     });
 
