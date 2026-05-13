@@ -25,13 +25,14 @@ interface Feedback {
   user: { name: string; email: string } | null;
 }
 interface UsageLog {
-  user_id: string; feature: string;
+  user_id: string; feature: string; model?: string;
   input_tokens: number; output_tokens: number; cost_usd: number; created_at: string;
 }
 interface UserUsage {
   userId: string; name: string; email: string;
   totalCalls: number; totalTokens: number; totalCost: number;
   byFeature: Record<string, { calls: number; tokens: number; cost: number }>;
+  byCat: { anthropic: number; voyage: number; sarvam: number };
   lastUsed: string | null;
 }
 interface Referral {
@@ -344,26 +345,43 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
     users.flatMap(u => u.subjects.flatMap(s => s.chapters.map(c => [c.id, { name: c.name, subject: s.name }])))
   );
 
+  function aiCategory(model: string, feature: string): 'anthropic' | 'voyage' | 'sarvam' {
+    if (model.includes('voyage')) return 'voyage';
+    if (model.includes('bulbul') || feature === 'tts') return 'sarvam';
+    return 'anthropic';
+  }
+
   // Aggregate usage per user
   const userMap = new Map(users.map(u => [u.id, u]));
   const usageByUser = new Map<string, UserUsage>();
   for (const log of usageLogs) {
     if (!usageByUser.has(log.user_id)) {
       const u = userMap.get(log.user_id);
-      usageByUser.set(log.user_id, { userId: log.user_id, name: u?.name ?? 'Unknown', email: u?.email ?? '', totalCalls: 0, totalTokens: 0, totalCost: 0, byFeature: {}, lastUsed: null });
+      usageByUser.set(log.user_id, {
+        userId: log.user_id, name: u?.name ?? 'Unknown', email: u?.email ?? '',
+        totalCalls: 0, totalTokens: 0, totalCost: 0,
+        byFeature: {}, byCat: { anthropic: 0, voyage: 0, sarvam: 0 }, lastUsed: null,
+      });
     }
     const entry = usageByUser.get(log.user_id)!;
+    const cost = Number(log.cost_usd);
     entry.totalCalls++;
     entry.totalTokens += log.input_tokens + log.output_tokens;
-    entry.totalCost += Number(log.cost_usd);
+    entry.totalCost += cost;
+    entry.byCat[aiCategory(log.model ?? '', log.feature)] += cost;
     if (!entry.byFeature[log.feature]) entry.byFeature[log.feature] = { calls: 0, tokens: 0, cost: 0 };
     entry.byFeature[log.feature].calls++;
     entry.byFeature[log.feature].tokens += log.input_tokens + log.output_tokens;
-    entry.byFeature[log.feature].cost += Number(log.cost_usd);
+    entry.byFeature[log.feature].cost += cost;
     if (!entry.lastUsed || log.created_at > entry.lastUsed) entry.lastUsed = log.created_at;
   }
   const userUsageList = [...usageByUser.values()].sort((a, b) => b.totalCost - a.totalCost);
   const totalCost = userUsageList.reduce((s, u) => s + u.totalCost, 0);
+  const totalByCat = {
+    anthropic: userUsageList.reduce((s, u) => s + u.byCat.anthropic, 0),
+    voyage: userUsageList.reduce((s, u) => s + u.byCat.voyage, 0),
+    sarvam: userUsageList.reduce((s, u) => s + u.byCat.sarvam, 0),
+  };
 
   // Referral stats
   const referralCountByUser = new Map<string, number>();
@@ -466,49 +484,115 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
 
       {/* Usage tab */}
       {tab === 'usage' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {userUsageList.length === 0 ? (
             <p className="text-center text-gray-400 py-10">No AI usage recorded yet</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-left text-xs text-gray-500 font-semibold">
-                    <th className="px-4 py-3">Student</th>
-                    <th className="px-4 py-3 text-right">Calls</th>
-                    <th className="px-4 py-3 text-right">Units</th>
-                    <th className="px-4 py-3 text-right">Cost (INR)</th>
-                    <th className="px-4 py-3">Feature breakdown</th>
-                    <th className="px-4 py-3 text-right">Last used</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {userUsageList.map(u => (
-                    <tr key={u.userId} className="bg-white hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{u.name}</p>
-                        <p className="text-xs text-gray-400">{u.email}</p>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalCalls}</td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-700">{u.totalTokens.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-violet-700">{inr(u.totalCost)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(u.byFeature).map(([feat, val]) => (
-                            <span key={feat} className="text-xs bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5">
-                              {FEATURE_LABELS[feat] ?? feat} ×{val.calls}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-gray-400">
-                        {u.lastUsed ? new Date(u.lastUsed).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
-                      </td>
+            <>
+              {/* Category summary cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Total AI Spend</p>
+                  <p className="text-2xl font-black text-violet-700">{inr(totalCost)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{userUsageList.length} students · {usageLogs.length} calls</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <p className="text-xs font-semibold text-gray-500">Anthropic (Claude)</p>
+                  </div>
+                  <p className="text-2xl font-black text-indigo-700">{inr(totalByCat.anthropic)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {totalCost > 0 ? Math.round(totalByCat.anthropic / totalCost * 100) : 0}% of total · Quiz, Chat, Flashcards…
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <p className="text-xs font-semibold text-gray-500">Voyage AI (Embeddings)</p>
+                  </div>
+                  <p className="text-2xl font-black text-emerald-700">{inr(totalByCat.voyage)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {totalCost > 0 ? Math.round(totalByCat.voyage / totalCost * 100) : 0}% of total · Semantic search
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <p className="text-xs font-semibold text-gray-500">Sarvam AI (TTS)</p>
+                  </div>
+                  <p className="text-2xl font-black text-amber-700">{inr(totalByCat.sarvam)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {totalCost > 0 ? Math.round(totalByCat.sarvam / totalCost * 100) : 0}% of total · Read-aloud audio
+                  </p>
+                </div>
+              </div>
+
+              {/* Per-student breakdown table */}
+              <div className="overflow-x-auto rounded-xl border border-gray-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-left text-xs text-gray-500 font-semibold">
+                      <th className="px-4 py-3">Student</th>
+                      <th className="px-4 py-3 text-right">
+                        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block" /> Anthropic</span>
+                      </th>
+                      <th className="px-4 py-3 text-right">
+                        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Voyage</span>
+                      </th>
+                      <th className="px-4 py-3 text-right">
+                        <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> Sarvam</span>
+                      </th>
+                      <th className="px-4 py-3 text-right font-bold text-gray-700">Total</th>
+                      <th className="px-4 py-3">Features used</th>
+                      <th className="px-4 py-3 text-right">Last used</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {userUsageList.map(u => (
+                      <tr key={u.userId} className="bg-white hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900">{u.name}</p>
+                          <p className="text-xs text-gray-400">{u.email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-indigo-700">
+                          {u.byCat.anthropic > 0 ? inr(u.byCat.anthropic) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-emerald-700">
+                          {u.byCat.voyage > 0 ? inr(u.byCat.voyage) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-amber-700">
+                          {u.byCat.sarvam > 0 ? inr(u.byCat.sarvam) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-violet-700">{inr(u.totalCost)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(u.byFeature).map(([feat, val]) => (
+                              <span key={feat} className="text-xs bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5">
+                                {FEATURE_LABELS[feat] ?? feat} ×{val.calls}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs text-gray-400">
+                          {u.lastUsed ? new Date(u.lastUsed).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50 font-semibold text-sm">
+                      <td className="px-4 py-3 text-gray-600">Total</td>
+                      <td className="px-4 py-3 text-right font-mono text-indigo-700">{inr(totalByCat.anthropic)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-700">{inr(totalByCat.voyage)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-700">{inr(totalByCat.sarvam)}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-violet-700">{inr(totalCost)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

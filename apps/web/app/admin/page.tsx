@@ -25,7 +25,7 @@ export default async function AdminPage() {
       .order('created_at', { ascending: false }),
     admin
       .from('ai_usage_logs')
-      .select('user_id, feature, input_tokens, output_tokens, cost_usd, created_at')
+      .select('user_id, feature, model, input_tokens, output_tokens, cost_usd, created_at')
       .order('created_at', { ascending: false }),
     admin
       .from('referrals')
