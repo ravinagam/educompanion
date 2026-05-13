@@ -956,7 +956,7 @@ slides.append(("parent_portal",
     "There's also an exam alert showing that the Science exam is in 5 days "
     "and Arjun has only covered 2 of 5 chapters — so parents know when to step in. "
     "To register, go to easestudy dot in slash parent dash login and sign up free. "
-    "Just enter your child's phone number — it takes 30 seconds.",
+    "Register with your own phone number and link your child's account — it takes 30 seconds.",
     draw_parent_portal))
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1015,7 +1015,7 @@ def draw_cta(img):
     rr(d, [80, 484, W-80, 540], 14, fill=(20, 10, 54), outline=VIOLET, ow=2)
     d.text((100, 494), "Parents:", font=font(15, bold=True), fill=VIOLET)
     d.text((180, 497), "Visit  easestudy.in/parent-login  to track your child's progress.", font=font(14), fill=(200, 190, 255))
-    d.text((180, 518), "Register using your child's phone number — takes 30 seconds.", font=font(13), fill=(160, 150, 220))
+    d.text((180, 518), "Register with your phone number and link your child's account — takes 30 seconds.", font=font(13), fill=(160, 150, 220))
 
     # Bottom tagline
     cx(d, "Start with one chapter. See the difference.", 568, font(18, bold=True), (190, 200, 255))
@@ -1029,8 +1029,8 @@ slides.append(("cta",
     "and earn real Amazon gift vouchers just for studying consistently. "
     "To get started, go to easestudy dot in, create a free account, "
     "and upload your first chapter today. "
-    "If you're a parent, visit easestudy dot in slash parent dash login "
-    "and register with your child's phone number. "
+    "If you're a parent, visit easestudy dot in slash parent dash login, "
+    "register with your own phone number, and link your child's account. "
     "It's free. It works on any phone or computer. No app download needed. "
     "Start with just one chapter and see the difference for yourself.",
     draw_cta))
@@ -1106,7 +1106,7 @@ with open(concat_file, "w") as f:
     for cp in clip_paths:
         f.write(f"file '{os.path.abspath(cp).replace(chr(92), '/')}'\n")
 
-out = "EaseStudy-Demo-v2.mp4"
+out = "EaseStudy-Demo-v3.mp4"
 print(f"\n-- Concatenating -> {out} --")
 subprocess.run([
     FFMPEG, "-y", "-f", "concat", "-safe", "0", "-i", concat_file, "-c", "copy", out
