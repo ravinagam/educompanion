@@ -6,8 +6,8 @@ import { generateParentInsights } from '@/lib/ai/parent-insights';
 const sb = { getUser: vi.fn(), from: vi.fn() };
 const admin = { from: vi.fn() };
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser: sb.getUser }, from: sb.from }),
+vi.mock('@/lib/supabase/parent-server', () => ({
+  createParentServerClient: async () => ({ auth: { getUser: sb.getUser }, from: sb.from }),
 }));
 
 vi.mock('@/lib/supabase/admin', () => ({
