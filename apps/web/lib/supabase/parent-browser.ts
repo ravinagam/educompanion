@@ -1,11 +1,16 @@
 import { createBrowserClient } from '@supabase/ssr';
 
-/** Browser client for parent portal — uses a separate cookie and opts out of the singleton
- *  so it never shares state with the student client cached by createClient(). */
+// Own singleton — opts out of Supabase's global cache (isSingleton: false) so the student
+// client cached by createClient() is never returned here, while still only creating one instance.
+let _client: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createParentBrowserClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
-    { cookieOptions: { name: 'sb-parent' }, isSingleton: false }
-  );
+  if (!_client) {
+    _client = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
+      { cookieOptions: { name: 'sb-parent' }, isSingleton: false }
+    );
+  }
+  return _client;
 }
