@@ -4,7 +4,7 @@ import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 const PRIORITY_COLORS = ['bg-rose-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500', 'bg-violet-500'];
 
-export function RecommendationsPanel({ recommendations }: { recommendations: string[] }) {
+export function RecommendationsPanel({ recommendations, studentView = false }: { recommendations: string[]; studentView?: boolean }) {
   if (recommendations.length === 0) return null;
 
   return (
@@ -17,7 +17,8 @@ export function RecommendationsPanel({ recommendations }: { recommendations: str
         </div>
       ))}
       <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1 pt-1">
-        <CheckCircle2 className="h-3.5 w-3.5" /> Share these with your child to help them improve
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {studentView ? 'Work through these to boost your performance' : 'Share these with your child to help them improve'}
       </p>
     </div>
   );

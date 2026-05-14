@@ -11,7 +11,6 @@ import { SubjectMasteryChart, type SubjectData } from '@/components/parent/Subje
 import { QuizTrendChart, type QuizTrendPoint } from '@/components/parent/QuizTrendChart';
 import { WeakTopicsPanel, type WeakChapter } from '@/components/parent/WeakTopicsPanel';
 import { ExamReadinessGauge } from '@/components/parent/ExamReadinessGauge';
-import { SwotPanel } from '@/components/parent/SwotPanel';
 import { RecommendationsPanel } from '@/components/parent/RecommendationsPanel';
 import type { ParentInsight } from '@/lib/ai/parent-insights';
 
@@ -104,15 +103,16 @@ function ActivityLog({ points }: { points: QuizTrendPoint[] }) {
 
 function toStudentVoice(text: string): string {
   return text
+    // Specific multi-word patterns first (order matters — longer before shorter)
+    .replace(/\bAsk your child to\b/gi, 'Try to')
+    .replace(/\bEncourage (your child|them) to\b/gi, 'Try to')
+    .replace(/\bHelp (your child|them)\b/gi, 'Focus on')
     .replace(/\bYour child is\b/gi, 'You are')
     .replace(/\bYour child has\b/gi, 'You have')
     .replace(/\bYour child\b/gi, 'You')
     .replace(/\btheir\b/gi, 'your')
-    .replace(/\bAsk your child to\b/gi, 'Try to')
-    .replace(/\bEncourage (your child|them) to\b/gi, 'Try to')
     .replace(/\bEncourage daily\b/gi, 'Try daily')
-    .replace(/\bthey (are|have|need|should|can|could|would|will)\b/gi, (_, v) => `you ${v}`)
-    .replace(/\bHelp (your child|them)\b/gi, 'Focus on');
+    .replace(/\bthey (are|have|need|should|can|could|would|will)\b/gi, (_, v) => `you ${v}`);
 }
 
 function InsightTagRow({ tag, items, tagColor }: { tag: string; items: string[]; tagColor: string }) {
@@ -390,20 +390,9 @@ export function StudentPerformanceClient({
         <WeakTopicsPanel chapters={weakChapters} studentView />
       </Section>
 
-      <Section title="AI Learning Report (SWOT)" icon={<Sparkles className="h-4 w-4" />}>
-        {insights ? (
-          <SwotPanel insights={studentInsights(insights)} generatedAt={insightsAt!} />
-        ) : (
-          <div className="text-center py-6 space-y-3">
-            <p className="text-sm text-gray-500">No AI insights generated yet.</p>
-            <StudentInsightRefreshButton onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }} />
-          </div>
-        )}
-      </Section>
-
       {insights?.recommendations && insights.recommendations.length > 0 && (
         <Section title="AI Recommendations" icon={<BookOpen className="h-4 w-4" />}>
-          <RecommendationsPanel recommendations={studentInsights(insights).recommendations!} />
+          <RecommendationsPanel recommendations={studentInsights(insights).recommendations!} studentView />
         </Section>
       )}
 
