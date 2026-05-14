@@ -24,7 +24,24 @@ export async function ocrScreenshots(
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
             {
               type: 'text',
-              text: 'Extract all text from this textbook page screenshot exactly as it appears. Preserve headings, bullet points, numbered lists, tables, and equations. Output plain text only — no commentary, no markdown formatting.',
+              text: `You are extracting text from a page of an Indian school textbook (CBSE/ICSE/State board).
+
+Extract ALL visible text exactly as it appears. Apply these rules for mathematical content:
+
+1. Inline expressions — wrap in single dollar signs: $x^2 + 3x - 4 = 0$
+2. Standalone/display equations — place on their own line with double dollar signs:
+   $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
+3. Use standard LaTeX inside delimiters:
+   - Fractions: \\frac{a}{b}
+   - Roots: \\sqrt{x}, \\sqrt[3]{x}
+   - Superscripts/subscripts: x^2, x_n
+   - Greek: \\alpha, \\beta, \\theta, \\pi
+   - Operators: \\leq, \\geq, \\neq, \\times, \\div, \\pm, \\cdot
+   - Common functions: \\sin, \\cos, \\tan, \\log, \\lim, \\sum, \\int
+
+4. Preserve all paragraph breaks with a blank line between paragraphs.
+5. Preserve section headings as plain text on their own line.
+6. Output ONLY the extracted text — no commentary, no markdown fences.`,
             },
           ],
         }],

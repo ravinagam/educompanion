@@ -460,6 +460,11 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
                       </div>
                       <p className="font-semibold text-gray-900 text-sm">{file.name}</p>
                       <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
+                      {(file.name.endsWith('.docx') || file.name.endsWith('.doc')) && (
+                        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 text-left leading-relaxed">
+                          Word documents with math equations may not render correctly. For best results, save as PDF before uploading.
+                        </p>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                         className="text-xs text-red-400 hover:text-red-600 flex items-center gap-0.5 mx-auto transition-colors"
