@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2, Share2, Copy, Check, ArrowRight, Gift, CheckCircle2 } from 'lucide-react';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2, Share2, Copy, Check, ArrowRight, Gift, CheckCircle2, Bell } from 'lucide-react';
+import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -413,12 +414,25 @@ function RewardsTab({ users, gamification, milestones }: {
     return aPending - bPending;
   });
 
-  if (userIds.length === 0) {
-    return <p className="text-center text-gray-400 py-10">No milestone rewards yet</p>;
-  }
+  // Students approaching next milestone (not yet reached)
+  const nearMilestone = gamification
+    .map(g => {
+      const claimed = milestones.filter(m => m.user_id === g.user_id).map(m => m.xp_milestone);
+      const next = GIFT_MILESTONES.find(m => !claimed.includes(m.xp) && g.total_xp < m.xp) ?? null;
+      if (!next) return null;
+      const pct = Math.round((g.total_xp / next.xp) * 100);
+      const xpLeft = next.xp - g.total_xp;
+      return { user: userMap.get(g.user_id), total_xp: g.total_xp, next, pct, xpLeft };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null && x.pct >= 70)
+    .sort((a, b) => a.xpLeft - b.xpLeft);
 
   const pendingCount = [...byUser.values()].flat().filter(m => !m.voucher_code).length;
   const availedCount = [...byUser.values()].flat().filter(m => m.availed_at).length;
+
+  if (milestones.length === 0 && nearMilestone.length === 0) {
+    return <p className="text-center text-gray-400 py-10">No milestone activity yet</p>;
+  }
 
   return (
     <div className="space-y-4">
@@ -436,6 +450,67 @@ function RewardsTab({ users, gamification, milestones }: {
           <p className="text-xs text-gray-500">Vouchers availed by students</p>
         </div>
       </div>
+
+      {nearMilestone.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <Bell className="h-4 w-4 text-amber-500" />
+            Approaching Next Milestone ({nearMilestone.length} student{nearMilestone.length !== 1 ? 's' : ''})
+            <span className="text-xs text-gray-400 font-normal">— students at 70%+ of their next reward</span>
+          </h2>
+          <div className="overflow-x-auto rounded-xl border border-amber-100">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-amber-50 text-left text-xs text-gray-500 font-semibold">
+                  <th className="px-4 py-2.5">Student</th>
+                  <th className="px-4 py-2.5">Next Reward</th>
+                  <th className="px-4 py-2.5">Progress</th>
+                  <th className="px-4 py-2.5 text-right">XP Left</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-50">
+                {nearMilestone.map(({ user, total_xp, next, pct, xpLeft }) => (
+                  <tr key={user?.id ?? total_xp} className="bg-white hover:bg-amber-50">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-xs shrink-0">
+                          {user?.name?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{user?.name ?? 'Unknown'}</p>
+                          <p className="text-xs text-gray-400">{total_xp.toLocaleString()} XP</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                        ₹{next.voucher_inr} Amazon Voucher
+                      </span>
+                      <p className="text-xs text-gray-400 mt-0.5">{next.xp.toLocaleString()} XP milestone</p>
+                    </td>
+                    <td className="px-4 py-2.5 min-w-[140px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-yellow-400'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-bold shrink-0 ${pct >= 90 ? 'text-red-600' : 'text-amber-600'}`}>{pct}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className={`text-sm font-bold ${pct >= 90 ? 'text-red-600' : 'text-amber-600'}`}>
+                        {xpLeft.toLocaleString()} XP
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {userIds.map(uid => {
