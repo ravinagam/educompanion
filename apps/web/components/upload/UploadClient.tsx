@@ -46,6 +46,7 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [wordMathAnswer, setWordMathAnswer] = useState<'yes' | 'no' | null>(null);
 
   // ── Screenshot state ─────────────────────────────────────────────
   const screenshotInputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +70,7 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
 
   function pickFile(f: File) {
     setFile(f);
+    setWordMathAnswer(null);
     if (!chapterName) setChapterName(f.name.replace(/\.[^.]+$/, ''));
   }
 
@@ -125,6 +127,7 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
     setSelectedSubjectId('');
     setChapterName('');
     setFile(null);
+    setWordMathAnswer(null);
     setUploaded(false);
     setUploadProgress(null);
     screenshots.forEach(s => URL.revokeObjectURL(s.preview));
@@ -461,9 +464,50 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
                       <p className="font-semibold text-gray-900 text-sm">{file.name}</p>
                       <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
                       {(file.name.endsWith('.docx') || file.name.endsWith('.doc')) && (
-                        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 text-left leading-relaxed">
-                          Word documents with math equations may not render correctly. For best results, save as PDF before uploading.
-                        </p>
+                        <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-left space-y-2" onClick={e => e.stopPropagation()}>
+                          {wordMathAnswer === null && (
+                            <>
+                              <p className="font-medium text-amber-800">Does this document contain math equations?</p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setWordMathAnswer('yes')}
+                                  className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-medium rounded px-2 py-1 transition-colors"
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setWordMathAnswer('no')}
+                                  className="flex-1 bg-white hover:bg-gray-50 text-gray-600 font-medium rounded px-2 py-1 border border-gray-200 transition-colors"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </>
+                          )}
+                          {wordMathAnswer === 'yes' && (
+                            <>
+                              <p className="font-medium text-amber-800">Save as PDF first for correct math rendering:</p>
+                              <ol className="list-decimal list-inside space-y-0.5 text-amber-700">
+                                <li>Open the document in Microsoft Word</li>
+                                <li>Click <span className="font-medium">File</span> → <span className="font-medium">Save As</span></li>
+                                <li>Choose <span className="font-medium">PDF</span> as the file format</li>
+                                <li>Upload the saved PDF here instead</li>
+                              </ol>
+                              <button
+                                type="button"
+                                onClick={() => setWordMathAnswer(null)}
+                                className="text-amber-600 underline text-xs"
+                              >
+                                Back
+                              </button>
+                            </>
+                          )}
+                          {wordMathAnswer === 'no' && (
+                            <p className="text-green-700 font-medium">No equations — you are good to upload.</p>
+                          )}
+                        </div>
                       )}
                       <button
                         onClick={e => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
