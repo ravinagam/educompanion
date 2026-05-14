@@ -75,7 +75,7 @@ function VoucherSection({ milestone, claimed, onAvailed }: {
       <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 space-y-1">
         <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Your Amazon Voucher Code</p>
         <div className="flex items-center gap-2">
-          <span className="flex-1 font-mono text-xl font-black text-emerald-900 tracking-widest select-all break-all">
+          <span className="flex-1 font-mono text-sm font-black text-emerald-900 tracking-wide select-all break-all leading-snug">
             {claimed.voucher_code}
           </span>
           <button
