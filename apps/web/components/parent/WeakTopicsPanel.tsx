@@ -21,7 +21,7 @@ const REASON_COLOR: Record<WeakChapter['reason'], string> = {
   not_mastered: 'bg-indigo-100 text-indigo-700',
 };
 
-export function WeakTopicsPanel({ chapters }: { chapters: WeakChapter[] }) {
+export function WeakTopicsPanel({ chapters, studentView = false }: { chapters: WeakChapter[]; studentView?: boolean }) {
   if (chapters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
@@ -58,7 +58,11 @@ export function WeakTopicsPanel({ chapters }: { chapters: WeakChapter[] }) {
       )}
       <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3 mt-3">
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-700">Ask your child to revisit these chapters and retake the quizzes until they score above 70%.</p>
+        <p className="text-xs text-amber-700">
+          {studentView
+            ? 'Revisit these chapters and retake the quizzes until you score above 70%.'
+            : 'Ask your child to revisit these chapters and retake the quizzes until they score above 70%.'}
+        </p>
       </div>
     </div>
   );

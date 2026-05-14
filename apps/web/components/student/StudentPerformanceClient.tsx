@@ -1,21 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft, Flame, Trophy, Clock, Sparkles, BarChart2, Target,
+import { RefreshCw, Sparkles, Flame, Trophy, BarChart2, Target,
   BookOpen, AlertTriangle, TrendingUp, TrendingDown, Minus, CheckCircle2, Gift,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { type KPIData } from './KPIGrid';
-import { SubjectMasteryChart, type SubjectData } from './SubjectMasteryChart';
-import { QuizTrendChart, type QuizTrendPoint } from './QuizTrendChart';
-import { WeakTopicsPanel, type WeakChapter } from './WeakTopicsPanel';
-import { ExamReadinessGauge } from './ExamReadinessGauge';
-import { SwotPanel } from './SwotPanel';
-import { RecommendationsPanel } from './RecommendationsPanel';
-import { AlertsPanel } from './AlertsPanel';
-import { InsightRefreshButton } from './InsightRefreshButton';
+import { Button } from '@/components/ui/button';
+import { type KPIData } from '@/components/parent/KPIGrid';
+import { SubjectMasteryChart, type SubjectData } from '@/components/parent/SubjectMasteryChart';
+import { QuizTrendChart, type QuizTrendPoint } from '@/components/parent/QuizTrendChart';
+import { WeakTopicsPanel, type WeakChapter } from '@/components/parent/WeakTopicsPanel';
+import { ExamReadinessGauge } from '@/components/parent/ExamReadinessGauge';
+import { SwotPanel } from '@/components/parent/SwotPanel';
+import { RecommendationsPanel } from '@/components/parent/RecommendationsPanel';
 import type { ParentInsight } from '@/lib/ai/parent-insights';
 
 interface GiftMilestone {
@@ -26,7 +22,7 @@ interface GiftMilestone {
   availed_at: string | null;
 }
 
-export interface ParentDashboardProps {
+export interface StudentPerformanceProps {
   student: { id: string; name: string; grade: number; board: string };
   kpi: KPIData;
   subjects: SubjectData[];
@@ -50,17 +46,11 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   );
 }
 
-function KpiCard({
-  label, value, sub, color, icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  color: string;
-  icon: React.ReactNode;
+function KpiCard({ label, value, sub, color, icon }: {
+  label: string; value: string; sub?: string; color: string; icon: React.ReactNode;
 }) {
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2`}>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2">
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${color}`}>
         {icon}
       </div>
@@ -71,8 +61,7 @@ function KpiCard({
   );
 }
 
-function ActivityLog({ name, points }: { name: string; points: QuizTrendPoint[] }) {
-  // Get last 7 days, sort most recent first, then deduplicate by chapter keeping latest attempt
+function ActivityLog({ points }: { points: QuizTrendPoint[] }) {
   const cutoff = Date.now() - 7 * 86400000;
   const sorted = [...points]
     .filter(p => new Date(p.date).getTime() >= cutoff)
@@ -87,11 +76,7 @@ function ActivityLog({ name, points }: { name: string; points: QuizTrendPoint[] 
   }).slice(0, 8);
 
   if (recent.length === 0) {
-    return (
-      <div className="text-sm text-gray-400 py-4 text-center">
-        No study activity this week.
-      </div>
-    );
+    return <div className="text-sm text-gray-400 py-4 text-center">No study activity this week.</div>;
   }
 
   return (
@@ -108,9 +93,7 @@ function ActivityLog({ name, points }: { name: string; points: QuizTrendPoint[] 
               <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
               <p className="text-[11px] text-gray-400">{p.subject} · {dateStr}</p>
             </div>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreColor}`}>
-              {score}%
-            </span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreColor}`}>{score}%</span>
           </div>
         );
       })}
@@ -134,18 +117,40 @@ function InsightTagRow({ tag, items, tagColor }: { tag: string; items: string[];
   );
 }
 
-export function ParentDashboardClient({
+function StudentInsightRefreshButton({ onRefreshed }: { onRefreshed: (ins: ParentInsight, at: string) => void }) {
+  const [loading, setLoading] = useState(false);
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/student/insights', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.insights) onRefreshed(data.insights, data.generated_at);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={refresh}
+      disabled={loading}
+      className="gap-1.5 text-violet-700 border-violet-200 hover:bg-violet-50 text-xs"
+    >
+      {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+      {loading ? 'Generating…' : 'Refresh AI Insights'}
+    </Button>
+  );
+}
+
+export function StudentPerformanceClient({
   student, kpi, subjects, quizTrend, weakChapters, weakSubjects,
   initialInsights, insightsGeneratedAt, milestones,
-}: ParentDashboardProps) {
-  const router = useRouter();
+}: StudentPerformanceProps) {
   const [insights, setInsights] = useState<ParentInsight | null>(initialInsights);
   const [insightsAt, setInsightsAt] = useState<string | null>(insightsGeneratedAt);
-
-  const lastActiveLabel = kpi.days_since_active === null ? 'Never'
-    : kpi.days_since_active === 0 ? 'Today'
-    : kpi.days_since_active === 1 ? 'Yesterday'
-    : `${kpi.days_since_active}d ago`;
 
   const performanceValue = kpi.overall_quiz_avg !== null ? `${kpi.overall_quiz_avg}%` : '—';
   const improvementValue = kpi.weekly_improvement !== null
@@ -153,8 +158,7 @@ export function ParentDashboardClient({
     : '—';
   const improvementIconColor = kpi.weekly_improvement === null ? 'text-gray-400'
     : kpi.weekly_improvement > 0 ? 'text-emerald-600'
-    : kpi.weekly_improvement < 0 ? 'text-red-500'
-    : 'text-gray-400';
+    : kpi.weekly_improvement < 0 ? 'text-red-500' : 'text-gray-400';
   const improvementIcon = kpi.weekly_improvement !== null && kpi.weekly_improvement > 0
     ? <TrendingUp className={`h-4 w-4 ${improvementIconColor}`} />
     : kpi.weekly_improvement !== null && kpi.weekly_improvement < 0
@@ -164,24 +168,9 @@ export function ParentDashboardClient({
   return (
     <div className="space-y-5">
       {/* Page header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button onClick={() => router.back()} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <ArrowLeft className="h-5 w-5 text-gray-500" />
-          </button>
-          <div>
-            <h1 className="text-lg font-black text-gray-900">{student.name}&apos;s Study Dashboard</h1>
-            <p className="text-xs text-gray-400">Real-time learning overview</p>
-          </div>
-        </div>
-        <div className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${
-          kpi.days_since_active === 0 ? 'bg-emerald-50 text-emerald-700' :
-          kpi.days_since_active === 1 ? 'bg-amber-50 text-amber-700' :
-          'bg-gray-100 text-gray-500'
-        }`}>
-          <Clock className="h-3.5 w-3.5" />
-          Last active: {lastActiveLabel}
-        </div>
+      <div>
+        <h1 className="text-xl font-black text-gray-900">My Performance</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Your strengths, focus areas, and progress at a glance</p>
       </div>
 
       {/* Student info bar */}
@@ -219,8 +208,8 @@ export function ParentDashboardClient({
             <div key={m.xp_milestone} className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
               <p className="text-sm text-emerald-800 font-medium">
-                {student.name} received a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> and has already availed it on{' '}
-                {new Date(m.availed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.
+                You earned a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> and have already availed it on{' '}
+                {new Date(m.availed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Great work!
               </p>
             </div>
           );
@@ -230,7 +219,8 @@ export function ParentDashboardClient({
             <div key={m.xp_milestone} className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
               <Gift className="h-4 w-4 text-amber-500 shrink-0" />
               <p className="text-sm text-amber-800 font-medium">
-                {student.name} earned a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> — the code has been shared and is waiting to be availed.
+                You have a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> waiting! Go to{' '}
+                <a href="/rewards" className="underline font-bold">Refer &amp; Earn</a> to copy the code and mark it as used.
               </p>
             </div>
           );
@@ -239,16 +229,12 @@ export function ParentDashboardClient({
           <div key={m.xp_milestone} className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
             <Gift className="h-4 w-4 text-blue-400 shrink-0" />
             <p className="text-sm text-blue-800 font-medium">
-              {student.name} reached a milestone and is eligible for a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> — voucher code will be added soon.
+              You&apos;re eligible for a <span className="font-bold">₹{m.voucher_inr} Amazon Voucher</span> — your code is being processed and will appear in{' '}
+              <a href="/rewards" className="underline font-bold">Refer &amp; Earn</a> soon.
             </p>
           </div>
         );
       })}
-
-      {/* Alerts */}
-      {insights?.alerts && insights.alerts.length > 0 && (
-        <AlertsPanel alerts={insights.alerts} />
-      )}
 
       {/* 5 KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -291,37 +277,32 @@ export function ParentDashboardClient({
 
       {/* Two-column: activity log + AI insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Activity log */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-50">
             <BookOpen className="h-4 w-4 text-gray-500" />
-            <h2 className="text-sm font-bold text-gray-800">What {student.name.split(' ')[0]} Studied This Week</h2>
+            <h2 className="text-sm font-bold text-gray-800">What I Studied This Week</h2>
           </div>
           <div className="p-5">
-            <ActivityLog name={student.name} points={quizTrend} />
+            <ActivityLog points={quizTrend} />
           </div>
         </div>
 
-        {/* AI insights */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-violet-500" />
-              <h2 className="text-sm font-bold text-gray-800">AI Insights for Parents</h2>
+              <h2 className="text-sm font-bold text-gray-800">My AI Insights</h2>
             </div>
-            <InsightRefreshButton
-              studentId={student.id}
-              onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }}
-            />
+            <StudentInsightRefreshButton onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }} />
           </div>
           <div className="p-5">
             {insights ? (
               <div className="space-y-3">
-                <InsightTagRow tag="Strong" items={insights.strengths} tagColor="bg-emerald-100 text-emerald-700" />
-                <InsightTagRow tag="Watch" items={insights.weaknesses} tagColor="bg-amber-100 text-amber-700" />
-                <InsightTagRow tag="Tip" items={insights.opportunities} tagColor="bg-blue-100 text-blue-700" />
+                <InsightTagRow tag="Your Strengths" items={insights.strengths} tagColor="bg-emerald-100 text-emerald-700" />
+                <InsightTagRow tag="Focus Areas" items={insights.weaknesses} tagColor="bg-amber-100 text-amber-700" />
+                <InsightTagRow tag="Tips for You" items={insights.opportunities} tagColor="bg-blue-100 text-blue-700" />
                 {insights.recommendations && insights.recommendations.length > 0 && (
-                  <InsightTagRow tag="Action" items={insights.recommendations.slice(0, 2)} tagColor="bg-violet-100 text-violet-700" />
+                  <InsightTagRow tag="Next Steps" items={insights.recommendations.slice(0, 2)} tagColor="bg-violet-100 text-violet-700" />
                 )}
                 {insightsAt && (
                   <p className="text-[10px] text-gray-300 pt-1">
@@ -331,61 +312,49 @@ export function ParentDashboardClient({
               </div>
             ) : (
               <div className="text-center py-6 space-y-3">
-                <p className="text-sm text-gray-500">Generate AI insights to see personalised tips.</p>
-                <InsightRefreshButton
-                  studentId={student.id}
-                  onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }}
-                />
+                <p className="text-sm text-gray-500">Generate AI insights to see personalised tips just for you.</p>
+                <StudentInsightRefreshButton onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }} />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Detailed analytical sections below ── */}
-
-      {/* Subject Performance */}
+      {/* Detailed sections */}
       <Section title="Subject Performance" icon={<BarChart2 className="h-4 w-4" />}>
         <SubjectMasteryChart subjects={subjects} />
       </Section>
 
-      {/* Exam Readiness */}
       <Section title="Exam Readiness" icon={<Target className="h-4 w-4" />}>
         <ExamReadinessGauge
           readiness_pct={kpi.exam_readiness_pct}
           student_name={student.name}
           weak_subjects={weakSubjects}
+          studentView
         />
       </Section>
 
-      {/* Quiz Trend */}
       <Section title="Quiz Score Trend (Last 60 Days)" icon={<BarChart2 className="h-4 w-4" />}>
         <QuizTrendChart points={quizTrend} />
       </Section>
 
-      {/* Weak Topics */}
       <Section title="Chapters Needing Attention" icon={<AlertTriangle className="h-4 w-4" />}>
-        <WeakTopicsPanel chapters={weakChapters} />
+        <WeakTopicsPanel chapters={weakChapters} studentView />
       </Section>
 
-      {/* AI SWOT */}
       <Section title="AI Learning Report (SWOT)" icon={<Sparkles className="h-4 w-4" />}>
         {insights ? (
           <SwotPanel insights={insights} generatedAt={insightsAt!} />
         ) : (
           <div className="text-center py-6 space-y-3">
             <p className="text-sm text-gray-500">No AI insights generated yet.</p>
-            <InsightRefreshButton
-              studentId={student.id}
-              onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }}
-            />
+            <StudentInsightRefreshButton onRefreshed={(ins, at) => { setInsights(ins); setInsightsAt(at); }} />
           </div>
         )}
       </Section>
 
-      {/* Recommendations */}
       {insights?.recommendations && insights.recommendations.length > 0 && (
-        <Section title="AI Recommendations for You" icon={<BookOpen className="h-4 w-4" />}>
+        <Section title="AI Recommendations" icon={<BookOpen className="h-4 w-4" />}>
           <RecommendationsPanel recommendations={insights.recommendations} />
         </Section>
       )}

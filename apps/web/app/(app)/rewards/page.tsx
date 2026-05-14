@@ -23,7 +23,7 @@ export default async function RewardsPage() {
     admin.from('quiz_attempts').select('score, total').eq('user_id', user.id),
     admin.from('flashcard_progress').select('id').eq('user_id', user.id).eq('status', 'known'),
     admin.from('chapter_mastery').select('chapter_id').eq('user_id', user.id).eq('mastered', true),
-    admin.from('user_gift_milestones').select('xp_milestone, gifted_at').eq('user_id', user.id),
+    admin.from('user_gift_milestones').select('xp_milestone, gifted_at, voucher_code, availed_at').eq('user_id', user.id),
   ]);
 
   if (!profileRes.data) redirect('/auth/login');

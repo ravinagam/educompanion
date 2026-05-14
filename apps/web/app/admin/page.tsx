@@ -14,7 +14,7 @@ export default async function AdminPage() {
 
   const admin = createAdminClient();
 
-  const [usersRes, feedbackRes, usageRes, referralsRes, clicksRes] = await Promise.all([
+  const [usersRes, feedbackRes, usageRes, referralsRes, clicksRes, gamificationRes, milestonesRes] = await Promise.all([
     admin
       .from('users')
       .select('id, name, email, grade, board, created_at, contact_email, phone_number, referral_code, referred_by, subjects(id, name, chapters(id, name, upload_status))')
@@ -34,8 +34,15 @@ export default async function AdminPage() {
     admin
       .from('referral_clicks')
       .select('referral_code, clicked_at'),
+    admin
+      .from('user_gamification')
+      .select('user_id, total_xp, level'),
+    admin
+      .from('user_gift_milestones')
+      .select('user_id, xp_milestone, voucher_inr, gifted_at, voucher_code, voucher_sent_at, availed_at')
+      .order('gifted_at', { ascending: false }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={(feedbackRes.data ?? []) as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} />;
+  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={(feedbackRes.data ?? []) as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
 }

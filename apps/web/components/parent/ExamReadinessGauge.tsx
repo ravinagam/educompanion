@@ -6,6 +6,7 @@ interface Props {
   readiness_pct: number;
   student_name: string;
   weak_subjects: string[];
+  studentView?: boolean;
 }
 
 function gaugeColor(pct: number) {
@@ -22,7 +23,7 @@ function gaugeLabel(pct: number) {
   return { text: 'Needs Attention', sub: 'Focus on completing chapters.' };
 }
 
-export function ExamReadinessGauge({ readiness_pct, student_name, weak_subjects }: Props) {
+export function ExamReadinessGauge({ readiness_pct, student_name, weak_subjects, studentView = false }: Props) {
   const color = gaugeColor(readiness_pct);
   const label = gaugeLabel(readiness_pct);
   const data = [
@@ -63,7 +64,9 @@ export function ExamReadinessGauge({ readiness_pct, student_name, weak_subjects 
         <div>
           <p className="text-lg font-bold text-gray-900">{label.text}</p>
           <p className="text-sm text-gray-500">
-            {student_name} is <span className="font-semibold" style={{ color }}>{readiness_pct}%</span> exam-ready. {label.sub}
+            {studentView ? 'You are ' : `${student_name} is `}
+            <span className="font-semibold" style={{ color }}>{readiness_pct}%</span>
+            {` exam-ready. ${label.sub}`}
           </p>
         </div>
 

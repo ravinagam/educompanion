@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2, Share2, Copy, Check, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, BookOpen, ChevronDown, ChevronUp, LogOut, Zap, Send, Loader2, Trash2, Share2, Copy, Check, ArrowRight, Gift, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -47,8 +47,20 @@ interface UserReferralInfo {
   referredByName: string | null;
   referredCount: number;
 }
+interface UserGamification {
+  user_id: string; total_xp: number; level: number;
+}
+interface GiftMilestoneRow {
+  user_id: string; xp_milestone: number; voucher_inr: number;
+  gifted_at: string; voucher_code: string | null;
+  voucher_sent_at: string | null; availed_at: string | null;
+}
 
-interface Props { users: User[]; feedback: Feedback[]; usageLogs: UsageLog[]; referrals: Referral[]; referralClicks: ReferralClick[] }
+interface Props {
+  users: User[]; feedback: Feedback[]; usageLogs: UsageLog[];
+  referrals: Referral[]; referralClicks: ReferralClick[];
+  gamification: UserGamification[]; milestones: GiftMilestoneRow[];
+}
 
 const USD_TO_INR = 94;
 function inr(usd: number) { return `₹${(usd * USD_TO_INR).toFixed(2)}`; }
@@ -337,8 +349,162 @@ function UserRow({ user, referralInfo }: { user: User; referralInfo: UserReferra
   );
 }
 
-export function AdminDashboard({ users, feedback, usageLogs, referrals, referralClicks }: Props) {
-  const [tab, setTab] = useState<'users' | 'feedback' | 'usage' | 'referrals'>('users');
+function VoucherInput({ row, userName }: { row: GiftMilestoneRow; userName: string }) {
+  const [code, setCode] = useState(row.voucher_code ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(!!row.voucher_code);
+
+  async function save() {
+    if (!code.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/milestones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: row.user_id, xp_milestone: row.xp_milestone, voucher_code: code }),
+      });
+      if (res.ok) { setSaved(true); toast.success(`Voucher saved for ${userName}`); }
+      else { const d = await res.json(); toast.error(d.error ?? 'Failed'); }
+    } catch { toast.error('Network error'); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <input
+        type="text"
+        value={code}
+        onChange={e => { setCode(e.target.value); setSaved(false); }}
+        placeholder="Enter Amazon voucher code"
+        className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400 min-w-0"
+      />
+      <Button
+        size="sm"
+        onClick={save}
+        disabled={saving || !code.trim() || saved}
+        className={`h-8 text-xs gap-1.5 shrink-0 ${saved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+      >
+        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <Check className="h-3 w-3" /> : <Send className="h-3 w-3" />}
+        {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
+      </Button>
+    </div>
+  );
+}
+
+function RewardsTab({ users, gamification, milestones }: {
+  users: User[];
+  gamification: UserGamification[];
+  milestones: GiftMilestoneRow[];
+}) {
+  const userMap = new Map(users.map(u => [u.id, u]));
+  const xpMap = new Map(gamification.map(g => [g.user_id, g]));
+
+  // Group milestones by user
+  const byUser = new Map<string, GiftMilestoneRow[]>();
+  for (const m of milestones) {
+    if (!byUser.has(m.user_id)) byUser.set(m.user_id, []);
+    byUser.get(m.user_id)!.push(m);
+  }
+
+  // Sort: users with pending (no voucher_code) milestones first
+  const userIds = [...byUser.keys()].sort((a, b) => {
+    const aPending = byUser.get(a)!.some(m => !m.voucher_code) ? 0 : 1;
+    const bPending = byUser.get(b)!.some(m => !m.voucher_code) ? 0 : 1;
+    return aPending - bPending;
+  });
+
+  if (userIds.length === 0) {
+    return <p className="text-center text-gray-400 py-10">No milestone rewards yet</p>;
+  }
+
+  const pendingCount = [...byUser.values()].flat().filter(m => !m.voucher_code).length;
+  const availedCount = [...byUser.values()].flat().filter(m => m.availed_at).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <p className="text-2xl font-black text-amber-600">{milestones.length}</p>
+          <p className="text-xs text-gray-500">Total milestones reached</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <p className="text-2xl font-black text-red-500">{pendingCount}</p>
+          <p className="text-xs text-gray-500">Awaiting voucher code</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <p className="text-2xl font-black text-emerald-600">{availedCount}</p>
+          <p className="text-xs text-gray-500">Vouchers availed by students</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {userIds.map(uid => {
+          const user = userMap.get(uid);
+          const xp = xpMap.get(uid);
+          const rows = byUser.get(uid)!.sort((a, b) => a.xp_milestone - b.xp_milestone);
+          const hasPending = rows.some(r => !r.voucher_code);
+          return (
+            <div key={uid} className={`rounded-xl border overflow-hidden ${hasPending ? 'border-amber-200' : 'border-gray-100'}`}>
+              <div className={`flex items-center gap-3 px-4 py-3 ${hasPending ? 'bg-amber-50' : 'bg-white'}`}>
+                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 font-bold text-sm">
+                  {user?.name?.[0]?.toUpperCase() ?? '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{user?.name ?? 'Unknown'}</p>
+                  <p className="text-xs text-gray-400">{user?.contact_email || user?.email || uid}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 text-xs text-gray-500">
+                  {xp && <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">{xp.total_xp.toLocaleString()} XP · Lvl {xp.level}</span>}
+                  {hasPending && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Action needed</span>}
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {rows.map(row => (
+                  <div key={row.xp_milestone} className="px-4 py-3 bg-white space-y-1">
+                    <div className="flex items-center gap-2">
+                      {row.availed_at
+                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        : row.voucher_code
+                        ? <Gift className="h-4 w-4 text-indigo-500 shrink-0" />
+                        : <Gift className="h-4 w-4 text-amber-500 shrink-0" />
+                      }
+                      <span className="text-sm font-semibold text-gray-800">
+                        ₹{row.voucher_inr} Amazon Voucher ({row.xp_milestone.toLocaleString()} XP)
+                      </span>
+                      <span className="ml-auto text-xs text-gray-400">
+                        Reached {new Date(row.gifted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {row.availed_at ? (
+                      <div className="flex items-center gap-2 text-xs text-gray-500 ml-6">
+                        <span className="font-mono bg-gray-50 border border-gray-100 px-2 py-0.5 rounded text-gray-700">{row.voucher_code}</span>
+                        <span className="text-emerald-600 font-medium">
+                          Availed on {new Date(row.availed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="ml-6">
+                        {row.voucher_code && (
+                          <p className="text-xs text-indigo-600 mb-1">
+                            Voucher set · waiting for student to mark as used
+                          </p>
+                        )}
+                        <VoucherInput row={row} userName={user?.name ?? 'Student'} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function AdminDashboard({ users, feedback, usageLogs, referrals, referralClicks, gamification, milestones }: Props) {
+  const [tab, setTab] = useState<'users' | 'feedback' | 'usage' | 'referrals' | 'rewards'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
   const chapterMap = new Map<string, { name: string; subject: string }>(
@@ -444,8 +610,8 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
-        {(['users', 'feedback', 'usage', 'referrals'] as const).map(t => (
+      <div className="flex gap-1 border-b border-gray-200 flex-wrap">
+        {(['users', 'feedback', 'usage', 'referrals', 'rewards'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -458,7 +624,8 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
             {t === 'users' ? `Users (${users.length})`
               : t === 'feedback' ? `Feedback (${feedback.length})`
               : t === 'usage' ? `AI Usage (${usageLogs.length})`
-              : `Referrals (${referrals.length})`}
+              : t === 'referrals' ? `Referrals (${referrals.length})`
+              : `Rewards (${milestones.length})`}
           </button>
         ))}
       </div>
@@ -753,6 +920,11 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           ).map(f => <FeedbackCard key={f.id} f={f} chapterMap={chapterMap} />)}
         </div>
+      )}
+
+      {/* Rewards tab */}
+      {tab === 'rewards' && (
+        <RewardsTab users={users} gamification={gamification} milestones={milestones} />
       )}
     </div>
   );

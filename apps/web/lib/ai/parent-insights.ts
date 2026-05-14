@@ -30,7 +30,7 @@ export interface ParentInsight {
   threats: string[];
   recommendations: string[];
   alerts: string[];
-  parent_message: string;
+  parent_message: string | null;
 }
 
 let _claude: Anthropic | null = null;
@@ -88,7 +88,7 @@ Respond ONLY with valid JSON matching this exact structure, no markdown:
       threats: ['Consistent practice is key before exams.'],
       recommendations: ['Ask your child to complete at least one quiz per subject this week.'],
       alerts: [],
-      parent_message: `${input.student_name} has started their learning journey on EaseStudy.`,
+      parent_message: null,
     };
   }
 }

@@ -7,21 +7,22 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
   Menu, BookMarked, LayoutDashboard, Upload, CalendarCheck,
-  BookOpen, HelpCircle, Gift,
+  BookOpen, HelpCircle, Gift, TrendingUp,
 } from 'lucide-react';
 import type { User } from '@educompanion/shared';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 const mainNav = [
-  { label: 'Dashboard',         href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Upload Chapter',    href: '/upload',    icon: Upload },
-  { label: 'Study Planner',     href: '/tests',     icon: CalendarCheck },
-  { label: 'My Saved Chapters', href: '/chapters',  icon: BookOpen },
+  { label: 'Dashboard',         href: '/dashboard',  icon: LayoutDashboard },
+  { label: 'Upload Chapter',    href: '/upload',      icon: Upload },
+  { label: 'Study Planner',     href: '/tests',       icon: CalendarCheck },
+  { label: 'My Saved Chapters', href: '/chapters',    icon: BookOpen },
+  { label: 'My Performance',    href: '/performance', icon: TrendingUp },
 ];
 
 const bottomNav = [
   { label: 'How to Use',  href: '/how-to-use',   icon: HelpCircle },
-  { label: 'Refer & Earn', href: '/profile#refer', icon: Gift },
+  { label: 'Refer & Earn', href: '/rewards', icon: Gift },
 ];
 
 interface Props { user: User }

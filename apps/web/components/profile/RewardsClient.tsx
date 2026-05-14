@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2, Copy, Users, UserCheck } from 'lucide-react';
+import { Flame, Trophy, FlaskConical, Layers, Star, Share2, Gift, CheckCircle2, Copy, Users, UserCheck, Loader2 } from 'lucide-react';
 import { xpForLevel, xpForNextLevel } from '@/lib/gamification';
 import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 
@@ -25,7 +25,12 @@ interface Stats {
   chaptersMastered: number;
 }
 
-interface ClaimedMilestone { xp_milestone: number; gifted_at: string }
+interface ClaimedMilestone {
+  xp_milestone: number;
+  gifted_at: string;
+  voucher_code: string | null;
+  availed_at: string | null;
+}
 
 interface Props {
   profile: Profile;
@@ -35,10 +40,81 @@ interface Props {
   referralCount: number;
 }
 
+function VoucherSection({ milestone, claimed, onAvailed }: {
+  milestone: { xp: number; label: string };
+  claimed: ClaimedMilestone;
+  onAvailed: (xp: number) => void;
+}) {
+  const [availing, setAvailing] = useState(false);
+
+  const markUsed = useCallback(async () => {
+    setAvailing(true);
+    try {
+      const res = await fetch('/api/student/milestones/avail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ xp_milestone: milestone.xp }),
+      });
+      if (res.ok) {
+        toast.success('Marked as used!');
+        onAvailed(milestone.xp);
+      } else {
+        const d = await res.json();
+        toast.error(d.error ?? 'Failed');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+    setAvailing(false);
+  }, [milestone.xp, onAvailed]);
+
+  if (!claimed.voucher_code) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="bg-white border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+        <span className="text-xs font-semibold text-emerald-700 shrink-0">Voucher Code:</span>
+        <span className="flex-1 font-mono text-sm font-bold text-gray-800 select-all">{claimed.voucher_code}</span>
+        <button
+          onClick={() => { navigator.clipboard.writeText(claimed.voucher_code!); toast.success('Code copied!'); }}
+          className="text-gray-400 hover:text-emerald-600 transition-colors"
+          title="Copy code"
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {claimed.availed_at ? (
+        <p className="text-[10px] text-gray-400 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+          Used on {new Date(claimed.availed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </p>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={markUsed}
+          disabled={availing}
+          className="h-7 text-xs gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+        >
+          {availing ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+          {availing ? 'Saving…' : 'Mark as Used'}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function RewardsClient({ profile, stats, claimedMilestones, referralCode, referralCount }: Props) {
   const statsCardRef = useRef<HTMLDivElement>(null);
   const shareBlobRef = useRef<Blob | null>(null);
   const [shareReady, setShareReady] = useState(false);
+  const [milestones, setMilestones] = useState<ClaimedMilestone[]>(claimedMilestones);
+
+  function handleAvailed(xp: number) {
+    setMilestones(prev => prev.map(m =>
+      m.xp_milestone === xp ? { ...m, availed_at: new Date().toISOString() } : m
+    ));
+  }
 
   // Pre-generate share image after mount
   useEffect(() => {
@@ -199,10 +275,10 @@ export function RewardsClient({ profile, stats, claimedMilestones, referralCode,
             <Gift className="h-4 w-4" /> Study Rewards
           </div>
           <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-gray-400">Earn Amazon vouchers by reaching XP milestones. Rewards are sent to your registered email within 48 hours.</p>
+            <p className="text-xs text-gray-400">Earn Amazon vouchers by reaching XP milestones. Your voucher code will appear here once processed by the admin.</p>
             {GIFT_MILESTONES.map(milestone => {
               const totalXp = stats.gamification?.total_xp ?? 0;
-              const claimed = claimedMilestones.find(c => c.xp_milestone === milestone.xp);
+              const claimed = milestones.find(c => c.xp_milestone === milestone.xp);
               const reached = totalXp >= milestone.xp;
               const progress = Math.min(100, Math.round((totalXp / milestone.xp) * 100));
               const remaining = milestone.xp - totalXp;
@@ -225,11 +301,18 @@ export function RewardsClient({ profile, stats, claimedMilestones, referralCode,
                   </div>
                   <p className="text-[10px] text-gray-400">
                     {claimed
-                      ? `Gifted on ${new Date(claimed.gifted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                      ? `Milestone reached on ${new Date(claimed.gifted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
                       : reached ? 'Milestone reached! Voucher being processed.'
                       : `${remaining.toLocaleString()} XP to go`
                     }
                   </p>
+                  {claimed && (
+                    <VoucherSection
+                      milestone={milestone}
+                      claimed={claimed}
+                      onAvailed={handleAvailed}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -300,18 +383,18 @@ export function RewardsClient({ profile, stats, claimedMilestones, referralCode,
                 <ol className="text-teal-600 space-y-1 list-decimal list-inside text-xs leading-relaxed">
                   <li>Share this message with your parent</li>
                   <li>They visit <span className="font-mono font-semibold">easestudy.in/parent-login</span></li>
-                  <li>They register using your phone number as their login ID</li>
+                  <li>They register using their phone number as the login ID</li>
                 </ol>
               </div>
               {profile.phone_number ? (
                 <div className="space-y-2">
                   <div className="bg-white border border-teal-100 rounded-lg px-3 py-2.5">
-                    <p className="text-xs text-teal-400 leading-none mb-1">Your phone number (parent&apos;s login ID)</p>
+                    <p className="text-xs text-teal-400 leading-none mb-1">Your parent&apos;s phone number (their login ID)</p>
                     <p className="text-sm font-mono font-semibold text-teal-800">{profile.phone_number}</p>
                   </div>
                   <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2"
                     onClick={async () => {
-                      const msg = `Hi! You can track my EaseStudy study progress from the Parent Portal.\n\n👉 Visit: https://easestudy.in/parent-login\n📱 Register using my phone number: ${profile.phone_number}\n\nYou'll see my quiz scores, study streaks, chapter mastery, and personalised AI insights!`;
+                      const msg = `Hi! You can track my EaseStudy study progress from the Parent Portal.\n\n👉 Visit: https://easestudy.in/parent-login\n📱 Register using your phone number: ${profile.phone_number}\n\nYou'll see my quiz scores, study streaks, chapter mastery, and personalised AI insights!`;
                       if (navigator.share) {
                         try { await navigator.share({ title: 'Track my EaseStudy progress', text: msg }); }
                         catch { /* user cancelled */ }
