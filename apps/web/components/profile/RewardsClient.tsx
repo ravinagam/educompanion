@@ -72,16 +72,20 @@ function VoucherSection({ milestone, claimed, onAvailed }: {
 
   return (
     <div className="mt-2 space-y-2">
-      <div className="bg-white border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
-        <span className="text-xs font-semibold text-emerald-700 shrink-0">Voucher Code:</span>
-        <span className="flex-1 font-mono text-sm font-bold text-gray-800 select-all">{claimed.voucher_code}</span>
-        <button
-          onClick={() => { navigator.clipboard.writeText(claimed.voucher_code!); toast.success('Code copied!'); }}
-          className="text-gray-400 hover:text-emerald-600 transition-colors"
-          title="Copy code"
-        >
-          <Copy className="h-3.5 w-3.5" />
-        </button>
+      <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 space-y-1">
+        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Your Amazon Voucher Code</p>
+        <div className="flex items-center gap-2">
+          <span className="flex-1 font-mono text-xl font-black text-emerald-900 tracking-widest select-all break-all">
+            {claimed.voucher_code}
+          </span>
+          <button
+            onClick={() => { navigator.clipboard.writeText(claimed.voucher_code!); toast.success('Code copied!'); }}
+            className="shrink-0 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            title="Copy code"
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy
+          </button>
+        </div>
       </div>
       {claimed.availed_at ? (
         <p className="text-[10px] text-gray-400 flex items-center gap-1">
