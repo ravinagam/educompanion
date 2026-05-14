@@ -12,7 +12,7 @@ import {
   FlaskConical, CheckCircle2, Loader2, Star, RefreshCw,
 } from 'lucide-react';
 import { XpToast } from '@/components/gamification/XpToast';
-import { normalisePdfText, type Para } from '@/lib/utils/section-text';
+import { normalisePdfText, hasMathGarble, type Para } from '@/lib/utils/section-text';
 
 interface Question {
   id: string;
@@ -64,8 +64,19 @@ function stepIndex(step: Step) {
 
 function SectionReader({ text }: { text: string }) {
   const paragraphs = normalisePdfText(text);
+  const mathGarbled = hasMathGarble(text);
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] md:max-h-none overflow-y-auto md:overflow-visible space-y-3.5 text-[15px] leading-7 text-gray-800">
+    <div className="space-y-3">
+      {mathGarbled && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 text-xs text-amber-800">
+          <span className="shrink-0 mt-0.5">⚠️</span>
+          <span>
+            This section contains <strong>mathematical formulas</strong>. Some symbols may appear as boxes (■□) because the PDF uses a custom math font that cannot be decoded as text.
+            {' '}<strong>Refer to your textbook for exact notation.</strong>
+          </span>
+        </div>
+      )}
+      <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] md:max-h-none overflow-y-auto md:overflow-visible space-y-3.5 text-[15px] leading-7 text-gray-800">
       {paragraphs.map((para, i) => {
         if (para.kind === 'heading') {
           return (
@@ -92,6 +103,7 @@ function SectionReader({ text }: { text: string }) {
         }
         return <p key={i} className="text-gray-700">{para.text}</p>;
       })}
+      </div>
     </div>
   );
 }

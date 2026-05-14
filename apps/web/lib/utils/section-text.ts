@@ -62,6 +62,16 @@ export function cleanText(t: string): string {
     .trim();
 }
 
+// Returns true when raw PDF text contains characters that indicate garbled math:
+//   U+25A0-U+25FF  Geometric Shapes (filled/open squares, circles, diamonds)
+//                  — pdf-parse maps unknown glyph codes here when the PDF uses
+//                    a custom math font (MathType, Symbol, STIX, etc.)
+//   U+E000-U+F8FF  Private Use Area — math font characters with no Unicode equivalent
+export function hasMathGarble(text: string): boolean {
+  // eslint-disable-next-line no-control-regex
+  return /[■-◿-]/.test(text);
+}
+
 export function classify(text: string): Para {
   if (SECTION_HEADER_RE.test(text)) return { kind: 'heading', text };
 
