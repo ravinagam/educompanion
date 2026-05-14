@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { XpToast } from '@/components/gamification/XpToast';
 import { normalisePdfText, hasMathGarble, type Para } from '@/lib/utils/section-text';
+import { hasMathDelimiters } from '@/lib/utils/pdf-vision-extract';
+import { MathText } from '@/components/sections/MathText';
 
 interface Question {
   id: string;
@@ -62,47 +64,70 @@ function stepIndex(step: Step) {
 }
 
 
+function renderText(text: string, className?: string) {
+  // If the text contains LaTeX delimiters ($...$) from Claude vision extraction,
+  // render through KaTeX. Otherwise render as plain text.
+  if (hasMathDelimiters(text)) {
+    return <MathText text={text} className={className} />;
+  }
+  return <span className={className}>{text}</span>;
+}
+
 function SectionReader({ text }: { text: string }) {
   const paragraphs = normalisePdfText(text);
-  const mathGarbled = hasMathGarble(text);
+  const hasGarble = hasMathGarble(text);
+  const hasMath = hasMathDelimiters(text);
+
   return (
     <div className="space-y-3">
-      {mathGarbled && (
+      {/* Math rendered via KaTeX — show a subtle info badge */}
+      {hasMath && (
+        <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+          <span>✓</span>
+          <span>Mathematical formulas are rendered using KaTeX</span>
+        </div>
+      )}
+      {/* Garbled math (older chapters uploaded before vision extraction) */}
+      {hasGarble && !hasMath && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">⚠️</span>
           <span>
-            This section contains <strong>mathematical formulas</strong>. Some symbols may appear as boxes (■□) because the PDF uses a custom math font that cannot be decoded as text.
-            {' '}<strong>Refer to your textbook for exact notation.</strong>
+            This section contains <strong>mathematical formulas</strong> that could not be decoded from the PDF font.
+            {' '}<strong>Re-upload this chapter as a PDF</strong> to get properly rendered formulas, or refer to your textbook.
           </span>
         </div>
       )}
       <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] md:max-h-none overflow-y-auto md:overflow-visible space-y-3.5 text-[15px] leading-7 text-gray-800">
-      {paragraphs.map((para, i) => {
-        if (para.kind === 'heading') {
+        {paragraphs.map((para, i) => {
+          if (para.kind === 'heading') {
+            return (
+              <h3 key={i} className={`font-bold text-xs tracking-widest uppercase text-emerald-700 ${i > 0 ? 'pt-3 mt-1 border-t border-gray-100' : ''}`}>
+                {para.text}
+              </h3>
+            );
+          }
+          if (para.kind === 'caption') {
+            return (
+              <p key={i} className="text-xs italic text-gray-400 text-center bg-gray-50 rounded-lg px-4 py-2 border border-gray-100">
+                {renderText(para.text)}
+              </p>
+            );
+          }
+          if (para.kind === 'definition') {
+            return (
+              <div key={i} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
+                <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
+                <span className="text-gray-400 mx-1.5 text-sm">—</span>
+                {renderText(para.def, 'text-gray-700 text-sm leading-relaxed')}
+              </div>
+            );
+          }
           return (
-            <h3 key={i} className={`font-bold text-gray-900 text-xs tracking-widest uppercase text-emerald-700 ${i > 0 ? 'pt-3 mt-1 border-t border-gray-100' : ''}`}>
-              {para.text}
-            </h3>
-          );
-        }
-        if (para.kind === 'caption') {
-          return (
-            <p key={i} className="text-xs italic text-gray-400 text-center bg-gray-50 rounded-lg px-4 py-2 border border-gray-100">
-              {para.text}
+            <p key={i} className="text-gray-700">
+              {renderText(para.text)}
             </p>
           );
-        }
-        if (para.kind === 'definition') {
-          return (
-            <div key={i} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
-              <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
-              <span className="text-gray-400 mx-1.5 text-sm">—</span>
-              <span className="text-gray-700 text-sm leading-relaxed">{para.def}</span>
-            </div>
-          );
-        }
-        return <p key={i} className="text-gray-700">{para.text}</p>;
-      })}
+        })}
       </div>
     </div>
   );

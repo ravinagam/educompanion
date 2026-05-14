@@ -1,9 +1,10 @@
+import Anthropic from '@anthropic-ai/sdk';
 import type { NextRequest } from 'next/server';
 
 const MAX_TEXT_CHARS = 120_000; // ~80 pages — enough for any school chapter
 
-async function extractPdfText(buffer: Buffer): Promise<string> {
-  // pdf-parse v1 — pure Node.js compatible, no browser APIs required
+async function extractPdfTextFallback(buffer: Buffer): Promise<string> {
+  // pdf-parse v1 — plain text extraction, no math rendering
   const { default: pdfParse } = await import('pdf-parse');
   let result: { text: string };
   try {
@@ -19,6 +20,25 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     throw new Error('This PDF contains no selectable text. It is likely a scanned image PDF — try uploading the pages as photos instead using the "Upload as Photos" option.');
   }
   return result.text;
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  // Try Claude Vision first — correctly renders mathematical notation as LaTeX
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (apiKey) {
+    try {
+      const { extractTextFromPdfVision } = await import('@/lib/utils/pdf-vision-extract');
+      const claude = new Anthropic({ apiKey });
+      const result = await extractTextFromPdfVision(buffer, claude);
+      if (result.text.trim().length > 100) {
+        console.log('[text-extraction] Vision extraction succeeded:', result.input_tokens, 'in /', result.output_tokens, 'out tokens');
+        return result.text;
+      }
+    } catch (err) {
+      console.warn('[text-extraction] Vision extraction failed, falling back to pdf-parse:', err instanceof Error ? err.message : err);
+    }
+  }
+  return extractPdfTextFallback(buffer);
 }
 
 export async function extractTextFromBuffer(
@@ -47,7 +67,6 @@ export async function extractTextFromBuffer(
     throw new Error('File type not supported. Please upload a PDF, Word document (.docx/.doc), or text file (.txt).');
   }
 
-  // Cap text to prevent excessive chunking for very large files
   return text.length > MAX_TEXT_CHARS ? text.slice(0, MAX_TEXT_CHARS) : text;
 }
 
