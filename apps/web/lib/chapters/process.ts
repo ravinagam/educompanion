@@ -2,7 +2,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { extractTextFromBuffer } from '@/lib/utils/text-extraction';
 import { chunkText, embedBatch, computeComplexityScore } from '@/lib/ai/embeddings';
 import { logCostDirect, VOYAGE_COST_PER_M } from '@/lib/ai/usage';
-import { extractImagesFromPdf } from '@/lib/utils/extract-images';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
@@ -64,7 +63,10 @@ async function runProcessing(
 
   // Extract images from PDFs (best-effort; failures don't block processing)
   if (mimeType === 'application/pdf') {
-    extractAndStoreImages(admin, chapterId, buffer).catch(err =>
+    // Dynamic import so the pdfjs-dist module is never loaded in test/browser environments
+    import('@/lib/utils/extract-images').then(({ extractImagesFromPdf }) =>
+      extractAndStoreImages(admin, chapterId, buffer, extractImagesFromPdf)
+    ).catch(err =>
       console.warn('[process] Image extraction failed (non-fatal):', err instanceof Error ? err.message : err)
     );
   }
@@ -135,7 +137,8 @@ export async function processTextContent(
 async function extractAndStoreImages(
   admin: ReturnType<typeof createAdminClient>,
   chapterId: string,
-  buffer: Buffer
+  buffer: Buffer,
+  extractImagesFromPdf: (buf: Buffer) => Promise<Array<{ data: Buffer; width: number; height: number; pageNum: number; orderIdx: number }>>
 ) {
   console.log('[process] Extracting images from PDF for chapter', chapterId);
   const images = await extractImagesFromPdf(buffer);

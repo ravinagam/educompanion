@@ -4,7 +4,19 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  server: {
+    // pdfjs-dist is a server-only native module; let Node.js handle it, don't bundle
+    fs: { strict: false },
+  },
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
+  },
   test: {
+    server: {
+      deps: {
+        external: ['pdfjs-dist'],
+      },
+    },
     environment: 'jsdom',
     globals: true,
     testTimeout: 15000,
