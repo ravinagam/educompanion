@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Flame, Trophy, Clock, Sparkles, BarChart2, Target,
-  BookOpen, AlertTriangle, TrendingUp, TrendingDown, Minus, CheckCircle2, Gift,
+  BookOpen, AlertTriangle, TrendingUp, TrendingDown, Minus, CheckCircle2, Gift, Star,
 } from 'lucide-react';
+import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 import { Badge } from '@/components/ui/badge';
 import { type KPIData } from './KPIGrid';
 import { SubjectMasteryChart, type SubjectData } from './SubjectMasteryChart';
@@ -210,6 +211,27 @@ export function ParentDashboardClient({
             <span className="font-bold">{kpi.current_streak}-day streak</span>
           </div>
         </div>
+        {(() => {
+          const claimedXp = milestones.map(m => m.xp_milestone);
+          const next = GIFT_MILESTONES.find(m => !claimedXp.includes(m.xp) && kpi.total_xp < m.xp);
+          if (!next) return null;
+          const xpLeft = next.xp - kpi.total_xp;
+          const pct = Math.min(100, Math.round((kpi.total_xp / next.xp) * 100));
+          return (
+            <div className="w-full mt-2 bg-white/10 rounded-xl px-4 py-2.5">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="flex items-center gap-1.5 font-semibold text-yellow-200">
+                  <Star className="h-3.5 w-3.5 text-yellow-300" />
+                  Next reward: ₹{next.voucher_inr} Amazon Voucher at {next.xp.toLocaleString()} XP
+                </span>
+                <span className="text-white/70">{xpLeft.toLocaleString()} XP to go</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="h-full rounded-full bg-yellow-300 transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Voucher status banners */}

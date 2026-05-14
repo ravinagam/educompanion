@@ -451,8 +451,7 @@ function RewardsTab({ users, gamification, milestones }: {
         </div>
       </div>
 
-      {nearMilestone.length > 0 && (
-        <div className="space-y-2">
+      <div className="space-y-2">
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <Bell className="h-4 w-4 text-amber-500" />
             Approaching Next Milestone ({nearMilestone.length} student{nearMilestone.length !== 1 ? 's' : ''})
@@ -506,11 +505,17 @@ function RewardsTab({ users, gamification, milestones }: {
                     </td>
                   </tr>
                 ))}
+                {nearMilestone.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">
+                      No students are at 70%+ of a milestone yet — check back as they earn more XP.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-      )}
 
       <div className="space-y-3">
         {userIds.map(uid => {

@@ -113,6 +113,23 @@ export function DashboardClient({
               </>
             : `${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`}
         </p>
+        {nextReward && (
+          <div className="mt-3 bg-white/10 rounded-xl px-4 py-2.5">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="flex items-center gap-1.5 font-semibold text-yellow-200">
+                <Trophy className="h-3.5 w-3.5 text-yellow-300" />
+                Next reward: {nextReward.label} at {nextReward.xpTotal.toLocaleString()} XP
+              </span>
+              <span className="text-white/70">{nextReward.xpNeeded.toLocaleString()} XP to go</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-yellow-300 transition-all"
+                style={{ width: `${Math.min(Math.round((totalXp / nextReward.xpTotal) * 100), 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── KPI row ── */}
