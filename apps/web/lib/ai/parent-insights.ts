@@ -82,11 +82,11 @@ Respond ONLY with valid JSON matching this exact structure, no markdown:
   } catch {
     // Fallback if JSON parse fails
     return {
-      strengths: ['Your child is using EaseStudy to learn.'],
-      weaknesses: ['More data needed to identify specific weaknesses.'],
-      opportunities: ['Encourage daily study sessions to build momentum.'],
+      strengths: ['Getting started with EaseStudy — keep it up!'],
+      weaknesses: ['More data needed to identify specific areas to improve.'],
+      opportunities: ['Daily study sessions will help build strong momentum.'],
       threats: ['Consistent practice is key before exams.'],
-      recommendations: ['Ask your child to complete at least one quiz per subject this week.'],
+      recommendations: ['Complete at least one quiz per subject this week to get started.'],
       alerts: [],
       parent_message: null,
     };

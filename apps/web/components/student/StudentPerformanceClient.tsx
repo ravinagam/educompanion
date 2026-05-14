@@ -102,6 +102,19 @@ function ActivityLog({ points }: { points: QuizTrendPoint[] }) {
   );
 }
 
+function toStudentVoice(text: string): string {
+  return text
+    .replace(/\bYour child is\b/gi, 'You are')
+    .replace(/\bYour child has\b/gi, 'You have')
+    .replace(/\bYour child\b/gi, 'You')
+    .replace(/\btheir\b/gi, 'your')
+    .replace(/\bAsk your child to\b/gi, 'Try to')
+    .replace(/\bEncourage (your child|them) to\b/gi, 'Try to')
+    .replace(/\bEncourage daily\b/gi, 'Try daily')
+    .replace(/\bthey (are|have|need|should|can|could|would|will)\b/gi, (_, v) => `you ${v}`)
+    .replace(/\bHelp (your child|them)\b/gi, 'Focus on');
+}
+
 function InsightTagRow({ tag, items, tagColor }: { tag: string; items: string[]; tagColor: string }) {
   if (!items || items.length === 0) return null;
   return (
@@ -111,7 +124,7 @@ function InsightTagRow({ tag, items, tagColor }: { tag: string; items: string[];
       </span>
       <ul className="space-y-1 pl-1">
         {items.slice(0, 2).map((item, i) => (
-          <li key={i} className="text-xs text-gray-700 leading-snug">{item}</li>
+          <li key={i} className="text-xs text-gray-700 leading-snug">{toStudentVoice(item)}</li>
         ))}
       </ul>
     </div>
@@ -152,6 +165,19 @@ export function StudentPerformanceClient({
 }: StudentPerformanceProps) {
   const [insights, setInsights] = useState<ParentInsight | null>(initialInsights);
   const [insightsAt, setInsightsAt] = useState<string | null>(insightsGeneratedAt);
+
+  function studentInsights(ins: ParentInsight): ParentInsight {
+    const t = (arr: string[]) => arr.map(toStudentVoice);
+    return {
+      ...ins,
+      strengths: t(ins.strengths),
+      weaknesses: t(ins.weaknesses),
+      opportunities: t(ins.opportunities),
+      threats: t(ins.threats ?? []),
+      recommendations: t(ins.recommendations ?? []),
+      alerts: ins.alerts,
+    };
+  }
 
   const performanceValue = kpi.overall_quiz_avg !== null ? `${kpi.overall_quiz_avg}%` : '—';
   const improvementValue = kpi.weekly_improvement !== null
@@ -366,7 +392,7 @@ export function StudentPerformanceClient({
 
       <Section title="AI Learning Report (SWOT)" icon={<Sparkles className="h-4 w-4" />}>
         {insights ? (
-          <SwotPanel insights={insights} generatedAt={insightsAt!} />
+          <SwotPanel insights={studentInsights(insights)} generatedAt={insightsAt!} />
         ) : (
           <div className="text-center py-6 space-y-3">
             <p className="text-sm text-gray-500">No AI insights generated yet.</p>
@@ -377,7 +403,7 @@ export function StudentPerformanceClient({
 
       {insights?.recommendations && insights.recommendations.length > 0 && (
         <Section title="AI Recommendations" icon={<BookOpen className="h-4 w-4" />}>
-          <RecommendationsPanel recommendations={insights.recommendations} />
+          <RecommendationsPanel recommendations={studentInsights(insights).recommendations!} />
         </Section>
       )}
 
