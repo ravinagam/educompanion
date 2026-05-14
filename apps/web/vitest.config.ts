@@ -7,9 +7,9 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   resolve: {
     alias: {
-      // pdfjs-dist legacy build is Node.js-only and can't be bundled by Vite.
-      // Redirect to a no-op stub so vite:import-analysis never tries to resolve it.
-      'pdfjs-dist/legacy/build/pdf.js': path.resolve(__dirname, '__tests__/stubs/pdfjs-stub.ts'),
+      // pdfjs-dist is a Node.js-only native module; redirect to a no-op stub
+      // so vite:import-analysis never tries to resolve it during unit tests.
+      'pdfjs-dist': path.resolve(__dirname, '__tests__/stubs/pdfjs-stub.ts'),
     },
   },
   test: {

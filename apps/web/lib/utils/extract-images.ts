@@ -12,10 +12,10 @@ export interface ExtractedImage {
 const MIN_DIM = 80;
 
 export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedImage[]> {
-  // Dynamic import to avoid loading pdfjs in the browser bundle.
-  // The legacy/build path is Node.js only; types come from the main pdfjs-dist entry.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfjsLib = (await import(/* @vite-ignore */ 'pdfjs-dist/legacy/build/pdf.js' as never)) as typeof import('pdfjs-dist');
+  // Dynamic import keeps pdfjs-dist out of client bundles.
+  // serverExternalPackages in next.config.ts ensures Next.js/Turbopack never
+  // attempts to bundle this module — Node.js resolves it at runtime instead.
+  const pdfjsLib = await import('pdfjs-dist');
 
   // Disable web worker — not available in Node.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = '';
