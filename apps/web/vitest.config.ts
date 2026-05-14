@@ -1,22 +1,18 @@
+import path from 'path';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
-  server: {
-    // pdfjs-dist is a server-only native module; let Node.js handle it, don't bundle
-    fs: { strict: false },
-  },
-  optimizeDeps: {
-    exclude: ['pdfjs-dist'],
+  resolve: {
+    alias: {
+      // pdfjs-dist legacy build is Node.js-only and can't be bundled by Vite.
+      // Redirect to a no-op stub so vite:import-analysis never tries to resolve it.
+      'pdfjs-dist/legacy/build/pdf.js': path.resolve(__dirname, '__tests__/stubs/pdfjs-stub.ts'),
+    },
   },
   test: {
-    server: {
-      deps: {
-        external: ['pdfjs-dist'],
-      },
-    },
     environment: 'jsdom',
     globals: true,
     testTimeout: 15000,
