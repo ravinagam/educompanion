@@ -12,10 +12,11 @@ export interface ExtractedImage {
 const MIN_DIM = 80;
 
 export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedImage[]> {
-  // Dynamic import keeps pdfjs-dist out of client bundles.
-  // serverExternalPackages in next.config.ts ensures Next.js/Turbopack never
-  // attempts to bundle this module — Node.js resolves it at runtime instead.
-  const pdfjsLib = await import('pdfjs-dist');
+  // The main pdfjs-dist entry requires DOMMatrix (browser API) and crashes in Node.js.
+  // The legacy build is the Node.js-compatible variant — confirmed working in v5.
+  // serverExternalPackages in next.config.ts tells Turbopack not to bundle this;
+  // Node.js resolves it at runtime from node_modules.
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // Disable web worker — not available in Node.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = '';
