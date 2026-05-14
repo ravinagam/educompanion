@@ -621,7 +621,12 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
     entry.byFeature[log.feature].cost += cost;
     if (!entry.lastUsed || log.created_at > entry.lastUsed) entry.lastUsed = log.created_at;
   }
-  const userUsageList = [...usageByUser.values()].sort((a, b) => b.totalCost - a.totalCost);
+  const userUsageList = [...usageByUser.values()].sort((a, b) => {
+    if (b.lastUsed && a.lastUsed) return b.lastUsed.localeCompare(a.lastUsed);
+    if (b.lastUsed) return 1;
+    if (a.lastUsed) return -1;
+    return 0;
+  });
   const totalCost = userUsageList.reduce((s, u) => s + u.totalCost, 0);
   const totalByCat = {
     anthropic: userUsageList.reduce((s, u) => s + u.byCat.anthropic, 0),
