@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -26,6 +27,15 @@ interface Progress {
   completed_at: string | null;
 }
 
+interface ChapterImage {
+  id: string;
+  image_url: string;
+  page_num: number;
+  order_idx: number;
+  width: number | null;
+  height: number | null;
+}
+
 interface Props {
   chapter: { id: string; name: string };
   subjectName: string;
@@ -41,6 +51,7 @@ interface Props {
   };
   progress: Progress | null;
   nextSection: { id: string; title: string } | null;
+  chapterImages?: ChapterImage[];
 }
 
 type Step = 'read' | 'chat' | 'quiz' | 'done';
@@ -138,7 +149,7 @@ function normalisePdfText(raw: string): Para[] {
 function SectionReader({ text }: { text: string }) {
   const paragraphs = normalisePdfText(text);
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] overflow-y-auto space-y-3.5 text-[15px] leading-7 text-gray-800">
+    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] md:max-h-none overflow-y-auto md:overflow-visible space-y-3.5 text-[15px] leading-7 text-gray-800">
       {paragraphs.map((para, i) => {
         if (para.kind === 'heading') {
           return (
@@ -169,7 +180,7 @@ function SectionReader({ text }: { text: string }) {
   );
 }
 
-export function SectionDetailClient({ chapter, subjectName, section, progress: initialProgress, nextSection }: Props) {
+export function SectionDetailClient({ chapter, subjectName, section, progress: initialProgress, nextSection, chapterImages = [] }: Props) {
   const router = useRouter();
   const [progress, setProgress] = useState<Progress>(initialProgress ?? {
     read_done: false, chat_done: false, quiz_score: null, completed_at: null,
@@ -268,7 +279,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
   ] as const;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-2xl md:max-w-4xl mx-auto space-y-5">
       {xpToast && <XpToast xp={xpToast.xp} multiplier={1} onDone={() => setXpToast(null)} />}
 
       {/* Breadcrumb */}
@@ -337,7 +348,27 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             <div className="flex items-center gap-2 text-blue-700 font-semibold">
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
-            <SectionReader text={section.content_text} />
+            {/* Two-column on desktop: text left, images right */}
+            <div className={chapterImages.length > 0 ? 'md:grid md:grid-cols-[1fr_280px] md:gap-6' : ''}>
+              <SectionReader text={section.content_text} />
+              {chapterImages.length > 0 && (
+                <div className="mt-4 md:mt-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">From the book</p>
+                  {chapterImages.map(img => (
+                    <div key={img.id} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
+                      <Image
+                        src={img.image_url}
+                        alt="Chapter illustration"
+                        width={img.width ?? 280}
+                        height={img.height ?? 200}
+                        className="w-full h-auto object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {progress.completed_at
               ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
               : <Button className="w-full" onClick={markReadDone} disabled={saving}>

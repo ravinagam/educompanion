@@ -25,7 +25,7 @@ export default async function SectionDetailPage({
   if (!chapter || (chapter.subjects as unknown as { user_id: string }).user_id !== user.id) notFound();
 
   const admin = createAdminClient();
-  const [sectionRes, progressRes, allSectionsRes] = await Promise.all([
+  const [sectionRes, progressRes, allSectionsRes, imagesRes] = await Promise.all([
     admin.from('chapter_sections')
       .select('id, title, content_text, order_index, estimated_minutes, mini_quiz_json')
       .eq('id', sectionId)
@@ -40,6 +40,10 @@ export default async function SectionDetailPage({
       .select('id, order_index, title')
       .eq('chapter_id', chapterId)
       .order('order_index'),
+    admin.from('chapter_images')
+      .select('id, image_url, page_num, order_idx, width, height')
+      .eq('chapter_id', chapterId)
+      .order('order_idx'),
   ]);
 
   if (!sectionRes.data) notFound();
@@ -82,6 +86,7 @@ export default async function SectionDetailPage({
     : null;
 
   const subjectName = (chapter.subjects as unknown as { name: string }).name;
+  const chapterImages = imagesRes.data ?? [];
 
   return (
     <SectionDetailClient
@@ -99,6 +104,7 @@ export default async function SectionDetailPage({
       }}
       progress={progressRes.data ?? null}
       nextSection={nextSection}
+      chapterImages={chapterImages}
     />
   );
 }

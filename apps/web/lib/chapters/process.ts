@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { extractTextFromBuffer } from '@/lib/utils/text-extraction';
 import { chunkText, embedBatch, computeComplexityScore } from '@/lib/ai/embeddings';
 import { logCostDirect, VOYAGE_COST_PER_M } from '@/lib/ai/usage';
+import { extractImagesFromPdf } from '@/lib/utils/extract-images';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
@@ -60,6 +61,13 @@ async function runProcessing(
   console.log('[process] Step 1/4 — extracting text from', filename, `(${mimeType})`);
   const contentText = await extractTextFromBuffer(buffer, mimeType, filename);
   console.log('[process] Extracted', contentText.length, 'chars');
+
+  // Extract images from PDFs (best-effort; failures don't block processing)
+  if (mimeType === 'application/pdf') {
+    extractAndStoreImages(admin, chapterId, buffer).catch(err =>
+      console.warn('[process] Image extraction failed (non-fatal):', err instanceof Error ? err.message : err)
+    );
+  }
 
   await processTextContent(admin, chapterId, contentText, userId);
 }
@@ -122,6 +130,41 @@ export async function processTextContent(
 
   if (updateErr) throw new Error(`DB update failed: ${updateErr.message}`);
   console.log('[process] Done — chapter', chapterId, 'is ready');
+}
+
+async function extractAndStoreImages(
+  admin: ReturnType<typeof createAdminClient>,
+  chapterId: string,
+  buffer: Buffer
+) {
+  console.log('[process] Extracting images from PDF for chapter', chapterId);
+  const images = await extractImagesFromPdf(buffer);
+  if (images.length === 0) { console.log('[process] No images found in PDF'); return; }
+  console.log('[process] Found', images.length, 'images');
+
+  // Clear previous images for this chapter
+  await admin.from('chapter_images').delete().eq('chapter_id', chapterId);
+
+  for (const img of images) {
+    const storagePath = `${chapterId}/${img.pageNum}_${img.orderIdx}.png`;
+    const { error: uploadErr } = await admin.storage
+      .from('chapter-images')
+      .upload(storagePath, img.data, { contentType: 'image/png', upsert: true });
+
+    if (uploadErr) { console.warn('[process] Image upload failed:', uploadErr.message); continue; }
+
+    const { data: publicData } = admin.storage.from('chapter-images').getPublicUrl(storagePath);
+    await admin.from('chapter_images').insert({
+      chapter_id: chapterId,
+      image_url: publicData.publicUrl,
+      page_num: img.pageNum,
+      order_idx: img.orderIdx,
+      width: img.width,
+      height: img.height,
+    });
+  }
+
+  console.log('[process] Stored', images.length, 'images for chapter', chapterId);
 }
 
 export const MIME_FROM_EXT: Record<string, string> = {
