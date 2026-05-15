@@ -440,7 +440,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
                 {section.mini_quiz.map((q, qi) => (
                   <div key={q.id} className="space-y-2">
                     <p className="text-sm font-medium text-gray-900">
-                      Q{qi + 1}. {q.question}
+                      Q{qi + 1}. {renderText(q.question)}
                     </p>
                     <div className="space-y-1.5">
                       {q.options.map(opt => (
@@ -453,7 +453,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
                               : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                           }`}
                         >
-                          {opt}
+                          {renderText(opt)}
                         </button>
                       ))}
                     </div>

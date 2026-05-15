@@ -14,6 +14,12 @@ import {
 import Link from 'next/link';
 import { XpToast } from '@/components/gamification/XpToast';
 import { ActivityRatingPrompt, shouldShowActivityRating } from '@/components/feedback/ActivityRatingPrompt';
+import { MathText } from '@/components/sections/MathText';
+import { hasMathDelimiters } from '@/lib/utils/pdf-vision-extract';
+
+function renderMath(text: string) {
+  return hasMathDelimiters(text) ? <MathText text={text} /> : <>{text}</>;
+}
 
 interface Question {
   id: string;
@@ -554,7 +560,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   </Badge>
                 )}
               </div>
-              <p className="text-lg font-medium text-gray-900 leading-snug">{currentQ.question}</p>
+              <p className="text-lg font-medium text-gray-900 leading-snug">{renderMath(currentQ.question)}</p>
             </div>
 
             {/* MCQ + True/False options */}
@@ -570,7 +576,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
                     }`}
                   >
-                    {opt}
+                    {renderMath(opt)}
                   </button>
                 ))}
               </div>
@@ -660,7 +666,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs font-bold text-gray-400 mt-0.5 shrink-0">Q{idx + 1}</span>
                   <div className="flex-1 space-y-3">
-                    <p className="text-sm font-medium text-gray-900 leading-snug">{q.question}</p>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(q.question)}</p>
 
                     {/* MCQ / True-False: clickable options */}
                     {q.options && (
@@ -675,7 +681,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600'
                             }`}
                           >
-                            {opt}
+                            {renderMath(opt)}
                           </button>
                         ))}
                       </div>
@@ -766,7 +772,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   return (
                     <div key={r.questionId} className="flex items-start gap-2 text-xs text-gray-600 bg-rose-50 rounded-lg px-3 py-2">
                       <XCircle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">{q?.question}</span>
+                      <span className="line-clamp-1">{renderMath(q?.question ?? '')}</span>
                     </div>
                   );
                 })}
@@ -796,12 +802,12 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                       ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
                       : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                     }
-                    <p className="text-sm font-medium text-gray-900">Q{i + 1}. {q?.question}</p>
+                    <p className="text-sm font-medium text-gray-900">Q{i + 1}. {renderMath(q?.question ?? '')}</p>
                   </div>
                   {!r.correct && (
                     <div className="ml-6 space-y-1">
-                      <p className="text-xs text-red-600">Your answer: {r.chosen || '(blank)'}</p>
-                      <p className="text-xs text-green-700 font-medium">Correct: {r.correct_answer}</p>
+                      <p className="text-xs text-red-600">Your answer: {r.chosen ? renderMath(r.chosen) : '(blank)'}</p>
+                      <p className="text-xs text-green-700 font-medium">Correct: {renderMath(r.correct_answer)}</p>
                     </div>
                   )}
                   <p className="ml-6 text-xs text-gray-500 italic">{r.explanation}</p>
