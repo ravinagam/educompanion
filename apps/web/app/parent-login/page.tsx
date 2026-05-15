@@ -16,11 +16,12 @@ function ParentLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createParentBrowserClient();
-  const [mode, setMode] = useState<'login' | 'register'>(
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(
     searchParams.get('mode') === 'register' ? 'register' : 'login'
   );
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ phone: '', password: '', confirmPassword: '' });
+  const [forgotPhone, setForgotPhone] = useState('');
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +44,29 @@ function ParentLoginContent() {
       window.location.href = '/parent';
     } else {
       toast.error('Sign in succeeded but no session was returned. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotPhone.trim()) { toast.error('Enter your phone number'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/parent/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: forgotPhone.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? 'Account not found');
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.link;
+    } catch {
+      toast.error('Network error. Please try again.');
       setLoading(false);
     }
   }
@@ -106,85 +130,132 @@ function ParentLoginContent() {
         <Card className="border-0 shadow-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
+              {mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Forgot Password'}
             </CardTitle>
             <CardDescription>
               {mode === 'login'
                 ? 'Use the phone number registered with your child\'s account'
-                : 'Use the same phone number your child entered during registration'}
+                : mode === 'register'
+                ? 'Use the same phone number your child entered during registration'
+                : 'Enter your phone number to get a reset link'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="phone">Parent Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+91 98765 43210"
-                  value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Min 8 characters"
-                  minLength={8}
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  required
-                />
-              </div>
-              {mode === 'register' && (
-                <div className="space-y-1">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Re-enter password"
-                    value={form.confirmPassword}
-                    onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
-                    required
-                  />
-                </div>
-              )}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                disabled={loading}
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
-              </Button>
-            </form>
+            {mode !== 'forgot' ? (
+              <>
+                <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="phone">Parent Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={form.phone}
+                      onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      {mode === 'login' && (
+                        <button
+                          type="button"
+                          onClick={() => setMode('forgot')}
+                          className="text-xs text-violet-600 hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Min 8 characters"
+                      minLength={8}
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  {mode === 'register' && (
+                    <div className="space-y-1">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Re-enter password"
+                        value={form.confirmPassword}
+                        onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                    disabled={loading}
+                  >
+                    {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  </Button>
+                </form>
 
-            <div className="text-center text-sm text-gray-500">
-              {mode === 'login' ? (
-                <>
-                  First time?{' '}
-                  <button
-                    onClick={() => setMode('register')}
-                    className="text-violet-600 hover:underline font-medium"
+                <div className="text-center text-sm text-gray-500">
+                  {mode === 'login' ? (
+                    <>
+                      First time?{' '}
+                      <button
+                        onClick={() => setMode('register')}
+                        className="text-violet-600 hover:underline font-medium"
+                      >
+                        Create parent account
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Already have an account?{' '}
+                      <button
+                        onClick={() => setMode('login')}
+                        className="text-violet-600 hover:underline font-medium"
+                      >
+                        Sign in
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="forgot-phone">Parent Phone Number</Label>
+                    <Input
+                      id="forgot-phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={forgotPhone}
+                      onChange={e => setForgotPhone(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                    disabled={loading}
                   >
-                    Create parent account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => setMode('login')}
-                    className="text-violet-600 hover:underline font-medium"
-                  >
-                    Sign in
-                  </button>
-                </>
-              )}
-            </div>
+                    {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Get Reset Link
+                  </Button>
+                </form>
+                <button
+                  onClick={() => setMode('login')}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mx-auto"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
+                </button>
+              </>
+            )}
 
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">
