@@ -20,6 +20,7 @@
     "@anthropic-ai/sdk": "^0.91.0",
     "@base-ui/react": "^1.4.1",
     "@educompanion/shared": "*",
+    "@napi-rs/canvas": "^0.1.100",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "@types/katex": "^0.16.8",
