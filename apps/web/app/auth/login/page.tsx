@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { BookOpen, Loader2, ArrowLeft } from 'lucide-react';
+import { BookOpen, Loader2, ArrowLeft, Copy, Check, KeyRound } from 'lucide-react';
 
 function usernameToEmail(username: string) {
   return `${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}@students.educompanion.app`;
@@ -32,6 +32,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [form, setForm] = useState({ username: '', password: '' });
   const [forgotUsername, setForgotUsername] = useState('');
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -63,14 +65,20 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? 'Account not found');
-        setLoading(false);
-        return;
+      } else {
+        setTempPassword(data.tempPassword);
       }
-      window.location.href = data.link;
     } catch {
       toast.error('Network error. Please try again.');
-      setLoading(false);
     }
+    setLoading(false);
+  }
+
+  function copyTempPassword() {
+    if (!tempPassword) return;
+    navigator.clipboard.writeText(tempPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -151,30 +159,56 @@ export default function LoginPage() {
               </>
             ) : (
               <>
-                <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="forgot-username">Username</Label>
-                    <Input
-                      id="forgot-username"
-                      placeholder="Your username"
-                      value={forgotUsername}
-                      onChange={e => setForgotUsername(e.target.value)}
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      required
-                    />
+                {tempPassword ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-blue-700">
+                        <KeyRound className="h-4 w-4 shrink-0" />
+                        <p className="text-sm font-medium">Temporary password set</p>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-3 py-2">
+                        <span className="font-mono font-bold text-gray-900 flex-1 text-lg tracking-wider">{tempPassword}</span>
+                        <button onClick={copyTempPassword} className="text-gray-400 hover:text-blue-600 transition-colors shrink-0">
+                          {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-blue-600">Sign in with this password, then change it in your Profile.</p>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => { setMode('login'); setForm(f => ({ ...f, username: forgotUsername, password: '' })); setTempPassword(null); }}
+                    >
+                      Go to Sign In
+                    </Button>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Get Reset Link
-                  </Button>
-                </form>
-                <button
-                  onClick={() => setMode('login')}
-                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mx-auto"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
-                </button>
+                ) : (
+                  <>
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="forgot-username">Username</Label>
+                        <Input
+                          id="forgot-username"
+                          placeholder="Your username"
+                          value={forgotUsername}
+                          onChange={e => setForgotUsername(e.target.value)}
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          required
+                        />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                        Reset Password
+                      </Button>
+                    </form>
+                    <button
+                      onClick={() => setMode('login')}
+                      className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mx-auto"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
+                    </button>
+                  </>
+                )}
               </>
             )}
           </CardContent>

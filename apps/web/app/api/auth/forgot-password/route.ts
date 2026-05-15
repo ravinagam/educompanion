@@ -5,6 +5,11 @@ function usernameToEmail(username: string) {
   return `${username.toLowerCase().replace(/[^a-z0-9]/g, '_')}@students.educompanion.app`;
 }
 
+function generateTempPassword() {
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  return `Ease${digits}`;
+}
+
 export async function POST(req: NextRequest) {
   const { username } = await req.json();
   if (!username?.trim()) {
@@ -13,17 +18,25 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
   const email = usernameToEmail(username.trim());
-  const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'https://easestudy.in';
 
-  const { data, error } = await admin.auth.admin.generateLink({
+  // generateLink verifies the account exists and returns the user ID
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,
-    options: { redirectTo: `${origin}/auth/reset-password` },
   });
 
-  if (error || !data?.properties?.action_link) {
+  if (linkError || !linkData?.user?.id) {
     return NextResponse.json({ error: 'No account found for this username' }, { status: 404 });
   }
 
-  return NextResponse.json({ link: data.properties.action_link });
+  const tempPassword = generateTempPassword();
+  const { error: updateError } = await admin.auth.admin.updateUserById(linkData.user.id, {
+    password: tempPassword,
+  });
+
+  if (updateError) {
+    return NextResponse.json({ error: 'Failed to reset password' }, { status: 500 });
+  }
+
+  return NextResponse.json({ tempPassword });
 }

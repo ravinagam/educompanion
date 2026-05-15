@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Users, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
+import { Users, Loader2, BookOpen, ArrowLeft, Copy, Check, KeyRound } from 'lucide-react';
 import { phoneToParentEmail } from '@/lib/parent-auth';
 
 function ParentLoginContent() {
@@ -22,6 +22,8 @@ function ParentLoginContent() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ phone: '', password: '', confirmPassword: '' });
   const [forgotPhone, setForgotPhone] = useState('');
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -61,14 +63,20 @@ function ParentLoginContent() {
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? 'Account not found');
-        setLoading(false);
-        return;
+      } else {
+        setTempPassword(data.tempPassword);
       }
-      window.location.href = data.link;
     } catch {
       toast.error('Network error. Please try again.');
-      setLoading(false);
     }
+    setLoading(false);
+  }
+
+  function copyTempPassword() {
+    if (!tempPassword) return;
+    navigator.clipboard.writeText(tempPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleRegister(e: React.FormEvent) {
@@ -227,33 +235,59 @@ function ParentLoginContent() {
               </>
             ) : (
               <>
-                <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="forgot-phone">Parent Phone Number</Label>
-                    <Input
-                      id="forgot-phone"
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={forgotPhone}
-                      onChange={e => setForgotPhone(e.target.value)}
-                      required
-                    />
+                {tempPassword ? (
+                  <div className="space-y-4">
+                    <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-violet-700">
+                        <KeyRound className="h-4 w-4 shrink-0" />
+                        <p className="text-sm font-medium">Temporary password set</p>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white border border-violet-200 rounded-lg px-3 py-2">
+                        <span className="font-mono font-bold text-gray-900 flex-1 text-lg tracking-wider">{tempPassword}</span>
+                        <button onClick={copyTempPassword} className="text-gray-400 hover:text-violet-600 transition-colors shrink-0">
+                          {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-violet-600">Sign in with this password, then change it in your Profile.</p>
+                    </div>
+                    <Button
+                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                      onClick={() => { setMode('login'); setForm(f => ({ ...f, phone: forgotPhone, password: '' })); setTempPassword(null); }}
+                    >
+                      Go to Sign In
+                    </Button>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                    disabled={loading}
-                  >
-                    {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Get Reset Link
-                  </Button>
-                </form>
-                <button
-                  onClick={() => setMode('login')}
-                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mx-auto"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
-                </button>
+                ) : (
+                  <>
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="forgot-phone">Parent Phone Number</Label>
+                        <Input
+                          id="forgot-phone"
+                          type="tel"
+                          placeholder="+91 98765 43210"
+                          value={forgotPhone}
+                          onChange={e => setForgotPhone(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                        disabled={loading}
+                      >
+                        {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                        Reset Password
+                      </Button>
+                    </form>
+                    <button
+                      onClick={() => setMode('login')}
+                      className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mx-auto"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" /> Back to Sign In
+                    </button>
+                  </>
+                )}
               </>
             )}
 
