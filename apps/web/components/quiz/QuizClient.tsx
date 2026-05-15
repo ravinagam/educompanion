@@ -71,6 +71,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const fillInputRef = useRef<HTMLInputElement>(null);
   const [finalScore, setFinalScore] = useState(0);
   const [targetedQuestions, setTargetedQuestions] = useState<Question[]>([]);
+  const [targetedQuizId, setTargetedQuizId] = useState<string | null>(null);
   const [loadingTargeted, setLoadingTargeted] = useState(false);
   const [showingTargeted, setShowingTargeted] = useState(false);
   const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number; milestoneHint?: number | null } | null>(null);
@@ -246,7 +247,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
       const res = await fetch('/api/quiz-attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quizId: quiz!.id, answers: finalAnswers, difficulty: generatedDifficulty ?? 'medium' }),
+        body: JSON.stringify({ quizId: showingTargeted ? targetedQuizId : quiz!.id, answers: finalAnswers, difficulty: generatedDifficulty ?? 'medium' }),
       });
       const json = await res.json();
       if (res.status === 401) {
@@ -280,6 +281,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     setReadyToSubmit(false);
     setResults([]);
     setTargetedQuestions([]);
+    setTargetedQuizId(null);
     setShowingTargeted(false);
   }
 
@@ -302,6 +304,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         toast.error(json.error ?? 'Failed to generate practice questions');
       } else {
         setTargetedQuestions(json.questions);
+        setTargetedQuizId(json.quizId);
         setShowingTargeted(true);
         setCurrent(0);
         setAnswers({});

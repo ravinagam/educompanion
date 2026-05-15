@@ -30,7 +30,27 @@ export async function POST(
   try {
     const result = await generateTargetedQuestions(chapter.name, chapter.content_text, wrongQuestions);
     logAiUsage(user.id, 'quiz_targeted', result.model, result.input_tokens, result.output_tokens).catch(console.error);
-    return NextResponse.json({ questions: result.data });
+
+    // Save targeted questions to DB so submitQuiz can score them correctly
+    const { data: savedQuiz, error: insertError } = await admin
+      .from('quizzes')
+      .insert({ chapter_id: chapterId, questions_json: result.data })
+      .select('id')
+      .single();
+
+    if (insertError || !savedQuiz) {
+      return NextResponse.json({ error: 'Failed to save targeted quiz' }, { status: 500 });
+    }
+
+    // Strip correct_answer before sending to client (same as main quiz GET)
+    const sanitized = (result.data as unknown as Array<Record<string, unknown>>).map(q => ({
+      id: q.id,
+      type: q.type,
+      question: q.question,
+      options: q.options,
+    }));
+
+    return NextResponse.json({ questions: sanitized, quizId: savedQuiz.id });
   } catch (e) {
     console.error('[targeted-quiz]', e);
     return NextResponse.json({ error: 'AI error' }, { status: 500 });
