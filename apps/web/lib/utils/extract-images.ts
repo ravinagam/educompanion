@@ -19,8 +19,16 @@ export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedIma
   // The legacy build is the Node.js-compatible variant — confirmed working in v5.
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  // Disable web worker — not available in Node.js
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  // pdfjs-dist v5 requires a real workerSrc path; empty string no longer works.
+  // Resolve the bundled worker so pdfjs can spawn it as a Node.js worker thread.
+  try {
+    const { createRequire } = await import('module');
+    const req = createRequire(import.meta.url);
+    const workerPath = req.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+  } catch {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  }
 
   // Try to load @napi-rs/canvas for page rendering (vector-graphic fallback)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
