@@ -61,17 +61,46 @@ async function runProcessing(
   const contentText = await extractTextFromBuffer(buffer, mimeType, filename);
   console.log('[process] Extracted', contentText.length, 'chars');
 
-  // Extract images from PDFs (best-effort; failures don't block processing)
+  let textWithMarkers = contentText;
+
+  // Extract images synchronously so markers can be embedded in text before section generation
   if (mimeType === 'application/pdf') {
-    // Dynamic import so the pdfjs-dist module is never loaded in test/browser environments
-    import('@/lib/utils/extract-images').then(({ extractImagesFromPdf }) =>
-      extractAndStoreImages(admin, chapterId, buffer, extractImagesFromPdf)
-    ).catch(err =>
-      console.warn('[process] Image extraction failed (non-fatal):', err instanceof Error ? err.message : err)
-    );
+    try {
+      const { extractImagesFromPdf } = await import('@/lib/utils/extract-images');
+      const images = await extractImagesFromPdf(buffer);
+      if (images.length > 0) {
+        textWithMarkers = insertFigureMarkers(contentText, images);
+        console.log('[process] Inserted figure markers into text');
+        // Store images non-blocking (markers already placed)
+        extractAndStoreImages(admin, chapterId, images).catch(err =>
+          console.warn('[process] Image storage failed (non-fatal):', err instanceof Error ? err.message : err)
+        );
+      }
+    } catch (err) {
+      console.warn('[process] Image extraction failed (non-fatal):', err instanceof Error ? err.message : err);
+    }
   }
 
-  await processTextContent(admin, chapterId, contentText, userId);
+  await processTextContent(admin, chapterId, textWithMarkers, userId);
+}
+
+// Inserts [[FIGURE:pageNum_orderIdx]] markers before figure caption lines in extracted PDF text.
+// Only matches captions at the start of a line (e.g. "Figure 1.1 ..."), not inline references.
+// Images are assigned in document order — first caption gets first image, etc.
+function insertFigureMarkers(text: string, images: Array<{ pageNum: number; orderIdx: number }>): string {
+  if (images.length === 0) return text;
+  let imgIdx = 0;
+  const seen = new Set<string>();
+  return text.replace(
+    /((?:^|\n))(Fig(?:ure)?\.?\s+\d+(?:[.\-]\d+)*)/g,
+    (fullMatch, lineStart, caption) => {
+      const key = caption.toLowerCase().replace(/\s+/g, '');
+      if (seen.has(key) || imgIdx >= images.length) return fullMatch;
+      seen.add(key);
+      const img = images[imgIdx++];
+      return `${lineStart}[[FIGURE:${img.pageNum}_${img.orderIdx}]]\n${caption}`;
+    }
+  );
 }
 
 // Shared by both file-upload and screenshot-upload pipelines.
@@ -137,13 +166,10 @@ export async function processTextContent(
 async function extractAndStoreImages(
   admin: ReturnType<typeof createAdminClient>,
   chapterId: string,
-  buffer: Buffer,
-  extractImagesFromPdf: (buf: Buffer) => Promise<Array<{ data: Buffer; width: number; height: number; pageNum: number; orderIdx: number }>>
+  images: Array<{ data: Buffer; width: number; height: number; pageNum: number; orderIdx: number }>
 ) {
-  console.log('[process] Extracting images from PDF for chapter', chapterId);
-  const images = await extractImagesFromPdf(buffer);
   if (images.length === 0) { console.log('[process] No images found in PDF'); return; }
-  console.log('[process] Found', images.length, 'images');
+  console.log('[process] Storing', images.length, 'images for chapter', chapterId);
 
   // Clear previous images for this chapter
   await admin.from('chapter_images').delete().eq('chapter_id', chapterId);

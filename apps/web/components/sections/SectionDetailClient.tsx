@@ -73,21 +73,67 @@ function renderText(text: string, className?: string) {
   return <span className={className}>{text}</span>;
 }
 
-function SectionReader({ text }: { text: string }) {
-  const paragraphs = normalisePdfText(text);
+function renderPara(para: ReturnType<typeof normalisePdfText>[number], key: string, isFirst: boolean) {
+  if (para.kind === 'heading') {
+    return (
+      <h3 key={key} className={`font-bold text-xs tracking-widest uppercase text-emerald-700 ${!isFirst ? 'pt-3 mt-1 border-t border-gray-100' : ''}`}>
+        {para.text}
+      </h3>
+    );
+  }
+  if (para.kind === 'caption') {
+    return (
+      <p key={key} className="text-xs italic text-gray-400 text-center bg-gray-50 rounded-lg px-4 py-2 border border-gray-100">
+        {renderText(para.text)}
+      </p>
+    );
+  }
+  if (para.kind === 'definition') {
+    return (
+      <div key={key} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
+        <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
+        <span className="text-gray-400 mx-1.5 text-sm">—</span>
+        {renderText(para.def, 'text-gray-700 text-sm leading-relaxed')}
+      </div>
+    );
+  }
+  return (
+    <p key={key} className="text-gray-700">
+      {renderText(para.text)}
+    </p>
+  );
+}
+
+const FIGURE_MARKER_RE = /\[\[FIGURE:(\d+)_(\d+)\]\]\n?/g;
+
+function SectionReader({ text, chapterImages }: { text: string; chapterImages: ChapterImage[] }) {
   const hasGarble = hasMathGarble(text);
   const hasMath = hasMathDelimiters(text);
 
+  // Split text at [[FIGURE:X_Y]] markers to render inline images
+  type Segment = { type: 'text'; content: string } | { type: 'figure'; pageNum: number; orderIdx: number };
+  const segments: Segment[] = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  FIGURE_MARKER_RE.lastIndex = 0;
+  while ((m = FIGURE_MARKER_RE.exec(text)) !== null) {
+    const before = text.slice(lastIndex, m.index);
+    if (before.trim()) segments.push({ type: 'text', content: before });
+    segments.push({ type: 'figure', pageNum: parseInt(m[1]), orderIdx: parseInt(m[2]) });
+    lastIndex = m.index + m[0].length;
+  }
+  const tail = text.slice(lastIndex);
+  if (tail.trim()) segments.push({ type: 'text', content: tail });
+  if (segments.length === 0) segments.push({ type: 'text', content: text });
+
   return (
     <div className="space-y-3">
-      {/* Math rendered via KaTeX — show a subtle info badge */}
       {hasMath && (
         <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
           <span>✓</span>
           <span>Mathematical formulas are rendered using KaTeX</span>
         </div>
       )}
-      {/* Garbled math (older chapters uploaded before vision extraction) */}
       {hasGarble && !hasMath && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">⚠️</span>
@@ -98,35 +144,25 @@ function SectionReader({ text }: { text: string }) {
         </div>
       )}
       <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 max-h-[32rem] md:max-h-none overflow-y-auto md:overflow-visible space-y-3.5 text-[15px] leading-7 text-gray-800">
-        {paragraphs.map((para, i) => {
-          if (para.kind === 'heading') {
+        {segments.map((seg, si) => {
+          if (seg.type === 'figure') {
+            const img = chapterImages.find(ci => ci.page_num === seg.pageNum && ci.order_idx === seg.orderIdx);
+            if (!img) return null;
             return (
-              <h3 key={i} className={`font-bold text-xs tracking-widest uppercase text-emerald-700 ${i > 0 ? 'pt-3 mt-1 border-t border-gray-100' : ''}`}>
-                {para.text}
-              </h3>
-            );
-          }
-          if (para.kind === 'caption') {
-            return (
-              <p key={i} className="text-xs italic text-gray-400 text-center bg-gray-50 rounded-lg px-4 py-2 border border-gray-100">
-                {renderText(para.text)}
-              </p>
-            );
-          }
-          if (para.kind === 'definition') {
-            return (
-              <div key={i} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
-                <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
-                <span className="text-gray-400 mx-1.5 text-sm">—</span>
-                {renderText(para.def, 'text-gray-700 text-sm leading-relaxed')}
+              <div key={`fig-${si}`} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-gray-50 my-2">
+                <Image
+                  src={img.image_url}
+                  alt="Chapter figure"
+                  width={img.width ?? 600}
+                  height={img.height ?? 400}
+                  className="w-full h-auto object-contain"
+                  unoptimized
+                />
               </div>
             );
           }
-          return (
-            <p key={i} className="text-gray-700">
-              {renderText(para.text)}
-            </p>
-          );
+          const paras = normalisePdfText(seg.content);
+          return paras.map((para, pi) => renderPara(para, `${si}-${pi}`, si === 0 && pi === 0));
         })}
       </div>
     </div>
@@ -301,27 +337,32 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             <div className="flex items-center gap-2 text-blue-700 font-semibold">
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
-            {/* Two-column on desktop: text left, images right */}
-            <div className={chapterImages.length > 0 ? 'md:grid md:grid-cols-[1fr_280px] md:gap-6' : ''}>
-              <SectionReader text={section.content_text} />
-              {chapterImages.length > 0 && (
-                <div className="mt-4 md:mt-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">From the book</p>
-                  {chapterImages.map(img => (
-                    <div key={img.id} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
-                      <Image
-                        src={img.image_url}
-                        alt="Chapter illustration"
-                        width={img.width ?? 280}
-                        height={img.height ?? 200}
-                        className="w-full h-auto object-contain"
-                        unoptimized
-                      />
+            {/* Inline figure markers take priority over the sidebar */}
+            {(() => {
+              const hasInline = /\[\[FIGURE:/.test(section.content_text);
+              return (
+                <div className={!hasInline && chapterImages.length > 0 ? 'md:grid md:grid-cols-[1fr_280px] md:gap-6' : ''}>
+                  <SectionReader text={section.content_text} chapterImages={chapterImages} />
+                  {!hasInline && chapterImages.length > 0 && (
+                    <div className="mt-4 md:mt-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">From the book</p>
+                      {chapterImages.map(img => (
+                        <div key={img.id} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
+                          <Image
+                            src={img.image_url}
+                            alt="Chapter illustration"
+                            width={img.width ?? 280}
+                            height={img.height ?? 200}
+                            className="w-full h-auto object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
             {progress.completed_at
               ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
               : <Button className="w-full" onClick={markReadDone} disabled={saving}>
