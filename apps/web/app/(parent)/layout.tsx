@@ -7,9 +7,12 @@ export default async function ParentLayout({ children }: { children: React.React
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/parent-login');
 
+  // Derive phone from internal email: "919876543210@parents.educompanion.app" → "919876543210"
+  const phone = user.email?.split('@')[0] ?? '';
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <ParentHeader />
+      <ParentHeader phone={phone} />
       <main className="max-w-4xl mx-auto px-4 py-6">
         {children}
       </main>
