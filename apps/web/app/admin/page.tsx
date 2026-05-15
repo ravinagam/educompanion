@@ -21,7 +21,7 @@ export default async function AdminPage() {
       .order('created_at', { ascending: false }),
     admin
       .from('feedback')
-      .select('id, message, page, created_at, admin_response, admin_responded_at, status, rating, category, user:users(name, email)')
+      .select('id, user_id, message, page, created_at, admin_response, admin_responded_at, status, rating, category')
       .order('created_at', { ascending: false }),
     admin
       .from('ai_usage_logs')
@@ -43,6 +43,13 @@ export default async function AdminPage() {
       .order('gifted_at', { ascending: false }),
   ]);
 
+  // Manually join feedback → users (FK now points to auth.users, not public.users)
+  const userMap = new Map((usersRes.data ?? []).map(u => [u.id, { name: u.name, email: u.email }]));
+  const feedback = (feedbackRes.data ?? []).map(f => ({
+    ...f,
+    user: userMap.get(f.user_id) ?? null,
+  }));
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={(feedbackRes.data ?? []) as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
+  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={feedback as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
 }
