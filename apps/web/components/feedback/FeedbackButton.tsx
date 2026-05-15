@@ -33,7 +33,7 @@ const CATEGORIES = [
 
 type Category = typeof CATEGORIES[number]['key'];
 
-export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
+export function FeedbackButton({ sidebar = false, apiPath = '/api/feedback' }: { sidebar?: boolean; apiPath?: string }) {
   const [open, setOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<'submit' | 'history'>('submit');
   const [rating, setRating] = useState<number | null>(null);
@@ -55,7 +55,7 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
   }
 
   useEffect(() => {
-    fetch('/api/feedback')
+    fetch(apiPath)
       .then(r => r.json())
       .then((data: { feedback?: MyFeedback[] }) => {
         setHasUnread(checkUnread(data.feedback ?? []));
@@ -66,7 +66,7 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
   useEffect(() => {
     if (!open) return;
     setFetching(true);
-    fetch('/api/feedback')
+    fetch(apiPath)
       .then(r => r.json())
       .then((data: { feedback?: MyFeedback[] }) => {
         const list = data.feedback ?? [];
@@ -100,7 +100,7 @@ export function FeedbackButton({ sidebar = false }: { sidebar?: boolean }) {
       : '');
     setLoading(true);
     try {
-      const res = await fetch('/api/feedback', {
+      const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, page: pathname, rating, category }),
