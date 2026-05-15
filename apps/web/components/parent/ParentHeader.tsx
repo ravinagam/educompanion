@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { createParentBrowserClient } from '@/lib/supabase/parent-browser';
+import { formatParentPhone } from '@/lib/parent-auth';
 import { LogOut, User, Users, BookOpen } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -22,10 +23,7 @@ export function ParentHeader({ phone }: Props) {
     router.refresh();
   }
 
-  const digits = phone.replace(/\D/g, '');
-  const display = digits.length >= 10
-    ? digits.slice(-10).replace(/(\d{5})(\d{5})/, '$1 $2')
-    : digits;
+  const display = formatParentPhone(phone);
 
   return (
     <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white border-b border-gray-200 shrink-0">

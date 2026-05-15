@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createAdminSessionClient } from '@/lib/supabase/admin-server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { formatParentPhone, normalizePhone } from '@/lib/parent-auth';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 const ADMIN_EMAIL = 'ravi.nagam.kiran@gmail.com';
@@ -45,11 +46,41 @@ export default async function AdminPage() {
 
   // Manually join feedback → users (FK now points to auth.users, not public.users)
   const userMap = new Map((usersRes.data ?? []).map(u => [u.id, { name: u.name, email: u.email }]));
+
+  // For feedback from parents (not in public.users), look up from auth.users
+  const missingIds = [...new Set(
+    (feedbackRes.data ?? []).map(f => f.user_id).filter(id => !userMap.has(id))
+  )];
+  const parentEntries = await Promise.all(
+    missingIds.map(async (id) => {
+      const { data } = await admin.auth.admin.getUserById(id);
+      const rawPhone = (data.user?.user_metadata?.phone as string | undefined) ?? '';
+      const phone = formatParentPhone(rawPhone);
+      return [id, { name: phone || 'Parent', email: 'Parent Portal' }] as const;
+    })
+  );
+  const fullUserMap = new Map([...userMap, ...parentEntries]);
+
   const feedback = (feedbackRes.data ?? []).map(f => ({
     ...f,
-    user: userMap.get(f.user_id) ?? null,
+    user: fullUserMap.get(f.user_id) ?? null,
   }));
 
+  // Fetch parent accounts from auth.users
+  const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const students = usersRes.data ?? [];
+  const parents = authUsers
+    .filter(u => u.email?.endsWith('@parents.educompanion.app'))
+    .map(u => {
+      const rawPhone = (u.user_metadata?.phone as string | undefined) ?? normalizePhone(u.email?.split('@')[0] ?? '');
+      const phone = formatParentPhone(rawPhone);
+      const digits = normalizePhone(rawPhone).slice(-10);
+      const linkedChildren = students
+        .filter(s => normalizePhone(s.phone_number ?? '').slice(-10) === digits && digits.length === 10)
+        .map(s => ({ id: s.id as string, name: s.name as string, grade: s.grade as number }));
+      return { id: u.id, phone, linkedChildren, createdAt: u.created_at };
+    });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AdminDashboard users={(usersRes.data ?? []) as any} feedback={feedback as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
+  return <AdminDashboard users={(usersRes.data ?? []) as any} parents={parents} feedback={feedback as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
 }

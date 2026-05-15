@@ -7,7 +7,7 @@ export default async function ParentProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/parent-login');
 
-  const phone = user.email?.split('@')[0] ?? '';
+  const phone = (user.user_metadata?.phone as string | undefined) ?? user.email?.split('@')[0] ?? '';
 
   return <ParentProfileClient phone={phone} email={user.email ?? ''} />;
 }

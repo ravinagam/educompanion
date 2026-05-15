@@ -57,8 +57,15 @@ interface GiftMilestoneRow {
   voucher_sent_at: string | null; availed_at: string | null;
 }
 
+interface ParentInfo {
+  id: string;
+  phone: string;
+  linkedChildren: { id: string; name: string; grade: number }[];
+  createdAt: string;
+}
+
 interface Props {
-  users: User[]; feedback: Feedback[]; usageLogs: UsageLog[];
+  users: User[]; parents: ParentInfo[]; feedback: Feedback[]; usageLogs: UsageLog[];
   referrals: Referral[]; referralClicks: ReferralClick[];
   gamification: UserGamification[]; milestones: GiftMilestoneRow[];
 }
@@ -98,7 +105,7 @@ const PAGE_LABELS: Record<string, string> = {
   summary: 'Summary', chat: 'Ask AI', 'visual-summary': 'Visual Summary',
 };
 
-function formatPage(page: string, chapterMap: Map<string, { name: string; subject: string }>): string {
+function formatPage(page: string, chapterMap: Map<string, { name: string; subject: string }>, studentNameMap?: Map<string, string>): string {
   const m = page.match(/^\/chapters\/([0-9a-f-]{36})(?:\/([^/]+))?/i);
   if (m) {
     const entry = chapterMap.get(m[1]);
@@ -106,6 +113,11 @@ function formatPage(page: string, chapterMap: Map<string, { name: string; subjec
     const chapter = entry?.name ?? 'Unknown chapter';
     const section = m[2] ? ` › ${PAGE_LABELS[m[2]] ?? m[2]}` : '';
     return subject ? `${subject} · ${chapter}${section}` : `${chapter}${section}`;
+  }
+  const pm = page.match(/^\/parent\/([0-9a-f-]{36})/i);
+  if (pm) {
+    const name = studentNameMap?.get(pm[1]);
+    return name ? `Parent · ${name}` : 'Parent Portal';
   }
   return page.replace(/^\//, '');
 }
@@ -123,7 +135,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, { name: string; subject: string }> }) {
+function FeedbackCard({ f, chapterMap, studentNameMap }: { f: Feedback; chapterMap: Map<string, { name: string; subject: string }>; studentNameMap: Map<string, string> }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -173,7 +185,7 @@ function FeedbackCard({ f, chapterMap }: { f: Feedback; chapterMap: Map<string, 
             </Badge>
             <div className="text-right">
               <p className="text-xs text-gray-400">{new Date(f.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-              {f.page && <p className="text-xs text-gray-300">{formatPage(f.page, chapterMap)}</p>}
+              {f.page && <p className="text-xs text-gray-300">{formatPage(f.page, chapterMap, studentNameMap)}</p>}
             </div>
           </div>
         </div>
@@ -583,13 +595,38 @@ function RewardsTab({ users, gamification, milestones }: {
   );
 }
 
-export function AdminDashboard({ users, feedback, usageLogs, referrals, referralClicks, gamification, milestones }: Props) {
+function ParentRow({ parent }: { parent: ParentInfo }) {
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 bg-white">
+        <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0 text-violet-700 font-bold text-sm">
+          P
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-gray-900">{parent.phone || '—'}</p>
+          <p className="text-xs text-gray-400">
+            {parent.linkedChildren.length === 0
+              ? 'No linked children'
+              : parent.linkedChildren.map(c => `${c.name} (Class ${c.grade})`).join(', ')}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge className="bg-violet-50 text-violet-700 border-0 text-xs">Parent</Badge>
+          <span className="text-xs text-gray-300">{new Date(parent.createdAt).toLocaleDateString('en-IN')}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AdminDashboard({ users, parents, feedback, usageLogs, referrals, referralClicks, gamification, milestones }: Props) {
   const [tab, setTab] = useState<'users' | 'feedback' | 'usage' | 'referrals' | 'rewards'>('users');
   const router = useRouter();
   const totalChapters = users.reduce((n, u) => n + u.subjects.reduce((m, s) => m + s.chapters.length, 0), 0);
   const chapterMap = new Map<string, { name: string; subject: string }>(
     users.flatMap(u => u.subjects.flatMap(s => s.chapters.map(c => [c.id, { name: c.name, subject: s.name }])))
   );
+  const studentNameMap = new Map<string, string>(users.map(u => [u.id, u.name]));
 
   function aiCategory(model: string, feature: string): 'anthropic' | 'voyage' | 'sarvam' {
     if (model.includes('voyage')) return 'voyage';
@@ -680,7 +717,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stat('Total Users', users.length, <Users className="h-5 w-5" />, 'bg-gradient-to-br from-indigo-600 to-blue-600')}
+        {stat('Total Users', users.length + parents.length, <Users className="h-5 w-5" />, 'bg-gradient-to-br from-indigo-600 to-blue-600')}
         {stat('Total Chapters', totalChapters, <BookOpen className="h-5 w-5" />, 'bg-gradient-to-br from-emerald-600 to-teal-600')}
         {stat('Feedback Received', feedback.length, <MessageSquare className="h-5 w-5" />, 'bg-gradient-to-br from-amber-500 to-orange-500')}
         <Card className="border-0 shadow-md overflow-hidden">
@@ -706,7 +743,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
                 : 'border-transparent text-gray-500 hover:text-indigo-600'
             }`}
           >
-            {t === 'users' ? `Users (${users.length})`
+            {t === 'users' ? `Users (${users.length + parents.length})`
               : t === 'feedback' ? `Feedback (${feedback.length})`
               : t === 'usage' ? `AI Usage (${usageLogs.length})`
               : t === 'referrals' ? `Referrals (${referrals.length})`
@@ -717,20 +754,42 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
 
       {/* Users tab */}
       {tab === 'users' && (
-        <div className="space-y-2">
-          {users.length === 0 ? (
-            <p className="text-center text-gray-400 py-10">No users yet</p>
-          ) : users.map(u => (
-            <UserRow
-              key={u.id}
-              user={u}
-              referralInfo={{
-                code: u.referral_code,
-                referredByName: u.referred_by ? (userMap.get(u.referred_by)?.name ?? 'Unknown') : null,
-                referredCount: referralCountByUser.get(u.id) ?? 0,
-              }}
-            />
-          ))}
+        <div className="space-y-4">
+          {/* Students */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Students ({users.length})
+            </p>
+            <div className="space-y-2">
+              {users.length === 0 ? (
+                <p className="text-center text-gray-400 py-6">No students yet</p>
+              ) : users.map(u => (
+                <UserRow
+                  key={u.id}
+                  user={u}
+                  referralInfo={{
+                    code: u.referral_code,
+                    referredByName: u.referred_by ? (userMap.get(u.referred_by)?.name ?? 'Unknown') : null,
+                    referredCount: referralCountByUser.get(u.id) ?? 0,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Parents */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Parents ({parents.length})
+            </p>
+            <div className="space-y-2">
+              {parents.length === 0 ? (
+                <p className="text-center text-gray-400 py-6">No parents yet</p>
+              ) : parents.map(p => (
+                <ParentRow key={p.id} parent={p} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1003,7 +1062,7 @@ export function AdminDashboard({ users, feedback, usageLogs, referrals, referral
             <p className="text-center text-gray-400 py-10">No feedback yet</p>
           ) : [...feedback].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ).map(f => <FeedbackCard key={f.id} f={f} chapterMap={chapterMap} />)}
+          ).map(f => <FeedbackCard key={f.id} f={f} chapterMap={chapterMap} studentNameMap={studentNameMap} />)}
         </div>
       )}
 

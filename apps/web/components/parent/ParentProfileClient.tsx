@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { createParentBrowserClient } from '@/lib/supabase/parent-browser';
 import { Users, Phone, KeyRound, LogOut, Check, X, Eye, EyeOff, Pencil } from 'lucide-react';
+import { formatParentPhone } from '@/lib/parent-auth';
 
 interface Props { phone: string; email: string }
 
@@ -16,10 +17,7 @@ export function ParentProfileClient({ phone, email }: Props) {
   const router = useRouter();
   const supabase = createParentBrowserClient();
 
-  const digits = phone.replace(/\D/g, '');
-  const displayPhone = digits.length >= 10
-    ? digits.slice(-10).replace(/(\d{5})(\d{5})/, '$1 $2')
-    : digits;
+  const displayPhone = formatParentPhone(phone);
 
   const [changingPw, setChangingPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);

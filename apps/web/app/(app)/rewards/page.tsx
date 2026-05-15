@@ -2,13 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { RewardsClient } from '@/components/profile/RewardsClient';
-
-function generateReferralCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
-}
+import { generateReferralCode } from '@/lib/utils/referral-code';
 
 export default async function RewardsPage() {
   const supabase = await createClient();
