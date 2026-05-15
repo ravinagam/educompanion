@@ -20,12 +20,13 @@ export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedIma
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // pdfjs-dist v5 requires a real workerSrc path; empty string no longer works.
-  // Resolve the bundled worker so pdfjs can spawn it as a Node.js worker thread.
+  // Use pathToFileURL (not manual file:// concat) for correct encoding on Linux.
   try {
     const { createRequire } = await import('module');
+    const { pathToFileURL } = await import('url');
     const req = createRequire(import.meta.url);
     const workerPath = req.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
   } catch {
     pdfjsLib.GlobalWorkerOptions.workerSrc = '';
   }
