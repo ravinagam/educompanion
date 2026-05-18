@@ -50,6 +50,7 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
 
   // ── Screenshot state ─────────────────────────────────────────────
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [screenshots, setScreenshots] = useState<ScreenshotEntry[]>([]);
   const [screenshotDragOver, setScreenshotDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
@@ -542,22 +543,38 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
 
                 {screenshots.length === 0 ? (
                   // Drop zone (no screenshots yet)
-                  <div
-                    onDragOver={e => { e.preventDefault(); setScreenshotDragOver(true); }}
-                    onDragLeave={() => setScreenshotDragOver(false)}
-                    onDrop={handleScreenshotFileDrop}
-                    onClick={() => screenshotInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-                      screenshotDragOver
-                        ? 'border-blue-400 bg-blue-50 scale-[1.01]'
-                        : 'border-blue-200 hover:border-blue-400 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2">
-                      <Camera className="h-6 w-6 text-blue-500" />
+                  <div className="space-y-2">
+                    <div
+                      onDragOver={e => { e.preventDefault(); setScreenshotDragOver(true); }}
+                      onDragLeave={() => setScreenshotDragOver(false)}
+                      onDrop={handleScreenshotFileDrop}
+                      onClick={() => screenshotInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
+                        screenshotDragOver
+                          ? 'border-blue-400 bg-blue-50 scale-[1.01]'
+                          : 'border-blue-200 hover:border-blue-400 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-2">
+                        <Upload className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <p className="font-semibold text-gray-700 text-sm">Drop screenshots here or click to browse</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — select multiple files</p>
                     </div>
-                    <p className="font-semibold text-gray-700 text-sm">Drop screenshots here or click to browse</p>
-                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — select multiple files</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-xs text-gray-400">or</span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 py-3 text-sm font-semibold text-blue-700 transition-colors"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Take Photo with Camera
+                    </button>
+                    <p className="text-xs text-gray-400 text-center">Point your camera at each book page — tap for each new page</p>
                   </div>
                 ) : (
                   // Thumbnail grid
@@ -568,12 +585,20 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
                         {screenshots.length >= 30 && <span className="text-amber-600 ml-1">(max reached)</span>}
                       </p>
                       {screenshots.length < 30 && (
-                        <button
-                          onClick={() => screenshotInputRef.current?.click()}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                        >
-                          + Add more
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => cameraInputRef.current?.click()}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          >
+                            <Camera className="h-3 w-3" /> Camera
+                          </button>
+                          <button
+                            onClick={() => screenshotInputRef.current?.click()}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          >
+                            + Add files
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -624,6 +649,15 @@ export function UploadClient({ subjects: initialSubjects }: Props) {
                   type="file"
                   accept={SCREENSHOT_ACCEPTED}
                   multiple
+                  className="hidden"
+                  onChange={e => { if (e.target.files) addScreenshots(e.target.files); e.target.value = ''; }}
+                />
+                {/* Camera input — capture="environment" opens rear camera on mobile */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
                   className="hidden"
                   onChange={e => { if (e.target.files) addScreenshots(e.target.files); e.target.value = ''; }}
                 />

@@ -70,11 +70,11 @@ async function runProcessing(
       const images = await extractImagesFromPdf(buffer);
       if (images.length > 0) {
         textWithMarkers = insertFigureMarkers(contentText, images);
-        console.log('[process] Inserted figure markers into text');
-        // Store images non-blocking (markers already placed)
-        extractAndStoreImages(admin, chapterId, images).catch(err =>
-          console.warn('[process] Image storage failed (non-fatal):', err instanceof Error ? err.message : err)
-        );
+        console.log('[process] Inserted', (textWithMarkers.match(/\[\[FIGURE:/g) ?? []).length, 'figure markers into text');
+        // Await storage so images are in DB before sections are generated
+        await extractAndStoreImages(admin, chapterId, images);
+      } else {
+        console.log('[process] No images extracted from PDF');
       }
     } catch (err) {
       console.warn('[process] Image extraction failed (non-fatal):', err instanceof Error ? err.message : err);
