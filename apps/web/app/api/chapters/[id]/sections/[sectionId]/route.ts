@@ -137,7 +137,7 @@ export async function PATCH(
   if (body.quiz_answers && section.mini_quiz_json) {
     const questions = section.mini_quiz_json as Array<{ id: string; correct_answer: string }>;
     const total = questions.length;
-    const correct = questions.filter(q => body.quiz_answers![q.id] === q.correct_answer).length;
+    const correct = questions.filter((q, i) => body.quiz_answers![i] === q.correct_answer).length;
     quizScore = Math.round((correct / total) * 100);
     update.quiz_score = quizScore;
   }

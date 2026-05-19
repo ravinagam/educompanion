@@ -128,12 +128,6 @@ function SectionReader({ text, chapterImages }: { text: string; chapterImages: C
 
   return (
     <div className="space-y-3">
-      {hasMath && (
-        <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
-          <span>✓</span>
-          <span>Mathematical formulas are rendered using KaTeX</span>
-        </div>
-      )}
       {hasGarble && !hasMath && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">⚠️</span>
@@ -244,7 +238,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
 
   async function submitQuiz() {
     if (!section.mini_quiz) return;
-    const unanswered = section.mini_quiz.filter(q => !quizAnswers[q.id]);
+    const unanswered = section.mini_quiz.filter((_, i) => !quizAnswers[i]);
     if (unanswered.length > 0) {
       toast.error(`Please answer all ${section.mini_quiz.length} questions`);
       return;
@@ -414,7 +408,7 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             ) : (
               <>
                 {section.mini_quiz.map((q, qi) => (
-                  <div key={q.id} className="space-y-2">
+                  <div key={qi} className="space-y-2">
                     <p className="text-sm font-medium text-gray-900">
                       Q{qi + 1}. {renderText(q.question)}
                     </p>
@@ -422,9 +416,9 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
                       {q.options.map(opt => (
                         <button
                           key={opt}
-                          onClick={() => setQuizAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                          onClick={() => setQuizAnswers(prev => ({ ...prev, [qi]: opt }))}
                           className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-all ${
-                            quizAnswers[q.id] === opt
+                            quizAnswers[qi] === opt
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                           }`}
