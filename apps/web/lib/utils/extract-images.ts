@@ -92,19 +92,26 @@ export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedIma
   if (results.length === 0 && createCanvas) {
     console.log('[extract-images] No raster XObjects — scanning for figure pages');
 
-    // Collect pages that contain figure captions
+    // Collect pages that contain figure captions.
+    // IMPORTANT: pdfjs splits text into small spans — "Fig." and "2.1" may be
+    // separate items. Concatenate all items on a page before testing the regex.
     const figurePages: number[] = [];
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
       const page = await doc.getPage(pageNum);
       try {
         const textContent = await page.getTextContent();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hasFigure = (textContent.items as any[]).some(
-          item => 'str' in item && FIGURE_TEXT_RE.test(item.str)
-        );
-        if (hasFigure) figurePages.push(pageNum);
-      } catch {
-        // ignore
+        const pageText = (textContent.items as any[])
+          .filter(item => 'str' in item)
+          .map(item => item.str)
+          .join(' ');
+        const hasFigure = FIGURE_TEXT_RE.test(pageText);
+        if (hasFigure) {
+          figurePages.push(pageNum);
+          console.log('[extract-images] Page', pageNum, 'has figure — sample text:', pageText.slice(0, 120));
+        }
+      } catch (err) {
+        console.log('[extract-images] Page', pageNum, 'getTextContent failed:', err instanceof Error ? err.message : err);
       }
       page.cleanup();
     }
@@ -142,7 +149,7 @@ export async function extractImagesFromPdf(buffer: Buffer): Promise<ExtractedIma
         }
         page.cleanup();
       } catch (err) {
-        console.warn('[extract-images] Page', pageNum, 'render failed:', err instanceof Error ? err.message : err);
+        console.warn('[extract-images] Page', pageNum, 'render failed:', err instanceof Error ? err.stack ?? err.message : err);
       }
     }
   } else if (results.length === 0) {
