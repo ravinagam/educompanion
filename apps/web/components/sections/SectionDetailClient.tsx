@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
   ArrowLeft, ArrowRight, BookOpen, MessageCircle,
-  FlaskConical, CheckCircle2, Loader2, Star, RefreshCw,
+  FlaskConical, CheckCircle2, Loader2, Star, RefreshCw, Printer,
 } from 'lucide-react';
 import { XpToast } from '@/components/gamification/XpToast';
 import { normalisePdfText, hasMathGarble, type Para } from '@/lib/utils/section-text';
@@ -236,6 +236,60 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
     }
   }
 
+  function printQuiz() {
+    if (!section.mini_quiz) return;
+    const LABELS = ['A', 'B', 'C', 'D', 'E'];
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const questionsHtml = section.mini_quiz.map((q, qi) => {
+      const options = q.options.map((opt, oi) =>
+        `<div class="option"><span class="label">${LABELS[oi] ?? oi + 1}.</span> ${opt}</div>`
+      ).join('');
+      return `
+        <div class="question">
+          <p class="qtext"><span class="qnum">Q${qi + 1}.</span> ${q.question}</p>
+          <div class="options">${options}</div>
+          <div class="answer-line">Answer: _____________</div>
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Quiz — ${section.title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; }
+  .header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 20px; }
+  .header h1 { font-size: 17px; font-weight: bold; }
+  .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
+  .question { margin-bottom: 22px; page-break-inside: avoid; }
+  .qtext { font-weight: 600; margin-bottom: 8px; line-height: 1.5; }
+  .qnum { margin-right: 4px; }
+  .options { margin-left: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .option { display: flex; gap: 6px; line-height: 1.5; }
+  .label { font-weight: 600; min-width: 18px; }
+  .answer-line { margin-top: 8px; font-size: 12px; color: #444; }
+  @media print { body { padding: 20px 28px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>${section.title}</h1>
+  <div class="meta">${subjectName} &nbsp;·&nbsp; ${chapter.name} &nbsp;·&nbsp; ${date}</div>
+</div>
+${questionsHtml}
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=800,height=700');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
   async function submitQuiz() {
     if (!section.mini_quiz) return;
     const unanswered = section.mini_quiz.filter((_, i) => !quizAnswers[i]);
@@ -395,8 +449,19 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
       {step === 'quiz' && (
         <Card>
           <CardContent className="p-5 space-y-5">
-            <div className="flex items-center gap-2 text-blue-700 font-semibold">
-              <FlaskConical className="h-4 w-4" /> Test your understanding
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-700 font-semibold">
+                <FlaskConical className="h-4 w-4" /> Test your understanding
+              </div>
+              {section.mini_quiz && (
+                <button
+                  type="button"
+                  onClick={printQuiz}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Print
+                </button>
+              )}
             </div>
 
             {section.quiz_generating || !section.mini_quiz ? (
