@@ -258,8 +258,9 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
 <meta charset="utf-8"/>
 <title>Quiz — ${section.title}</title>
 <style>
+  @page { margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px 40px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 48px 44px 40px; }
   .header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 20px; }
   .header h1 { font-size: 17px; font-weight: bold; }
   .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
@@ -270,7 +271,6 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
   .option { display: flex; gap: 6px; line-height: 1.5; }
   .label { font-weight: 600; min-width: 18px; }
   .answer-line { margin-top: 8px; font-size: 12px; color: #444; }
-  @media print { body { padding: 20px 28px; } }
 </style>
 </head>
 <body>
