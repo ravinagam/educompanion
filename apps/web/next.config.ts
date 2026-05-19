@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '52mb',
     },
   },
-  serverExternalPackages: ['pdf-parse', 'mammoth', '@napi-rs/canvas', 'sharp', 'pdfjs-dist'],
+  serverExternalPackages: ['pdf-parse', 'mammoth', '@napi-rs/canvas', 'sharp', 'pdfjs-dist', 'mupdf'],
   images: {
     remotePatterns: [
       {
