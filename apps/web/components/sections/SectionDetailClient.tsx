@@ -258,9 +258,9 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
 <meta charset="utf-8"/>
 <title>Quiz — ${section.title}</title>
 <style>
-  @page { margin: 0; }
+  @page { margin: 32px 44px 28px; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 48px 44px 40px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
   .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 52px; }
   .header h1 { font-size: 17px; font-weight: bold; }
   .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
