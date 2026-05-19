@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   FlaskConical, CheckCircle2, XCircle, Trophy,
-  RotateCcw, Loader2, ArrowLeft, ArrowRight, Target, Zap,
+  RotateCcw, Loader2, ArrowLeft, ArrowRight, Target, Zap, Printer,
 } from 'lucide-react';
 import Link from 'next/link';
 import { XpToast } from '@/components/gamification/XpToast';
@@ -291,6 +291,124 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     setShowingTargeted(false);
   }
 
+  function openPrintWindow(html: string) {
+    const w = window.open('', '_blank', 'width=820,height=720');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  const PRINT_BASE_STYLE = `
+    @page { margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 48px 44px 40px; }
+    .header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px; }
+    .header h1 { font-size: 17px; font-weight: bold; }
+    .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
+    .question { margin-bottom: 24px; page-break-inside: avoid; }
+    .qtext { font-weight: 600; margin-bottom: 8px; line-height: 1.5; }
+    .qnum { margin-right: 4px; }
+    .options { margin-left: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+    .option { display: flex; gap: 6px; line-height: 1.5; }
+    .label { font-weight: 600; min-width: 18px; }
+    .fill-line { margin-left: 16px; margin-top: 6px; border-bottom: 1px solid #999; width: 60%; height: 22px; }
+    .answer-line { margin-top: 8px; font-size: 12px; color: #444; }
+  `;
+
+  function printBlankQuiz() {
+    if (!questions.length) return;
+    const LABELS = ['A', 'B', 'C', 'D', 'E'];
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const diffLabel = generatedDifficulty
+      ? ` · ${generatedDifficulty.charAt(0).toUpperCase() + generatedDifficulty.slice(1)}`
+      : '';
+
+    const questionsHtml = questions.map((q, qi) => {
+      let body = '';
+      if (q.type === 'fill_blank') {
+        body = `<div class="fill-line"></div><div class="answer-line">Answer: _________________________</div>`;
+      } else if (q.options) {
+        const opts = q.options.map((opt, oi) =>
+          `<div class="option"><span class="label">${LABELS[oi] ?? oi + 1}.</span> ${opt}</div>`
+        ).join('');
+        body = `<div class="options">${opts}</div><div class="answer-line">Answer: _____________</div>`;
+      }
+      const typeLabel = q.type === 'mcq' ? 'MCQ' : q.type === 'true_false' ? 'True / False' : 'Fill in the Blank';
+      return `
+        <div class="question">
+          <p class="qtext"><span class="qnum">Q${qi + 1}.</span> <span style="font-size:10px;color:#888;font-weight:normal;">[${typeLabel}]</span> ${q.question}</p>
+          ${body}
+        </div>`;
+    }).join('');
+
+    openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Quiz — ${chapter.name}</title>
+      <style>${PRINT_BASE_STYLE}</style></head><body>
+      <div class="header">
+        <h1>${chapter.name} — Quiz</h1>
+        <div class="meta">${subjectName}${diffLabel} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; ${questions.length} questions</div>
+      </div>
+      ${questionsHtml}</body></html>`);
+  }
+
+  function printResults() {
+    if (!results.length) return;
+    const LABELS = ['A', 'B', 'C', 'D', 'E'];
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const pctVal = Math.round((finalScore / questions.length) * 100);
+
+    const questionsHtml = results.map((r, i) => {
+      const q = questions.find(q2 => q2.id === r.questionId);
+      if (!q) return '';
+      let optionsHtml = '';
+      if (q.options) {
+        optionsHtml = `<div class="options" style="margin-bottom:6px;">` +
+          q.options.map((opt, oi) => {
+            const isChosen = opt === r.chosen;
+            const isCorrect = opt === r.correct_answer;
+            const style = isCorrect
+              ? 'color:#166534;font-weight:bold;'
+              : isChosen && !r.correct
+              ? 'color:#dc2626;text-decoration:line-through;'
+              : 'color:#555;';
+            return `<div class="option" style="${style}"><span class="label">${LABELS[oi] ?? oi + 1}.</span> ${opt}</div>`;
+          }).join('') + `</div>`;
+      } else {
+        const ansStyle = r.correct ? 'color:#166534;font-weight:bold;' : 'color:#dc2626;';
+        optionsHtml = `<div style="margin-left:16px;margin-bottom:4px;font-size:12px;">
+          <span style="${ansStyle}">Your answer: ${r.chosen || '(blank)'}</span>`;
+        if (!r.correct) optionsHtml += `&nbsp;&nbsp;<span style="color:#166534;font-weight:bold;">Correct: ${r.correct_answer}</span>`;
+        optionsHtml += `</div>`;
+      }
+      const icon = r.correct ? '✓' : '✗';
+      const iconColor = r.correct ? '#166534' : '#dc2626';
+      return `
+        <div class="question" style="border-left:3px solid ${iconColor};padding-left:10px;">
+          <p class="qtext"><span style="color:${iconColor};margin-right:4px;">${icon}</span><span class="qnum">Q${i + 1}.</span> ${q.question}</p>
+          ${optionsHtml}
+          ${r.explanation ? `<p style="font-size:11px;color:#555;font-style:italic;margin-top:4px;">${r.explanation}</p>` : ''}
+        </div>`;
+    }).join('');
+
+    openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Quiz Results — ${chapter.name}</title>
+      <style>${PRINT_BASE_STYLE}
+        .score-bar { background:#f3f4f6; border-radius:6px; padding:10px 14px; margin-bottom:22px; display:flex; align-items:center; gap:16px; }
+        .score-num { font-size:28px; font-weight:bold; }
+      </style></head><body>
+      <div class="header">
+        <h1>${chapter.name} — Quiz Results</h1>
+        <div class="meta">${subjectName} &nbsp;·&nbsp; ${date}</div>
+      </div>
+      <div class="score-bar">
+        <span class="score-num" style="color:${pctVal >= 70 ? '#166534' : pctVal >= 50 ? '#92400e' : '#dc2626'};">${pctVal}%</span>
+        <span style="color:#555;">${finalScore} / ${questions.length} correct</span>
+      </div>
+      ${questionsHtml}</body></html>`);
+  }
+
   async function practiceWeakTopics() {
     const wrongQuestions = results
       .filter(r => !r.correct)
@@ -465,6 +583,13 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Regenerate
                   </Button>
+                  <button
+                    type="button"
+                    onClick={printBlankQuiz}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Print
+                  </button>
                   <Button onClick={() => {
                     setCurrent(0);
                     setAnswers({});
@@ -747,6 +872,13 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
               <Button variant="outline" onClick={restartQuiz} className="flex-1">
                 <RotateCcw className="h-4 w-4 mr-2" />Retry
               </Button>
+              <button
+                type="button"
+                onClick={printResults}
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
+              >
+                <Printer className="h-3.5 w-3.5" /> Print
+              </button>
             </div>
           </CardContent>
         </Card>
