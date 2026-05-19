@@ -94,21 +94,23 @@ async function runProcessing(
   }
 }
 
-// Inserts [[FIGURE:pageNum_orderIdx]] markers before figure caption lines in extracted PDF text.
-// Only matches captions at the start of a line (e.g. "Figure 1.1 ..."), not inline references.
-// Images are assigned in document order — first caption gets first image, etc.
+// Inserts [[FIGURE:pageNum_orderIdx]] markers before figure references in extracted text.
+// Matches both standalone captions ("Figure 2.1 : caption") and inline references
+// ("see Figure 2.1 below") so markers work regardless of Claude Vision's output format.
+// First occurrence of each figure number gets a marker; duplicates are skipped.
 function insertFigureMarkers(text: string, images: Array<{ pageNum: number; orderIdx: number }>): string {
   if (images.length === 0) return text;
   let imgIdx = 0;
   const seen = new Set<string>();
   return text.replace(
-    /((?:^|\n))(Fig(?:ure)?\.?\s+\d+(?:[.\-]\d+)*)/g,
-    (fullMatch, lineStart, caption) => {
+    /\b(Fig(?:ure)?\.?\s*\d+(?:[.\-]\d+)*)/gi,
+    (match, caption) => {
       const key = caption.toLowerCase().replace(/\s+/g, '');
-      if (seen.has(key) || imgIdx >= images.length) return fullMatch;
+      if (seen.has(key) || imgIdx >= images.length) return match;
       seen.add(key);
       const img = images[imgIdx++];
-      return `${lineStart}[[FIGURE:${img.pageNum}_${img.orderIdx}]]\n${caption}`;
+      // Insert marker on its own line just before the figure reference
+      return `[[FIGURE:${img.pageNum}_${img.orderIdx}]]\n${match}`;
     }
   );
 }

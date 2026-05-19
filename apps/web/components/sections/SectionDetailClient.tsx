@@ -337,32 +337,8 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
             <div className="flex items-center gap-2 text-blue-700 font-semibold">
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
-            {/* Inline figure markers take priority over the sidebar */}
-            {(() => {
-              const hasInline = /\[\[FIGURE:/.test(section.content_text);
-              return (
-                <div className={!hasInline && chapterImages.length > 0 ? 'md:grid md:grid-cols-[1fr_280px] md:gap-6' : ''}>
-                  <SectionReader text={section.content_text} chapterImages={chapterImages} />
-                  {!hasInline && chapterImages.length > 0 && (
-                    <div className="mt-4 md:mt-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">From the book</p>
-                      {chapterImages.map(img => (
-                        <div key={img.id} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
-                          <Image
-                            src={img.image_url}
-                            alt="Chapter illustration"
-                            width={img.width ?? 280}
-                            height={img.height ?? 200}
-                            className="w-full h-auto object-contain"
-                            unoptimized
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Images render inline at [[FIGURE:X_Y]] markers in the section text */}
+            <SectionReader text={section.content_text} chapterImages={chapterImages} />
             {progress.completed_at
               ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
               : <Button className="w-full" onClick={markReadDone} disabled={saving}>
