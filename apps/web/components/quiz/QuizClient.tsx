@@ -304,7 +304,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     @page { margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 48px 44px 40px; }
-    .header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 22px; }
+    .header { border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 36px; }
     .header h1 { font-size: 17px; font-weight: bold; }
     .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
     .question { margin-bottom: 24px; page-break-inside: avoid; }
@@ -586,7 +586,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   <button
                     type="button"
                     onClick={printBlankQuiz}
-                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
                   >
                     <Printer className="h-3.5 w-3.5" /> Print
                   </button>
@@ -875,7 +875,7 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
               <button
                 type="button"
                 onClick={printResults}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
+                className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-colors"
               >
                 <Printer className="h-3.5 w-3.5" /> Print
               </button>
