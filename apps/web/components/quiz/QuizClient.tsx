@@ -301,13 +301,13 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   }
 
   const PRINT_BASE_STYLE = `
-    @page { margin: 32px 44px 28px; }
+    @page { margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
-    .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 52px; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 40px 44px 32px; }
+    .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 32px; }
     .header h1 { font-size: 17px; font-weight: bold; }
     .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
-    .question { margin-bottom: 24px; page-break-inside: avoid; }
+    .question { padding-top: 20px; margin-bottom: 6px; page-break-inside: avoid; }
     .qtext { font-weight: 600; margin-bottom: 8px; line-height: 1.5; }
     .qnum { margin-right: 4px; }
     .options { margin-left: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
