@@ -62,17 +62,18 @@ async function runProcessing(
   console.log('[process] Extracted', contentText.length, 'chars');
 
   let textWithMarkers = contentText;
+  let extractedImages: Array<{ data: Buffer; width: number; height: number; pageNum: number; orderIdx: number }> = [];
 
-  // Extract images synchronously so markers can be embedded in text before section generation
+  // Extract images so markers can be embedded in text before processTextContent saves it.
+  // Storage happens AFTER processTextContent so the chapter is marked ready quickly —
+  // uploading 9+ images to Supabase can take 20+ seconds and would exceed Vercel's 60s timeout.
   if (mimeType === 'application/pdf') {
     try {
       const { extractImagesFromPdf } = await import('@/lib/utils/extract-images');
-      const images = await extractImagesFromPdf(buffer);
-      if (images.length > 0) {
-        textWithMarkers = insertFigureMarkers(contentText, images);
+      extractedImages = await extractImagesFromPdf(buffer);
+      if (extractedImages.length > 0) {
+        textWithMarkers = insertFigureMarkers(contentText, extractedImages);
         console.log('[process] Inserted', (textWithMarkers.match(/\[\[FIGURE:/g) ?? []).length, 'figure markers into text');
-        // Await storage so images are in DB before sections are generated
-        await extractAndStoreImages(admin, chapterId, images);
       } else {
         console.log('[process] No images extracted from PDF');
       }
@@ -81,7 +82,16 @@ async function runProcessing(
     }
   }
 
+  // Mark chapter ready with markers already embedded in content_text.
   await processTextContent(admin, chapterId, textWithMarkers, userId);
+
+  // Store images after chapter is ready — fire-and-forget so it doesn't block section generation.
+  // The section page queries chapter_images at load time, so images will be there by then.
+  if (extractedImages.length > 0) {
+    extractAndStoreImages(admin, chapterId, extractedImages).catch(err =>
+      console.warn('[process] Image storage failed (non-fatal):', err instanceof Error ? err.message : err)
+    );
+  }
 }
 
 // Inserts [[FIGURE:pageNum_orderIdx]] markers before figure caption lines in extracted PDF text.
@@ -174,23 +184,28 @@ async function extractAndStoreImages(
   // Clear previous images for this chapter
   await admin.from('chapter_images').delete().eq('chapter_id', chapterId);
 
-  for (const img of images) {
-    const storagePath = `${chapterId}/${img.pageNum}_${img.orderIdx}.png`;
-    const { error: uploadErr } = await admin.storage
-      .from('chapter-images')
-      .upload(storagePath, img.data, { contentType: 'image/png', upsert: true });
+  // Upload all images in parallel (3 at a time) to reduce storage time
+  const CONCURRENCY = 3;
+  for (let i = 0; i < images.length; i += CONCURRENCY) {
+    const batch = images.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(async (img) => {
+      const storagePath = `${chapterId}/${img.pageNum}_${img.orderIdx}.png`;
+      const { error: uploadErr } = await admin.storage
+        .from('chapter-images')
+        .upload(storagePath, img.data, { contentType: 'image/png', upsert: true });
 
-    if (uploadErr) { console.warn('[process] Image upload failed:', uploadErr.message); continue; }
+      if (uploadErr) { console.warn('[process] Image upload failed:', uploadErr.message); return; }
 
-    const { data: publicData } = admin.storage.from('chapter-images').getPublicUrl(storagePath);
-    await admin.from('chapter_images').insert({
-      chapter_id: chapterId,
-      image_url: publicData.publicUrl,
-      page_num: img.pageNum,
-      order_idx: img.orderIdx,
-      width: img.width,
-      height: img.height,
-    });
+      const { data: publicData } = admin.storage.from('chapter-images').getPublicUrl(storagePath);
+      await admin.from('chapter_images').insert({
+        chapter_id: chapterId,
+        image_url: publicData.publicUrl,
+        page_num: img.pageNum,
+        order_idx: img.orderIdx,
+        width: img.width,
+        height: img.height,
+      });
+    }));
   }
 
   console.log('[process] Stored', images.length, 'images for chapter', chapterId);
