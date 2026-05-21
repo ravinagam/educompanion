@@ -21,6 +21,16 @@ function renderMath(text: string) {
   return hasMathDelimiters(text) ? <MathText text={text} /> : <>{text}</>;
 }
 
+function getAR(q: { question: string; assertion?: string; reason?: string }) {
+  if (q.assertion && q.reason) return { assertion: q.assertion, reason: q.reason };
+  const aMatch = q.question.match(/Assertion\s*\(A\)[:\s]+([^\r\n]+)/i);
+  const rMatch = q.question.match(/Reason\s*\(R\)[:\s]+([^\r\n]+)/i);
+  return {
+    assertion: aMatch?.[1]?.trim() ?? q.question,
+    reason: rMatch?.[1]?.trim() ?? '',
+  };
+}
+
 interface Question {
   id: string;
   type: 'mcq' | 'true_false' | 'fill_blank' | 'assertion_reason';
@@ -337,9 +347,10 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         const opts = (q.options ?? []).map(opt =>
           `<div class="option" style="margin-bottom:3px;"><span style="font-weight:600;margin-right:4px;">${opt.slice(0, 3)}</span>${opt.slice(3)}</div>`
         ).join('');
+        const { assertion: arA, reason: arR } = getAR(q);
         body = `
-          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${q.assertion ?? ''}</span></div>
-          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${q.reason ?? ''}</span></div>
+          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${arA}</span></div>
+          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${arR}</span></div>
           <div class="ar-options">${opts}</div>
           <div class="answer-line">Answer: _____________</div>`;
       } else if (q.type === 'fill_blank') {
@@ -382,9 +393,10 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
 
       let optionsHtml = '';
       if (q.type === 'assertion_reason') {
+        const { assertion: arA2, reason: arR2 } = getAR(q);
         optionsHtml = `
-          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${q.assertion ?? ''}</span></div>
-          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${q.reason ?? ''}</span></div>
+          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${arA2}</span></div>
+          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${arR2}</span></div>
           <div class="ar-options" style="margin-bottom:6px;">` +
           (q.options ?? []).map(opt => {
             const isChosen = opt === r.chosen;
@@ -723,11 +735,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                 <div className="space-y-3">
                   <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
                     <p className="text-xs font-bold text-blue-600 mb-1">Assertion (A)</p>
-                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(currentQ.assertion ?? '')}</p>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(getAR(currentQ).assertion)}</p>
                   </div>
                   <div className="bg-violet-50 border border-violet-100 rounded-lg px-4 py-3">
                     <p className="text-xs font-bold text-violet-600 mb-1">Reason (R)</p>
-                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(currentQ.reason ?? '')}</p>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(getAR(currentQ).reason)}</p>
                   </div>
                 </div>
               ) : (
@@ -842,11 +854,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                       <div className="space-y-2">
                         <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                           <p className="text-xs font-bold text-blue-600 mb-0.5">Assertion (A)</p>
-                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.assertion ?? '')}</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(getAR(q).assertion)}</p>
                         </div>
                         <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
                           <p className="text-xs font-bold text-violet-600 mb-0.5">Reason (R)</p>
-                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.reason ?? '')}</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(getAR(q).reason)}</p>
                         </div>
                       </div>
                     ) : (
@@ -999,11 +1011,11 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                         <p className="text-xs font-semibold text-gray-500">Q{i + 1}. Assertion & Reason</p>
                         <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                           <p className="text-xs font-bold text-blue-600 mb-0.5">Assertion (A)</p>
-                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.assertion ?? '')}</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(getAR(q).assertion)}</p>
                         </div>
                         <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
                           <p className="text-xs font-bold text-violet-600 mb-0.5">Reason (R)</p>
-                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.reason ?? '')}</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(getAR(q).reason)}</p>
                         </div>
                       </div>
                     ) : (
