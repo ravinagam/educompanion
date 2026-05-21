@@ -40,10 +40,20 @@ export default async function WorksheetsPage({ params }: Params) {
         .map(c => ({ id: c.id, name: c.name, subjectName: s.name }))
     );
 
+  // Pre-load cache metadata so the Regenerate button shows immediately on page load
+  const chapterIds = hindiChapters.map(c => c.id);
+  const { data: cachedWorksheets } = chapterIds.length > 0
+    ? await admin.from('hindi_worksheets').select('chapter_id, generated_at').in('chapter_id', chapterIds)
+    : { data: [] };
+
+  const initialMeta: Record<string, string> = {};
+  (cachedWorksheets ?? []).forEach(w => { initialMeta[w.chapter_id] = w.generated_at; });
+
   return (
     <WorksheetsClient
       student={{ id: student.id, name: student.name }}
       hindiChapters={hindiChapters}
+      initialMeta={initialMeta}
     />
   );
 }

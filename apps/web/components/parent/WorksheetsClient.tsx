@@ -15,12 +15,13 @@ export interface HindiChapter {
 interface Props {
   student: { id: string; name: string };
   hindiChapters: HindiChapter[];
+  initialMeta?: Record<string, string>;
 }
 
-export function WorksheetsClient({ student, hindiChapters }: Props) {
+export function WorksheetsClient({ student, hindiChapters, initialMeta = {} }: Props) {
   const router = useRouter();
   const [generatingWorksheet, setGeneratingWorksheet] = useState<Record<string, boolean>>({});
-  const [worksheetMeta, setWorksheetMeta] = useState<Record<string, string>>({});
+  const [worksheetMeta, setWorksheetMeta] = useState<Record<string, string>>(initialMeta);
 
   function openPrintWindow(html: string) {
     const w = window.open('', '_blank', 'width=820,height=720');
