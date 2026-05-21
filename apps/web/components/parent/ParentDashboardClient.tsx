@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Flame, Trophy, Clock, Sparkles, BarChart2, Target,
   BookOpen, AlertTriangle, TrendingUp, TrendingDown, Minus, CheckCircle2, Gift, Star,
-  Printer, Loader2,
+  Printer, Loader2, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
@@ -146,6 +146,7 @@ export function ParentDashboardClient({
   const [insights, setInsights] = useState<ParentInsight | null>(initialInsights);
   const [insightsAt, setInsightsAt] = useState<string | null>(insightsGeneratedAt);
   const [generatingWorksheet, setGeneratingWorksheet] = useState<Record<string, boolean>>({});
+  const [worksheetMeta, setWorksheetMeta] = useState<Record<string, string>>({});
 
   function openPrintWindow(html: string) {
     const w = window.open('', '_blank', 'width=820,height=720');
@@ -199,12 +200,14 @@ export function ParentDashboardClient({
     </body></html>`);
   }
 
-  async function generateAndPrintWorksheet(chapterId: string, chapterName: string, subjectName: string) {
+  async function generateAndPrintWorksheet(chapterId: string, chapterName: string, subjectName: string, force = false) {
     setGeneratingWorksheet(g => ({ ...g, [chapterId]: true }));
     try {
-      const res = await fetch(`/api/generate/quiz/${chapterId}/hindi-worksheet`, { method: 'POST' });
+      const url = `/api/generate/quiz/${chapterId}/hindi-worksheet${force ? '?force=true' : ''}`;
+      const res = await fetch(url, { method: 'POST' });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? 'Generation failed'); return; }
+      setWorksheetMeta(m => ({ ...m, [chapterId]: json.generated_at }));
       printHindiWorksheet(chapterName, subjectName, json.questions);
     } catch {
       toast.error('Network error. Please try again.');
@@ -488,24 +491,47 @@ export function ParentDashboardClient({
             <p className="text-xs text-gray-500">
               Generate a fill-in-the-blank worksheet for any Hindi chapter. Questions and answer key print on separate pages.
             </p>
-            {hindiChapters.map(ch => (
-              <div key={ch.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{ch.name}</p>
-                  <p className="text-xs text-gray-400">{ch.subjectName}</p>
+            {hindiChapters.map(ch => {
+              const isGenerating = !!generatingWorksheet[ch.id];
+              const generatedAt = worksheetMeta[ch.id];
+              const dateLabel = generatedAt
+                ? new Date(generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : null;
+              return (
+                <div key={ch.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{ch.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {ch.subjectName}
+                      {dateLabel && <span className="ml-2 text-emerald-600">· Generated {dateLabel}</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => generateAndPrintWorksheet(ch.id, ch.name, ch.subjectName)}
+                      disabled={isGenerating}
+                      className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+                    >
+                      {isGenerating
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating…</>
+                        : <><Printer className="h-3.5 w-3.5" />Print Worksheet</>}
+                    </button>
+                    {dateLabel && (
+                      <button
+                        type="button"
+                        onClick={() => generateAndPrintWorksheet(ch.id, ch.name, ch.subjectName, true)}
+                        disabled={isGenerating}
+                        title="Regenerate with new questions"
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 border border-gray-100 hover:border-gray-300 rounded-lg px-2 py-1.5 transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className="h-3 w-3" /> Regenerate
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => generateAndPrintWorksheet(ch.id, ch.name, ch.subjectName)}
-                  disabled={!!generatingWorksheet[ch.id]}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg px-3 py-1.5 transition-colors shrink-0 disabled:opacity-50"
-                >
-                  {generatingWorksheet[ch.id]
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating…</>
-                    : <><Printer className="h-3.5 w-3.5" />Print Worksheet</>}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Section>
       )}
