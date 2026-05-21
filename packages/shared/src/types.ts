@@ -67,9 +67,11 @@ export interface StudyPlan {
 
 export interface QuizQuestion {
   id: string;
-  type: 'mcq' | 'true_false' | 'fill_blank';
+  type: 'mcq' | 'true_false' | 'fill_blank' | 'assertion_reason';
   question: string;
-  options?: string[];       // MCQ only
+  options?: string[];
+  assertion?: string;       // assertion_reason only
+  reason?: string;          // assertion_reason only
   correct_answer: string;
   explanation: string;
 }

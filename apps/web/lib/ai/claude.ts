@@ -59,8 +59,9 @@ Rules:
 - Use ONLY information from the provided content. Do not add external facts.
 - IMPORTANT: Cover ALL sections and topics from across the entire chapter — not just the beginning. The content above may include excerpts from start, middle, and end of the chapter.
 - CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", "from the solution table", or any textbook label the student cannot see during the quiz. If a question depends on data from a specific example or table, embed that data directly in the question text (e.g., "Given that point F has coordinates (4, 0)..."), or rephrase it as a concept question instead.
-- Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
+- Mix question types: ${isHindi ? '9 MCQ, 3 True/False, 3 Assertion-Reason' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank, 3 Assertion-Reason'}
 - MCQs must have exactly 4 options (A, B, C, D)
+- Assertion-Reason: write one factual Assertion and one Reason that may or may not correctly explain it. Options are always the fixed 4 listed in the schema below. Vary which option is correct — do not always pick (a).
 - Every question must have a clear correct answer and a concise explanation
 - Difficulty: ${difficulty === 'easy' ? '70% easy, 25% medium, 5% hard — straightforward recall questions, simple vocabulary' : difficulty === 'hard' ? '5% easy, 25% medium, 70% hard — deep conceptual reasoning, application, and analysis' : '30% easy, 50% medium, 20% hard — balanced mix'}
 - Spread questions evenly across different topics/sections of the chapter
@@ -88,6 +89,21 @@ Return a JSON array with this exact schema:
     "type": "fill_blank",
     "question": "The process of ___ converts sunlight into food.",
     "correct_answer": "photosynthesis",
+    "explanation": "..."
+  },
+  {
+    "id": "q4",
+    "type": "assertion_reason",
+    "assertion": "Plants release oxygen during photosynthesis.",
+    "reason": "Photosynthesis uses sunlight to convert CO2 and water into glucose and oxygen.",
+    "question": "Assertion (A): Plants release oxygen during photosynthesis.\nReason (R): Photosynthesis uses sunlight to convert CO2 and water into glucose and oxygen.",
+    "options": [
+      "(a) Both A and R are true, and R is the correct explanation of A",
+      "(b) Both A and R are true, but R is NOT the correct explanation of A",
+      "(c) A is true, but R is false",
+      "(d) A is false, but R is true"
+    ],
+    "correct_answer": "(a) Both A and R are true, and R is the correct explanation of A",
     "explanation": "..."
   }
 ]
@@ -125,8 +141,9 @@ Rules:
 - Use ONLY information visible in the screenshots. Do not add external facts.
 - Cover ALL pages shown, not just the first one.
 - CRITICAL — Self-contained questions: Every question must make complete sense on its own without the student seeing the textbook. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", or any textbook label. If a question depends on data from a specific example or table visible in the screenshots, embed that data directly in the question text (e.g., "If a triangle has sides 3 cm, 4 cm and 5 cm..."), or rephrase it as a concept question instead.
-- Mix question types: ${isHindi ? '9 MCQ, 3 True/False (no fill-in-the-blank for Hindi chapters)' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank'}
+- Mix question types: ${isHindi ? '9 MCQ, 3 True/False, 3 Assertion-Reason' : '6 MCQ, 3 True/False, 3 Fill-in-the-blank, 3 Assertion-Reason'}
 - MCQs must have exactly 4 options (A, B, C, D)
+- Assertion-Reason: write one factual Assertion and one Reason that may or may not correctly explain it. Options are always the fixed 4 listed in the schema below. Vary which option is correct — do not always pick (a).
 - Every question must have a clear correct answer and a concise explanation
 - Difficulty: ${difficulty === 'easy' ? '70% easy, 25% medium, 5% hard — straightforward recall' : difficulty === 'hard' ? '5% easy, 25% medium, 70% hard — deep conceptual reasoning' : '30% easy, 50% medium, 20% hard — balanced mix'}
 - Spread questions evenly across all pages/topics
@@ -135,7 +152,8 @@ Return a JSON array with this exact schema:
 [
   { "id": "q1", "type": "mcq", "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correct_answer": "A) ...", "explanation": "..." },
   { "id": "q2", "type": "true_false", "question": "...", "options": ["True", "False"], "correct_answer": "True", "explanation": "..." },
-  { "id": "q3", "type": "fill_blank", "question": "The process of ___ converts sunlight into food.", "correct_answer": "photosynthesis", "explanation": "..." }
+  { "id": "q3", "type": "fill_blank", "question": "The process of ___ converts sunlight into food.", "correct_answer": "photosynthesis", "explanation": "..." },
+  { "id": "q4", "type": "assertion_reason", "assertion": "Plants release oxygen during photosynthesis.", "reason": "Photosynthesis uses sunlight to convert CO2 and water into glucose and oxygen.", "question": "Assertion (A): Plants release oxygen during photosynthesis.\nReason (R): Photosynthesis uses sunlight to convert CO2 and water into glucose and oxygen.", "options": ["(a) Both A and R are true, and R is the correct explanation of A", "(b) Both A and R are true, but R is NOT the correct explanation of A", "(c) A is true, but R is false", "(d) A is false, but R is true"], "correct_answer": "(a) Both A and R are true, and R is the correct explanation of A", "explanation": "..." }
 ]
 Return ONLY valid JSON, no markdown, no explanation outside the array.`;
 

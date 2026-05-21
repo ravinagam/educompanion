@@ -23,9 +23,11 @@ function renderMath(text: string) {
 
 interface Question {
   id: string;
-  type: 'mcq' | 'true_false' | 'fill_blank';
+  type: 'mcq' | 'true_false' | 'fill_blank' | 'assertion_reason';
   question: string;
   options?: string[];
+  assertion?: string;
+  reason?: string;
 }
 
 interface Quiz {
@@ -311,10 +313,14 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     .qtext { font-weight: 600; margin-bottom: 8px; line-height: 1.5; }
     .qnum { margin-right: 4px; }
     .options { margin-left: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+    .ar-options { margin-left: 16px; margin-top: 6px; }
     .option { display: flex; gap: 6px; line-height: 1.5; }
     .label { font-weight: 600; min-width: 18px; }
     .fill-line { margin-left: 16px; margin-top: 6px; border-bottom: 1px solid #999; width: 60%; height: 22px; }
     .answer-line { margin-top: 8px; font-size: 12px; color: #444; }
+    .ar-block { margin-left: 16px; margin-bottom: 8px; }
+    .ar-label { font-weight: 700; font-size: 12px; color: #333; }
+    .ar-text { font-size: 13px; line-height: 1.5; }
   `;
 
   function printBlankQuiz() {
@@ -327,7 +333,16 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
 
     const questionsHtml = questions.map((q, qi) => {
       let body = '';
-      if (q.type === 'fill_blank') {
+      if (q.type === 'assertion_reason') {
+        const opts = (q.options ?? []).map(opt =>
+          `<div class="option" style="margin-bottom:3px;"><span style="font-weight:600;margin-right:4px;">${opt.slice(0, 3)}</span>${opt.slice(3)}</div>`
+        ).join('');
+        body = `
+          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${q.assertion ?? ''}</span></div>
+          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${q.reason ?? ''}</span></div>
+          <div class="ar-options">${opts}</div>
+          <div class="answer-line">Answer: _____________</div>`;
+      } else if (q.type === 'fill_blank') {
         body = `<div class="fill-line"></div><div class="answer-line">Answer: _________________________</div>`;
       } else if (q.options) {
         const opts = q.options.map((opt, oi) =>
@@ -335,10 +350,10 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         ).join('');
         body = `<div class="options">${opts}</div><div class="answer-line">Answer: _____________</div>`;
       }
-      const typeLabel = q.type === 'mcq' ? 'MCQ' : q.type === 'true_false' ? 'True / False' : 'Fill in the Blank';
+      const typeLabel = q.type === 'mcq' ? 'MCQ' : q.type === 'true_false' ? 'True / False' : q.type === 'assertion_reason' ? 'Assertion & Reason' : 'Fill in the Blank';
       return `
         <div class="question">
-          <p class="qtext"><span class="qnum">Q${qi + 1}.</span> <span style="font-size:10px;color:#888;font-weight:normal;">[${typeLabel}]</span> ${q.question}</p>
+          <p class="qtext"><span class="qnum">Q${qi + 1}.</span> <span style="font-size:10px;color:#888;font-weight:normal;">[${typeLabel}]</span>${q.type === 'assertion_reason' ? '' : ` ${q.question}`}</p>
           ${body}
         </div>`;
     }).join('');
@@ -362,8 +377,22 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     const questionsHtml = results.map((r, i) => {
       const q = questions.find(q2 => q2.id === r.questionId);
       if (!q) return '';
+      const icon = r.correct ? '✓' : '✗';
+      const iconColor = r.correct ? '#166534' : '#dc2626';
+
       let optionsHtml = '';
-      if (q.options) {
+      if (q.type === 'assertion_reason') {
+        optionsHtml = `
+          <div class="ar-block"><span class="ar-label">Assertion (A): </span><span class="ar-text">${q.assertion ?? ''}</span></div>
+          <div class="ar-block"><span class="ar-label">Reason (R): </span><span class="ar-text">${q.reason ?? ''}</span></div>
+          <div class="ar-options" style="margin-bottom:6px;">` +
+          (q.options ?? []).map(opt => {
+            const isChosen = opt === r.chosen;
+            const isCorrect = opt === r.correct_answer;
+            const style = isCorrect ? 'color:#166534;font-weight:bold;' : isChosen && !r.correct ? 'color:#dc2626;text-decoration:line-through;' : 'color:#555;';
+            return `<div class="option" style="${style};margin-bottom:3px;"><span style="font-weight:600;margin-right:4px;">${opt.slice(0, 3)}</span>${opt.slice(3)}</div>`;
+          }).join('') + `</div>`;
+      } else if (q.options) {
         optionsHtml = `<div class="options" style="margin-bottom:6px;">` +
           q.options.map((opt, oi) => {
             const isChosen = opt === r.chosen;
@@ -382,11 +411,14 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         if (!r.correct) optionsHtml += `&nbsp;&nbsp;<span style="color:#166534;font-weight:bold;">Correct: ${r.correct_answer}</span>`;
         optionsHtml += `</div>`;
       }
-      const icon = r.correct ? '✓' : '✗';
-      const iconColor = r.correct ? '#166534' : '#dc2626';
+
+      const qHeader = q.type === 'assertion_reason'
+        ? `<span style="color:${iconColor};margin-right:4px;">${icon}</span><span class="qnum">Q${i + 1}.</span> <span style="font-size:10px;color:#888;">[Assertion & Reason]</span>`
+        : `<span style="color:${iconColor};margin-right:4px;">${icon}</span><span class="qnum">Q${i + 1}.</span> ${q.question}`;
+
       return `
         <div class="question" style="border-left:3px solid ${iconColor};padding-left:10px;">
-          <p class="qtext"><span style="color:${iconColor};margin-right:4px;">${icon}</span><span class="qnum">Q${i + 1}.</span> ${q.question}</p>
+          <p class="qtext">${qHeader}</p>
           ${optionsHtml}
           ${r.explanation ? `<p style="font-size:11px;color:#555;font-style:italic;margin-top:4px;">${r.explanation}</p>` : ''}
         </div>`;
@@ -678,7 +710,8 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">
                   {currentQ.type === 'mcq' ? 'Multiple Choice' :
-                   currentQ.type === 'true_false' ? 'True / False' : 'Fill in the Blank'}
+                   currentQ.type === 'true_false' ? 'True / False' :
+                   currentQ.type === 'assertion_reason' ? 'Assertion & Reason' : 'Fill in the Blank'}
                 </Badge>
                 {isCurrentSkipped && (
                   <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-200">
@@ -686,7 +719,20 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                   </Badge>
                 )}
               </div>
-              <p className="text-lg font-medium text-gray-900 leading-snug">{renderMath(currentQ.question)}</p>
+              {currentQ.type === 'assertion_reason' ? (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                    <p className="text-xs font-bold text-blue-600 mb-1">Assertion (A)</p>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(currentQ.assertion ?? '')}</p>
+                  </div>
+                  <div className="bg-violet-50 border border-violet-100 rounded-lg px-4 py-3">
+                    <p className="text-xs font-bold text-violet-600 mb-1">Reason (R)</p>
+                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(currentQ.reason ?? '')}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-lg font-medium text-gray-900 leading-snug">{renderMath(currentQ.question)}</p>
+              )}
             </div>
 
             {/* MCQ + True/False options */}
@@ -792,9 +838,22 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs font-bold text-gray-400 mt-0.5 shrink-0">Q{idx + 1}</span>
                   <div className="flex-1 space-y-3">
-                    <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(q.question)}</p>
+                    {q.type === 'assertion_reason' ? (
+                      <div className="space-y-2">
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-bold text-blue-600 mb-0.5">Assertion (A)</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.assertion ?? '')}</p>
+                        </div>
+                        <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-bold text-violet-600 mb-0.5">Reason (R)</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.reason ?? '')}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900 leading-snug">{renderMath(q.question)}</p>
+                    )}
 
-                    {/* MCQ / True-False: clickable options */}
+                    {/* MCQ / True-False / Assertion-Reason: clickable options */}
                     {q.options && (
                       <div className="space-y-1.5">
                         {q.options.map(opt => (
@@ -935,7 +994,21 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
                       ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
                       : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                     }
-                    <p className="text-sm font-medium text-gray-900">Q{i + 1}. {renderMath(q?.question ?? '')}</p>
+                    {q?.type === 'assertion_reason' ? (
+                      <div className="flex-1 space-y-1.5">
+                        <p className="text-xs font-semibold text-gray-500">Q{i + 1}. Assertion & Reason</p>
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-bold text-blue-600 mb-0.5">Assertion (A)</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.assertion ?? '')}</p>
+                        </div>
+                        <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-bold text-violet-600 mb-0.5">Reason (R)</p>
+                          <p className="text-sm text-gray-900 leading-snug">{renderMath(q.reason ?? '')}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900">Q{i + 1}. {renderMath(q?.question ?? '')}</p>
+                    )}
                   </div>
                   {!r.correct && (
                     <div className="ml-6 space-y-1">

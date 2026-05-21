@@ -26,7 +26,7 @@ export const SRS_INTERVALS_HOURS: Record<number, number> = {
   5: 720,    // 1 month
 };
 
-export const QUIZ_QUESTIONS_PER_CHAPTER = 12;
+export const QUIZ_QUESTIONS_PER_CHAPTER = 15;
 export const FLASHCARDS_PER_CHAPTER = 15;
 export const CHUNK_SIZE_CHARS = 1500;
 export const CHUNK_OVERLAP_CHARS = 200;
