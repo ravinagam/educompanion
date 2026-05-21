@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Flame, Trophy, Clock, Sparkles, BarChart2, Target,
   BookOpen, AlertTriangle, TrendingUp, TrendingDown, Minus, CheckCircle2, Gift, Star,
+  Printer, Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { GIFT_MILESTONES } from '@/lib/gamification/milestones';
 import { Badge } from '@/components/ui/badge';
 import { type KPIData } from './KPIGrid';
@@ -37,6 +39,7 @@ export interface ParentDashboardProps {
   initialInsights: ParentInsight | null;
   insightsGeneratedAt: string | null;
   milestones: GiftMilestone[];
+  hindiChapters: { id: string; name: string; subjectName: string }[];
 }
 
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -137,11 +140,78 @@ function InsightTagRow({ tag, items, tagColor }: { tag: string; items: string[];
 
 export function ParentDashboardClient({
   student, kpi, subjects, quizTrend, weakChapters, weakSubjects,
-  initialInsights, insightsGeneratedAt, milestones,
+  initialInsights, insightsGeneratedAt, milestones, hindiChapters,
 }: ParentDashboardProps) {
   const router = useRouter();
   const [insights, setInsights] = useState<ParentInsight | null>(initialInsights);
   const [insightsAt, setInsightsAt] = useState<string | null>(insightsGeneratedAt);
+  const [generatingWorksheet, setGeneratingWorksheet] = useState<Record<string, boolean>>({});
+
+  function openPrintWindow(html: string) {
+    const w = window.open('', '_blank', 'width=820,height=720');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  function printHindiWorksheet(chapterName: string, subjectName: string, questions: { sentence: string; answer: string }[]) {
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const questionsHtml = questions.map((q, i) =>
+      `<div class="question"><span class="qnum">${i + 1}.</span> ${q.sentence}</div>`
+    ).join('');
+    const answersHtml = questions.map((q, i) =>
+      `<div class="ans-row"><span class="qnum">${i + 1}.</span> <span class="ans">${q.answer}</span></div>`
+    ).join('');
+
+    openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Hindi Worksheet — ${chapterName}</title>
+      <style>
+        @page { margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans Devanagari', Arial, sans-serif; font-size: 14px; color: #111; padding: 40px 44px 32px; }
+        .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 32px; }
+        .header h1 { font-size: 17px; font-weight: bold; }
+        .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
+        .section-title { font-size: 13px; font-weight: bold; color: #444; margin-bottom: 18px; letter-spacing: 0.04em; text-transform: uppercase; }
+        .question { padding-top: 18px; margin-bottom: 4px; line-height: 1.8; page-break-inside: avoid; }
+        .qnum { font-weight: bold; margin-right: 6px; }
+        .answer-key { page-break-before: always; padding-top: 40px; }
+        .ans-row { padding-top: 14px; line-height: 1.6; }
+        .ans { color: #166534; font-weight: 600; }
+        .key-note { font-size: 11px; color: #888; margin-bottom: 24px; }
+      </style></head><body>
+      <div class="header">
+        <h1>${chapterName} — रिक्त स्थान भरो</h1>
+        <div class="meta">${subjectName} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; ${questions.length} प्रश्न</div>
+      </div>
+      <div class="section-title">निर्देश: रिक्त स्थानों की पूर्ति कीजिए</div>
+      ${questionsHtml}
+      <div class="answer-key">
+        <div class="header">
+          <h1>${chapterName} — उत्तर कुंजी</h1>
+          <div class="meta">${subjectName} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; केवल अभिभावक / शिक्षक के लिए</div>
+        </div>
+        <p class="key-note">Answer Key — For Parent / Teacher use only. Do not share with students before they attempt the worksheet.</p>
+        ${answersHtml}
+      </div>
+    </body></html>`);
+  }
+
+  async function generateAndPrintWorksheet(chapterId: string, chapterName: string, subjectName: string) {
+    setGeneratingWorksheet(g => ({ ...g, [chapterId]: true }));
+    try {
+      const res = await fetch(`/api/generate/quiz/${chapterId}/hindi-worksheet`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? 'Generation failed'); return; }
+      printHindiWorksheet(chapterName, subjectName, json.questions);
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setGeneratingWorksheet(g => ({ ...g, [chapterId]: false }));
+    }
+  }
 
   const lastActiveLabel = kpi.days_since_active === null ? 'Never'
     : kpi.days_since_active === 0 ? 'Today'
@@ -409,6 +479,34 @@ export function ParentDashboardClient({
       {insights?.recommendations && insights.recommendations.length > 0 && (
         <Section title="AI Recommendations for You" icon={<BookOpen className="h-4 w-4" />}>
           <RecommendationsPanel recommendations={insights.recommendations} />
+        </Section>
+      )}
+
+      {hindiChapters.length > 0 && (
+        <Section title="हिंदी वर्कशीट | Hindi Worksheet" icon={<Printer className="h-4 w-4" />}>
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Generate a fill-in-the-blank worksheet for any Hindi chapter. Questions and answer key print on separate pages.
+            </p>
+            {hindiChapters.map(ch => (
+              <div key={ch.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{ch.name}</p>
+                  <p className="text-xs text-gray-400">{ch.subjectName}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => generateAndPrintWorksheet(ch.id, ch.name, ch.subjectName)}
+                  disabled={!!generatingWorksheet[ch.id]}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg px-3 py-1.5 transition-colors shrink-0 disabled:opacity-50"
+                >
+                  {generatingWorksheet[ch.id]
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating…</>
+                    : <><Printer className="h-3.5 w-3.5" />Print Worksheet</>}
+                </button>
+              </div>
+            ))}
+          </div>
         </Section>
       )}
 
