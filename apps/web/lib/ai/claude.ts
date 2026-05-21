@@ -156,6 +156,53 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
   return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
+// ─── Hindi Worksheet Generation ──────────────────────────────────────────────
+
+export async function generateHindiWorksheet(
+  chapterName: string,
+  chapterContent: string | null | undefined,
+): Promise<UsageResult<{ sentence: string; answer: string }[]>> {
+  const content = sampleContent(chapterContent ?? '', 60_000);
+
+  const prompt = `You are a Hindi language teacher for Indian school students (grades 8–12).
+Based on the following Hindi chapter content, generate exactly 15 fill-in-the-blank questions in Hindi.
+
+Chapter: "${chapterName}"
+
+Content:
+${content}
+
+Rules:
+- Each question must be a complete Hindi sentence (in Devanagari script) with exactly one key word or short phrase replaced by "________"
+- The blank must test an important fact, character name, term, or concept from the chapter
+- Each blank has exactly one correct answer — no ambiguity
+- The answer must be a short word or phrase (1–5 words max), written in Devanagari
+- Mix difficulty: roughly half easy recall, half medium reasoning
+- Cover different parts of the chapter — do not cluster all questions on one topic
+
+Return a JSON array with exactly this schema:
+[
+  { "sentence": "_________ ने 1848 में चार प्रिंट तैयार किए।", "answer": "फ्रेडरिक सोर्रिउ" }
+]
+
+Return ONLY valid JSON, no markdown, no explanation outside the array.`;
+
+  const message = await getClaude().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2048,
+    temperature: 1,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = (message.content[0] as { type: string; text: string }).text;
+  return {
+    data: parseJSON<{ sentence: string; answer: string }[]>(text),
+    input_tokens: message.usage.input_tokens,
+    output_tokens: message.usage.output_tokens,
+    model: message.model,
+  };
+}
+
 // ─── Flashcard Generation ─────────────────────────────────────────────────────
 
 export async function generateFlashcards(

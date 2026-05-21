@@ -82,6 +82,9 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
   const [showingTargeted, setShowingTargeted] = useState(false);
   const [xpToast, setXpToast] = useState<{ xp: number; multiplier: number; milestoneHint?: number | null } | null>(null);
   const [showActivityRating, setShowActivityRating] = useState(false);
+  const [generatingWorksheet, setGeneratingWorksheet] = useState(false);
+
+  const isHindi = subjectName.toLowerCase().includes('hindi');
 
   const questions = showingTargeted ? targetedQuestions : (quiz?.questions_json ?? []);
   const currentQ = questions[current];
@@ -289,6 +292,63 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
     setTargetedQuestions([]);
     setTargetedQuizId(null);
     setShowingTargeted(false);
+  }
+
+  async function generateAndPrintWorksheet() {
+    setGeneratingWorksheet(true);
+    try {
+      const res = await fetch(`/api/generate/quiz/${chapter.id}/hindi-worksheet`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error ?? 'Generation failed'); return; }
+      printHindiWorksheet(json.questions);
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setGeneratingWorksheet(false);
+    }
+  }
+
+  function printHindiWorksheet(questions: { sentence: string; answer: string }[]) {
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const questionsHtml = questions.map((q, i) =>
+      `<div class="question"><span class="qnum">${i + 1}.</span> ${q.sentence}</div>`
+    ).join('');
+    const answersHtml = questions.map((q, i) =>
+      `<div class="ans-row"><span class="qnum">${i + 1}.</span> <span class="ans">${q.answer}</span></div>`
+    ).join('');
+
+    openPrintWindow(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Hindi Worksheet — ${chapter.name}</title>
+      <style>
+        @page { margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans Devanagari', Arial, sans-serif; font-size: 14px; color: #111; padding: 40px 44px 32px; }
+        .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 32px; }
+        .header h1 { font-size: 17px; font-weight: bold; }
+        .header .meta { font-size: 11px; color: #555; margin-top: 4px; }
+        .section-title { font-size: 13px; font-weight: bold; color: #444; margin-bottom: 18px; letter-spacing: 0.04em; text-transform: uppercase; }
+        .question { padding-top: 18px; margin-bottom: 4px; line-height: 1.8; page-break-inside: avoid; }
+        .qnum { font-weight: bold; margin-right: 6px; }
+        .answer-key { page-break-before: always; padding-top: 40px; }
+        .ans-row { padding-top: 14px; line-height: 1.6; }
+        .ans { color: #166534; font-weight: 600; }
+        .key-note { font-size: 11px; color: #888; margin-bottom: 24px; }
+      </style></head><body>
+      <div class="header">
+        <h1>${chapter.name} — रिक्त स्थान भरो</h1>
+        <div class="meta">${subjectName} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; ${questions.length} प्रश्न</div>
+      </div>
+      <div class="section-title">निर्देश: रिक्त स्थानों की पूर्ति कीजिए</div>
+      ${questionsHtml}
+      <div class="answer-key">
+        <div class="header">
+          <h1>${chapter.name} — उत्तर कुंजी</h1>
+          <div class="meta">${subjectName} &nbsp;·&nbsp; ${date} &nbsp;·&nbsp; केवल अभिभावक / शिक्षक के लिए</div>
+        </div>
+        <p class="key-note">Answer Key — For Parent / Teacher use only. Do not share with students before they attempt the worksheet.</p>
+        ${answersHtml}
+      </div>
+    </body></html>`);
   }
 
   function openPrintWindow(html: string) {
@@ -605,6 +665,27 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
             )}
           </CardContent>
         </Card>
+
+        {isHindi && chapter.upload_status === 'ready' && (
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">हिंदी वर्कशीट</p>
+                <p className="text-xs text-gray-500 mt-0.5">रिक्त स्थान भरो — 15 प्रश्न, उत्तर कुंजी अलग पृष्ठ पर</p>
+              </div>
+              <Button
+                onClick={generateAndPrintWorksheet}
+                disabled={generatingWorksheet}
+                variant="outline"
+                className="shrink-0 font-semibold"
+              >
+                {generatingWorksheet
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating…</>
+                  : <><Printer className="h-4 w-4 mr-2" />Print Worksheet</>}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
