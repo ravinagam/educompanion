@@ -237,15 +237,6 @@ export default async function ParentChildPage({ params }: Params) {
   const initialInsights: ParentInsight | null = isFresh ? (cachedInsights.insights_json as ParentInsight) : null;
   const insightsAt = isFresh ? cachedInsights.generated_at : null;
 
-  // Hindi chapters for worksheet printing (parent-only feature)
-  const hindiChapters = (subjectsRaw ?? [])
-    .filter(s => s.name.toLowerCase().includes('hindi'))
-    .flatMap(s =>
-      ((s.chapters ?? []) as Array<{ id: string; name: string; upload_status: string }>)
-        .filter(c => c.upload_status === 'ready')
-        .map(c => ({ id: c.id, name: c.name, subjectName: s.name }))
-    );
-
   return (
     <ParentDashboardClient
       student={{ id: student.id, name: student.name, grade: student.grade, board: student.board }}
@@ -257,7 +248,6 @@ export default async function ParentChildPage({ params }: Params) {
       initialInsights={initialInsights}
       insightsGeneratedAt={insightsAt}
       milestones={milestonesRaw ?? []}
-      hindiChapters={hindiChapters}
     />
   );
 }
