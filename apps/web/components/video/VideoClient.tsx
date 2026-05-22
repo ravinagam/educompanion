@@ -83,6 +83,9 @@ const BULLET_INTERVAL_S = 3;
 // Seconds to linger after last bullet before auto-advancing
 const SLIDE_TAIL_S = 2;
 
+const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
+type Speed = typeof SPEEDS[number];
+
 function slideDuration(sec: VideoSection) {
   return sec.bullets.length * BULLET_INTERVAL_S + SLIDE_TAIL_S;
 }
@@ -196,6 +199,8 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
       .catch(() => {});
     setShowActivityRating(shouldShowActivityRating(chapterId, 'video'));
   }, [ended, chapterId]);
+  const [speed, setSpeed] = useState<Speed>(1);
+  const speedRef = useRef<Speed>(1);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   // Driven by speech: bullet i appears right before it is spoken
   const [visibleBullets, setVisibleBullets] = useState(0);
@@ -231,6 +236,11 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
   const ttsCacheRef = useRef<Map<string, Promise<{ audio: string; format: string } | null>>>(new Map());
   // Track whether Sarvam TTS is actually working (confirmed on first successful audio)
   const [hindiTtsActive, setHindiTtsActive] = useState(false);
+
+  useEffect(() => {
+    const saved = parseFloat(localStorage.getItem('video_speed') ?? '');
+    if (SPEEDS.includes(saved as Speed)) { speedRef.current = saved as Speed; setSpeed(saved as Speed); }
+  }, []);
 
   useEffect(() => {
     console.log('[VideoPlayer] isHindi:', isHindi);
@@ -376,7 +386,7 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
   // Build utterance with current voice/rate settings
   const makeUtt = useCallback((text: string) => {
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.9; utt.pitch = 1.08;
+    utt.rate = 0.9 * speedRef.current; utt.pitch = 1.08;
     if (selectedVoiceRef.current) utt.voice = selectedVoiceRef.current;
     return utt;
   }, []);
@@ -423,6 +433,7 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
       audio.onerror = null;
       audio.volume = 1;
       audio.src = `data:${mime};base64,${data.audio}`;
+      audio.playbackRate = speedRef.current;
       currentAudioRef.current = audio;
       audio.onended = () => { if (narrationIdRef.current === myId) onEnd(); };
       audio.onerror = () => { if (narrationIdRef.current === myId) fallback('playback error'); };
@@ -471,16 +482,16 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
             setPlaying(false); playingRef.current = false; setEnded(true);
             return prev;
           });
-        }, SLIDE_TAIL_S * 1000);
+        }, (SLIDE_TAIL_S * 1000) / speedRef.current);
         return;
       }
 
       nextBulletIdxRef.current = idx + 1;
 
       if (!voiceEnabledRef.current) {
-        // Voice off: reveal immediately then wait the fixed interval
+        // Voice off: reveal immediately then wait the fixed interval scaled by speed
         setVisibleBullets(idx + 1);
-        setTimeout(speakBullet, BULLET_INTERVAL_S * 1000);
+        setTimeout(speakBullet, (BULLET_INTERVAL_S * 1000) / speedRef.current);
         return;
       }
 
@@ -549,6 +560,13 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
     voiceEnabledRef.current = v;
     setVoiceEnabled(v);
     if (!v) synthRef.current?.cancel();
+  }, []);
+
+  const changeSpeed = useCallback((s: Speed) => {
+    speedRef.current = s;
+    setSpeed(s);
+    localStorage.setItem('video_speed', String(s));
+    if (currentAudioRef.current) currentAudioRef.current.playbackRate = s;
   }, []);
 
   // ── Progress bar timer (wall clock, cosmetic)
@@ -753,6 +771,16 @@ function SlidePlayer({ sections, isHindi, chapterId }: { sections: VideoSection[
               ? <Volume2 className="h-3.5 w-3.5" />
               : <VolumeX className="h-3.5 w-3.5" />}
           </Button>
+          <div className="hidden sm:flex items-center gap-0.5 border border-white/15 rounded-md px-1 py-0.5">
+            {SPEEDS.map(s => (
+              <button key={s} onClick={() => changeSpeed(s)}
+                className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-colors ${
+                  speed === s ? 'bg-white text-gray-900' : 'text-white/40 hover:text-white/70'
+                }`}>
+                {s}×
+              </button>
+            ))}
+          </div>
           <div className="hidden sm:flex items-center gap-1">
             {sections.map((_, i) => (
               <button key={i} onClick={() => goToSlide(i)}
