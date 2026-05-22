@@ -124,6 +124,7 @@ Rules:
 - Include a clear correct_answer and a concise explanation
 - Difficulty: mix of recall and simple application
 - CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", or any textbook-specific label the student cannot see. Embed any required data directly in the question text.
+- CRITICAL — correct_answer must be the FULL option text exactly as it appears in "options" (e.g. "A) Because individuals seek different goals"), NOT just the letter "A". For True/False, use "True" or "False".
 
 Return ONLY a JSON array, no markdown:
 [
