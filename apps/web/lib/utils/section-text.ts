@@ -4,12 +4,64 @@ export type Para =
   | { kind: 'caption'; text: string }
   | { kind: 'definition'; term: string; def: string };
 
+// ─── Watermark / garble cleaning ─────────────────────────────────────────────
+
+// Returns true when a word is a simple self-repetition: "HUMANHUMAN", "DEVELOPMENTDEVELOPMENT"
+function isSelfRepeated(word: string): boolean {
+  if (word.length < 4) return false;
+  for (let len = 2; len <= Math.floor(word.length / 2); len++) {
+    if (word.slice(0, len * 2) === word.slice(0, len).repeat(2)) return true;
+  }
+  return false;
+}
+
+// Returns true when a line looks like a diagonal-watermark artefact:
+//   – mostly uppercase with self-repeated words (HUMANHUMAN, DEVELOPMENTDEVELOPMENT)
+//   – or mostly uppercase with the same word appearing 3+ times
+function isWatermarkLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed.length < 6) return false;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return false;
+
+  // Must be predominantly uppercase (real headings pass the <30 % lower test too,
+  // but they're caught later by SECTION_HEADER_RE / classify, not removed here)
+  const upper = (trimmed.match(/[A-Z]/g) ?? []).length;
+  const lower = (trimmed.match(/[a-z]/g) ?? []).length;
+  if (lower > upper * 0.3) return false; // significant lowercase → keep
+
+  // Any self-repeated word (HUMANHUMAN, REPORREPOR …) is a strong watermark signal
+  const selfRep = words.filter(isSelfRepeated).length;
+  if (selfRep >= 1) return true;
+
+  // Same word appearing 3+ times also signals a watermark
+  const counts = new Map<string, number>();
+  words.forEach(w => counts.set(w.toLowerCase(), (counts.get(w.toLowerCase()) ?? 0) + 1));
+  const maxCount = Math.max(...counts.values());
+  if (maxCount >= 3) return true;
+
+  return false;
+}
+
+// Cleans a raw extracted text string:
+//   1. Removes watermark-artefact lines
+//   2. Adds a space before a bare number/% that's jammed onto a word
+//      (e.g. "population76%" → "population 76%", "Category76" → "Category 76")
+export function cleanExtractedText(raw: string): string {
+  const lines = raw.split('\n');
+  const cleaned = lines
+    .filter(l => !isWatermarkLine(l))
+    .join('\n');
+  // Add space before digits/% that are jammed against a letter (table extraction artefact)
+  return cleaned.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+}
+
 const WORD_SUFFIX_RE = /^(e|ed|er|es|ry|ly|nd|ty|al|ing|ion|ism|ent|ant|ive|ous|ial|tion|ness|ment|ity|ogy|acy|ary|ery|ory)$/;
 
 export const SECTION_HEADER_RE = /^(New [Ww]ords?|Activities|Summary|Keywords?|Key [Tt]erms?|Introduction|Conclusion|Note|Did [Yy]ou [Kk]now|Let\s*'?s [Rr]ecall|Questions?|Exercises?)[:.]?\s*$/;
 
 export function buildParagraphs(raw: string): string[] {
-  const lines = raw
+  const lines = cleanExtractedText(raw)
     .replace(/-\n[ \t]*/g, '')
     .split('\n')
     .map(l => l.trim())

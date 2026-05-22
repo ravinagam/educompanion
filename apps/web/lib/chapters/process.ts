@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { extractTextFromBuffer } from '@/lib/utils/text-extraction';
 import { chunkText, embedBatch, computeComplexityScore } from '@/lib/ai/embeddings';
 import { logCostDirect, VOYAGE_COST_PER_M } from '@/lib/ai/usage';
+import { cleanExtractedText } from '@/lib/utils/section-text';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes hard cap
 
@@ -58,8 +59,9 @@ async function runProcessing(
   userId?: string
 ) {
   console.log('[process] Step 1/4 — extracting text from', filename, `(${mimeType})`);
-  const contentText = await extractTextFromBuffer(buffer, mimeType, filename);
-  console.log('[process] Extracted', contentText.length, 'chars');
+  const rawText = await extractTextFromBuffer(buffer, mimeType, filename);
+  const contentText = cleanExtractedText(rawText);
+  console.log('[process] Extracted', rawText.length, 'chars, cleaned to', contentText.length, 'chars');
 
   let textWithMarkers = contentText;
   let extractedImages: Array<{ data: Buffer; width: number; height: number; pageNum: number; orderIdx: number }> = [];
