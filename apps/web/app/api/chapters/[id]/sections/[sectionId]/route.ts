@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateSectionMiniQuiz } from '@/lib/ai/sections';
 import { logAiUsage } from '@/lib/ai/usage';
 import { awardXp } from '@/lib/gamification';
+import { answersMatch } from '@/lib/quiz/scoring';
 
 const SECTION_COMPLETE_XP = 15;
 const SECTION_QUIZ_BONUS_XP = 10; // awarded if score >= 80
@@ -137,7 +138,7 @@ export async function PATCH(
   if (body.quiz_answers && section.mini_quiz_json) {
     const questions = section.mini_quiz_json as Array<{ id: string; correct_answer: string }>;
     const total = questions.length;
-    const correct = questions.filter((q, i) => body.quiz_answers![i] === q.correct_answer).length;
+    const correct = questions.filter((q, i) => answersMatch(body.quiz_answers![i] ?? '', q.correct_answer)).length;
     quizScore = Math.round((correct / total) * 100);
     update.quiz_score = quizScore;
   }

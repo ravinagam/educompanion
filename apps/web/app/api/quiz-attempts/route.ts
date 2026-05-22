@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { awardXp, XP_REWARDS } from '@/lib/gamification';
+import { answersMatch } from '@/lib/quiz/scoring';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   for (const q of questions) {
     const chosen = answers[q.id] ?? '';
-    const correct = chosen.trim().toLowerCase() === q.correct_answer.trim().toLowerCase();
+    const correct = answersMatch(chosen, q.correct_answer);
     if (correct) score++;
     results.push({
       questionId: q.id,
