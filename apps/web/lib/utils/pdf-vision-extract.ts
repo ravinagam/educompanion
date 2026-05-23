@@ -74,7 +74,7 @@ export async function extractTextFromPdfVision(
           {
             type: 'text',
             text: EXTRACTION_PROMPT,
-          },
+          } as Anthropic.TextBlockParam,
         ],
       },
     ],
