@@ -9,7 +9,7 @@ describe('validateContent', () => {
 
   it('throws when trimmed text is under 300 chars', () => {
     const text = 'Short text. '.repeat(5); // ~60 chars
-    expect(() => validateContent(text)).toThrow(/too little text/i);
+    expect(() => validateContent(text)).toThrow(/could not read enough text/i);
   });
 
   it('throws when fewer than 50 words even if char count is satisfied', () => {
