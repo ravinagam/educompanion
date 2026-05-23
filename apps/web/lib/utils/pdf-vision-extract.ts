@@ -3,8 +3,11 @@ import Anthropic from '@anthropic-ai/sdk';
 // Max PDF size Claude can process (~32 MB base64 decoded; we stay well under)
 const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20 MB
 
-// Sonnet is required — Haiku does not reliably support the PDF document block type.
-const EXTRACTION_MODEL = 'claude-sonnet-4-6';
+// Haiku is tried first for cost efficiency; Sonnet is the fallback for image/scanned PDFs
+// where Haiku returns too little text (it does not reliably handle the PDF document block type).
+const PRIMARY_MODEL = 'claude-haiku-4-5-20251001';
+const FALLBACK_MODEL = 'claude-sonnet-4-6';
+const VISION_QUALITY_THRESHOLD = 500; // chars below which we retry with the fallback model
 
 // Tokens budgeted per extraction call.
 // 8 192 covers ~80 dense textbook pages of output text.
@@ -53,12 +56,12 @@ export async function extractTextFromPdfVision(
 
   const base64Data = buffer.toString('base64');
 
-  const message = await claude.messages.create({
-    model: EXTRACTION_MODEL,
+  const buildRequest = (model: string) => ({
+    model,
     max_tokens: MAX_OUTPUT_TOKENS,
     messages: [
       {
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
             type: 'document',
@@ -77,13 +80,31 @@ export async function extractTextFromPdfVision(
     ],
   });
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const primary = await claude.messages.create(buildRequest(PRIMARY_MODEL));
+  const primaryText = primary.content[0].type === 'text' ? primary.content[0].text : '';
+
+  if (primaryText.trim().length > VISION_QUALITY_THRESHOLD) {
+    return {
+      text: primaryText,
+      input_tokens: primary.usage.input_tokens,
+      output_tokens: primary.usage.output_tokens,
+      model: primary.model,
+    };
+  }
+
+  console.warn(
+    `[pdf-vision] ${PRIMARY_MODEL} returned only ${primaryText.trim().length} chars — retrying with ${FALLBACK_MODEL}`
+  );
+
+  const fallback = await claude.messages.create(buildRequest(FALLBACK_MODEL));
+  const fallbackText = fallback.content[0].type === 'text' ? fallback.content[0].text : '';
 
   return {
-    text,
-    input_tokens: message.usage.input_tokens,
-    output_tokens: message.usage.output_tokens,
-    model: message.model,
+    text: fallbackText,
+    // Sum tokens from both calls since both were billed
+    input_tokens: primary.usage.input_tokens + fallback.usage.input_tokens,
+    output_tokens: primary.usage.output_tokens + fallback.usage.output_tokens,
+    model: fallback.model,
   };
 }
 
