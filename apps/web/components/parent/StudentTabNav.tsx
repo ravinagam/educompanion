@@ -26,7 +26,7 @@ export function StudentTabNav({ studentId }: { studentId: string }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-2 bg-gray-100 rounded-2xl p-1.5">
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
       {tabs.map(tab => {
         const href = tab.href(studentId);
         const active = pathname === href;
@@ -35,13 +35,13 @@ export function StudentTabNav({ studentId }: { studentId: string }) {
             key={tab.label}
             href={href}
             className={cn(
-              'flex items-center gap-2 px-6 py-2.5 rounded-xl text-base font-bold transition-all duration-200 flex-1 justify-center',
+              'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex-1 justify-center',
               active
                 ? tab.activeClass
-                : 'text-gray-400 hover:text-gray-600 hover:bg-white/60'
+                : 'text-gray-500 hover:text-gray-700'
             )}
           >
-            <tab.icon className={cn('h-4 w-4', active ? tab.activeIcon : '')} />
+            <tab.icon className="h-3.5 w-3.5" />
             {tab.label}
           </Link>
         );
