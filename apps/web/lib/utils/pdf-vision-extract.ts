@@ -3,15 +3,18 @@ import Anthropic from '@anthropic-ai/sdk';
 // Max PDF size Claude can process (~32 MB base64 decoded; we stay well under)
 const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20 MB
 
-const EXTRACTION_MODEL = 'claude-haiku-4-5-20251001';
+// Sonnet is required — Haiku does not reliably support the PDF document block type.
+const EXTRACTION_MODEL = 'claude-sonnet-4-6';
 
 // Tokens budgeted per extraction call.
 // 8 192 covers ~80 dense textbook pages of output text.
 const MAX_OUTPUT_TOKENS = 8192;
 
-const EXTRACTION_PROMPT = `You are extracting text from a page of an Indian school textbook (CBSE/ICSE/State board).
+const EXTRACTION_PROMPT = `You are extracting text from a multi-page Indian school textbook PDF (CBSE/ICSE/State board).
 
-Extract ALL visible text exactly as it appears. Apply these rules for mathematical content:
+Extract ALL visible text from EVERY page exactly as it appears — including headings, body text, questions, tables, poem lines, footnotes, and glossary entries. Do NOT summarise or skip any content.
+
+Apply these rules for mathematical content:
 
 1. Inline expressions — wrap in single dollar signs: $x^2 + 3x - 4 = 0$
 2. Standalone/display equations — place on their own line with double dollar signs:
@@ -27,7 +30,8 @@ Extract ALL visible text exactly as it appears. Apply these rules for mathematic
 
 4. Preserve all paragraph breaks with a blank line between paragraphs.
 5. Preserve section headings as plain text on their own line.
-6. Output ONLY the extracted text — no commentary, no markdown fences.`;
+6. Ignore repeated watermarks such as "Downloaded from www.studiestoday.com".
+7. Output ONLY the extracted text — no commentary, no markdown fences.`;
 
 export interface VisionExtractionResult {
   text: string;
