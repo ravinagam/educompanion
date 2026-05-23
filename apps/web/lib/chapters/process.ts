@@ -12,7 +12,7 @@ export function validateContent(text: string): void {
   const trimmed = text.trim();
 
   if (trimmed.length < 300) {
-    throw new Error('This document has too little text to process. Please upload a more complete chapter (at least a few paragraphs).');
+    throw new Error('Could not read enough text from this document. If it is a scanned or image-based PDF, use the "Upload as Photos" option instead — or try a different copy of the file.');
   }
 
   const words = trimmed.split(/\s+/).filter(w => w.length > 0);

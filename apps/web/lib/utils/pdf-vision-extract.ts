@@ -6,8 +6,8 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20 MB
 const EXTRACTION_MODEL = 'claude-haiku-4-5-20251001';
 
 // Tokens budgeted per extraction call.
-// 4 096 covers ~40 dense textbook pages of output text.
-const MAX_OUTPUT_TOKENS = 4096;
+// 8 192 covers ~80 dense textbook pages of output text.
+const MAX_OUTPUT_TOKENS = 8192;
 
 const EXTRACTION_PROMPT = `You are extracting text from a page of an Indian school textbook (CBSE/ICSE/State board).
 
