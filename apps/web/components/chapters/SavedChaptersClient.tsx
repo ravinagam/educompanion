@@ -33,8 +33,22 @@ function isContentError(msg: string | null): boolean {
     'appears garbled', 'not enough structured', 'contains no selectable text',
     'password-protected', 'Could not read this PDF', 'appears to be empty',
     'cannot be processed as documents', 'File type not supported',
+    'could not read enough text',
   ];
   return phrases.some(p => msg.toLowerCase().includes(p.toLowerCase()));
+}
+
+const STUCK_MS = 6 * 60 * 1000; // 6 minutes — max processing time before we consider it stuck
+
+function useProcessingStarted(chapterId: string, isProcessing: boolean): number | null {
+  const key = `proc_start_${chapterId}`;
+  if (typeof window === 'undefined') return null;
+  if (isProcessing) {
+    if (!localStorage.getItem(key)) localStorage.setItem(key, String(Date.now()));
+    return parseInt(localStorage.getItem(key)!, 10);
+  }
+  localStorage.removeItem(key);
+  return null;
 }
 
 interface Subject {
@@ -92,7 +106,16 @@ function ChapterCard({
 }) {
   const router = useRouter();
   const ready = chapter.upload_status === 'ready';
-  const canRetry = (chapter.upload_status === 'error' || chapter.upload_status === 'processing') && !isContentError(chapter.error_message);
+  const isProcessing = chapter.upload_status === 'processing';
+  const procStarted = useProcessingStarted(chapter.id, isProcessing);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!isProcessing) return;
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, [isProcessing]);
+  const isStuck = isProcessing && procStarted !== null && (now - procStarted) > STUCK_MS;
+  const canRetry = (chapter.upload_status === 'error' || isStuck) && !isContentError(chapter.error_message);
   const [displayName, setDisplayName] = useState(chapter.name);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(chapter.name);
@@ -176,8 +199,11 @@ function ChapterCard({
         {/* Status */}
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={chapter.upload_status} />
-          {chapter.upload_status === 'processing' && (
-            <span className="text-xs text-gray-400">Usually ready in ~30 sec</span>
+          {isProcessing && !isStuck && (
+            <span className="text-xs text-gray-400">Usually ready in 1–2 min</span>
+          )}
+          {isStuck && (
+            <span className="text-xs text-amber-600 font-medium">Taking longer than expected — tap Retry</span>
           )}
           {mastered && (
             <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 gap-1 text-xs">

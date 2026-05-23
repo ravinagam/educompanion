@@ -8,7 +8,7 @@ import { splitChapterIntoSections } from '@/lib/ai/sections';
 import { logAiUsage } from '@/lib/ai/usage';
 import { awardXp, XP_REWARDS } from '@/lib/gamification';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
