@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { XpToast } from '@/components/gamification/XpToast';
 import { normalisePdfText, hasMathGarble, type Para } from '@/lib/utils/section-text';
-import { hasMathDelimiters } from '@/lib/utils/pdf-vision-extract';
+import { hasMathDelimiters, isKrutiDevEncoded } from '@/lib/utils/pdf-vision-extract';
 import { MathText } from '@/components/sections/MathText';
 
 interface Question {
@@ -106,9 +106,22 @@ function renderPara(para: ReturnType<typeof normalisePdfText>[number], key: stri
 
 const FIGURE_MARKER_RE = /\[\[FIGURE:(\d+)_(\d+)\]\]\n?/g;
 
-function SectionReader({ text, chapterImages }: { text: string; chapterImages: ChapterImage[] }) {
+function SectionReader({
+  text,
+  chapterImages,
+  chapterId,
+  onReprocess,
+  isReprocessing,
+}: {
+  text: string;
+  chapterImages: ChapterImage[];
+  chapterId: string;
+  onReprocess: () => void;
+  isReprocessing: boolean;
+}) {
   const hasGarble = hasMathGarble(text);
   const hasMath = hasMathDelimiters(text);
+  const hasKruti = isKrutiDevEncoded(text);
 
   // Split text at [[FIGURE:X_Y]] markers to render inline images
   type Segment = { type: 'text'; content: string } | { type: 'figure'; pageNum: number; orderIdx: number };
@@ -126,9 +139,41 @@ function SectionReader({ text, chapterImages }: { text: string; chapterImages: C
   if (tail.trim()) segments.push({ type: 'text', content: tail });
   if (segments.length === 0) segments.push({ type: 'text', content: text });
 
+  // Suppress the chapterId lint warning — it's passed through for future use
+  void chapterId;
+
   return (
     <div className="space-y-3">
-      {hasGarble && !hasMath && (
+      {hasKruti && (
+        <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3.5 py-2.5 text-xs text-orange-900">
+          <span className="shrink-0 mt-0.5">⚠️</span>
+          <div className="space-y-1.5 flex-1">
+            <p>
+              This chapter was extracted using a <strong>legacy Hindi font (KrutiDev/ISM)</strong>.
+              The text cannot be read directly — click below to re-extract it in proper Unicode.
+            </p>
+            <button
+              type="button"
+              onClick={onReprocess}
+              disabled={isReprocessing}
+              className="inline-flex items-center gap-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white text-xs font-semibold rounded-md px-3 py-1.5 transition-colors"
+            >
+              {isReprocessing ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Re-extracting…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3 w-3" />
+                  Fix Hindi Content
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+      {hasGarble && !hasMath && !hasKruti && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5 text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">⚠️</span>
           <span>
@@ -186,6 +231,26 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
     : 'read';
   const [step, setStep] = useState<Step>(initialStep);
   const [saving, setSaving] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
+
+  async function handleReprocess() {
+    setIsReprocessing(true);
+    try {
+      const res = await fetch(`/api/chapters/${chapter.id}/reprocess`, { method: 'POST' });
+      if (!res.ok) {
+        const json = await res.json();
+        toast.error(json.error ?? 'Re-extraction failed');
+        return;
+      }
+      toast.success('Re-extraction started — sections will refresh in about 1–2 minutes.');
+      // Navigate to sections list so the user can see progress and return when ready
+      router.push(`/chapters/${chapter.id}/sections`);
+    } catch {
+      toast.error('Re-extraction failed — please try again.');
+    } finally {
+      setIsReprocessing(false);
+    }
+  }
 
   // Auto-poll when quiz step is active and quiz hasn't been generated yet.
   // The page's after() triggers generation; we poll until it appears in the DB.
@@ -386,7 +451,13 @@ ${questionsHtml}
               <BookOpen className="h-4 w-4" /> Read this section
             </div>
             {/* Images render inline at [[FIGURE:X_Y]] markers in the section text */}
-            <SectionReader text={section.content_text} chapterImages={chapterImages} />
+            <SectionReader
+              text={section.content_text}
+              chapterImages={chapterImages}
+              chapterId={chapter.id}
+              onReprocess={handleReprocess}
+              isReprocessing={isReprocessing}
+            />
             {progress.completed_at
               ? <Button variant="outline" className="w-full" onClick={() => setStep('done')}>Back to Summary</Button>
               : <Button className="w-full" onClick={markReadDone} disabled={saving}>

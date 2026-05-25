@@ -36,6 +36,25 @@ Apply these rules for mathematical content:
 6. Ignore repeated watermarks such as "Downloaded from www.studiestoday.com".
 7. Output ONLY the extracted text — no commentary, no markdown fences.`;
 
+// Supplemental instruction appended when KrutiDev/ISM legacy Hindi font encoding is detected.
+// These PDFs have an embedded text layer of ASCII characters that map to Devanagari via the
+// font table. Claude must read the pages visually and output Unicode Devanagari instead.
+const EXTRACTION_PROMPT_UNICODE_SUPPLEMENT = `
+
+CRITICAL — UNICODE OUTPUT REQUIRED: This PDF uses a legacy Hindi font encoding (KrutiDev/ISM/Mangal). Its embedded text layer contains garbled ASCII sequences (like "dk", "dh", "esa", "gS") that do NOT represent actual content. Ignore the embedded text layer entirely. Read all text VISUALLY from the rendered page images and output it in proper Unicode Devanagari script (U+0900–U+097F: अ आ इ क ख ग...). Do NOT output ASCII characters that represent Devanagari in legacy fonts.`;
+
+// Detects KrutiDev/ISM legacy Hindi font encoding by counting characteristic
+// 2–3 char ASCII sequences that encode common Hindi words.
+// "dk"=का  "dh"=की  "esa"=में  "gS"=है  "osQ"=के  etc.
+export function isKrutiDevEncoded(text: string): boolean {
+  if (!text || text.length < 100) return false;
+  const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 20) return false;
+  const re = /\b(dk|dh|esa|gS|osQ|ds|dks|Hkh|vkSj|gh|us|gksa|gSa|Fkk|Fkh|gks|rks|ls|rd|tks|lkFk|vkt|ge|vki|oks)\b/g;
+  const matches = (text.match(re) ?? []).length;
+  return matches / words.length > 0.08;
+}
+
 export interface VisionExtractionResult {
   text: string;
   input_tokens: number;
@@ -56,7 +75,7 @@ export async function extractTextFromPdfVision(
 
   const base64Data = buffer.toString('base64');
 
-  const buildRequest = (model: string) => ({
+  const buildRequest = (model: string, prompt = EXTRACTION_PROMPT) => ({
     model,
     max_tokens: MAX_OUTPUT_TOKENS,
     messages: [
@@ -73,7 +92,7 @@ export async function extractTextFromPdfVision(
           } as Anthropic.DocumentBlockParam,
           {
             type: 'text',
-            text: EXTRACTION_PROMPT,
+            text: prompt,
           } as Anthropic.TextBlockParam,
         ],
       },
@@ -83,7 +102,11 @@ export async function extractTextFromPdfVision(
   const primary = await claude.messages.create(buildRequest(PRIMARY_MODEL));
   const primaryText = primary.content[0].type === 'text' ? primary.content[0].text : '';
 
-  if (primaryText.trim().length > VISION_QUALITY_THRESHOLD) {
+  const isGoodQuality = primaryText.trim().length > VISION_QUALITY_THRESHOLD;
+  const isKruti = isKrutiDevEncoded(primaryText);
+
+  // Good quality and no encoding issues → done
+  if (isGoodQuality && !isKruti) {
     return {
       text: primaryText,
       input_tokens: primary.usage.input_tokens,
@@ -92,11 +115,17 @@ export async function extractTextFromPdfVision(
     };
   }
 
-  console.warn(
-    `[pdf-vision] ${PRIMARY_MODEL} returned only ${primaryText.trim().length} chars — retrying with ${FALLBACK_MODEL}`
-  );
+  const reason = isKruti
+    ? 'KrutiDev legacy encoding detected'
+    : `only ${primaryText.trim().length} chars`;
+  console.warn(`[pdf-vision] ${PRIMARY_MODEL} returned ${reason} — retrying with ${FALLBACK_MODEL}`);
 
-  const fallback = await claude.messages.create(buildRequest(FALLBACK_MODEL));
+  // Use Unicode-aware prompt for KrutiDev PDFs; standard prompt for low-quality fallback
+  const retryPrompt = isKruti
+    ? EXTRACTION_PROMPT + EXTRACTION_PROMPT_UNICODE_SUPPLEMENT
+    : EXTRACTION_PROMPT;
+
+  const fallback = await claude.messages.create(buildRequest(FALLBACK_MODEL, retryPrompt));
   const fallbackText = fallback.content[0].type === 'text' ? fallback.content[0].text : '';
 
   return {
