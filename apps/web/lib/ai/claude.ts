@@ -31,6 +31,17 @@ export function storagePathToMediaType(path: string): ImageMediaType {
   return EXT_TO_MEDIA[ext] ?? 'image/jpeg';
 }
 
+// Cached chapter content block — the large stable prefix that's shared across
+// all students studying the same chapter. Cache is keyed on exact bytes, so
+// cache hits occur when the same extracted text is sent again within 5 minutes.
+function cachedChapterBlock(chapterName: string, content: string): Anthropic.TextBlockParam {
+  return {
+    type: 'text',
+    text: `Chapter: "${chapterName}"\n\nContent:\n${content}`,
+    cache_control: { type: 'ephemeral' },
+  };
+}
+
 // ─── Quiz Generation ──────────────────────────────────────────────────────────
 
 export async function generateQuiz(
@@ -47,14 +58,9 @@ export async function generateQuiz(
     ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of questions — different topics, angles, and phrasing from any previous generation.\n`
     : '';
 
-  const prompt = `You are an expert teacher for Indian school students (grades 8–12).
-Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the following chapter content.
+  const instructions = `You are an expert teacher for Indian school students (grades 8–12).
+Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the chapter content provided above.
 ${variationLine}
-Chapter: "${chapterName}"
-
-Content:
-${content}
-
 Rules:
 - Use ONLY information from the provided content. Do not add external facts.
 - IMPORTANT: Cover ALL sections and topics from across the entire chapter — not just the beginning. The content above may include excerpts from start, middle, and end of the chapter.
@@ -114,7 +120,13 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     temperature: 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -182,13 +194,8 @@ export async function generateHindiWorksheet(
 ): Promise<UsageResult<{ sentence: string; answer: string }[]>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
 
-  const prompt = `You are a Hindi language teacher for Indian school students (grades 8–12).
-Based on the following Hindi chapter content, generate exactly 15 fill-in-the-blank questions in Hindi.
-
-Chapter: "${chapterName}"
-
-Content:
-${content}
+  const instructions = `You are a Hindi language teacher for Indian school students (grades 8–12).
+Based on the Hindi chapter content provided above, generate exactly 15 fill-in-the-blank questions in Hindi.
 
 Rules:
 - Each question must be a complete Hindi sentence (in Devanagari script) with exactly one key word or short phrase replaced by "________"
@@ -209,7 +216,13 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     temperature: 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -234,15 +247,10 @@ export async function generateFlashcards(
     ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of flashcards — different terms and concepts from any previous generation.\n`
     : '';
 
-  const prompt = `You are a concise teacher creating study flashcards for Indian school students (grades 8–12).
+  const instructions = `You are a concise teacher creating study flashcards for Indian school students (grades 8–12).
 
-Generate exactly ${FLASHCARDS_PER_CHAPTER} flashcard pairs from ONLY the following chapter content.
+Generate exactly ${FLASHCARDS_PER_CHAPTER} flashcard pairs from ONLY the chapter content provided above.
 ${variationLine}
-Chapter: "${chapterName}"
-
-Content:
-${content}
-
 Rules:
 - IMPORTANT: Extract terms from ALL sections of the chapter — beginning, middle, and end — not just the opening topics.
 - Extract key terms, concepts, definitions, formulas, and important facts from the text
@@ -263,7 +271,13 @@ Return ONLY valid JSON, no markdown.`;
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -322,14 +336,9 @@ export async function generateVideoScript(
 ): Promise<UsageResult<VideoScriptContent>> {
   const content = sampleContent(chapterContent ?? '', 100_000);
 
-  const prompt = `You are creating an educational video script for Indian school students (grades 8–12).
+  const instructions = `You are creating an educational video script for Indian school students (grades 8–12).
 
-Generate a structured video script ONLY from the content below.
-
-Chapter: "${chapterName}"
-
-Content:
-${content}
+Generate a structured video script ONLY from the chapter content provided above.
 
 Structure the script as JSON with this exact schema:
 {
@@ -388,7 +397,13 @@ Rules:
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     temperature: 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -457,10 +472,11 @@ Chapter: "${chapterName}"
 Chapter Content:
 ${content}`;
 
+  // Cache the system prompt so repeated Q&A turns on the same chapter get cache hits
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: systemPrompt,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages: messages.map(m => ({ role: m.role, content: m.content })),
   });
 
@@ -483,6 +499,7 @@ Be clear, use simple language, and give real-world examples where helpful. Keep 
 ${isHindi ? 'Always respond in Hindi (Devanagari script). The student is studying a Hindi subject.' : ''}
 Chapter: "${chapterName}"`;
 
+  // Cache the system prompt — stable per chapter across all Q&A turns
   // Prepend images to the first user message so they serve as context throughout the conversation
   const apiMessages = messages.map((m, i) => {
     if (i === 0 && m.role === 'user') {
@@ -500,7 +517,7 @@ Chapter: "${chapterName}"`;
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: systemPrompt,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages: apiMessages,
   });
 
@@ -523,11 +540,7 @@ export async function generateChapterSummary(
 ): Promise<UsageResult<ChapterSummary>> {
   const content = sampleContent(chapterContent ?? '', 80_000);
 
-  const prompt = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–12).
-
-Chapter: "${chapterName}"
-Content:
-${content}
+  const instructions = `You are an expert teacher creating a concise study summary for Indian school students (grades 8–12).
 
 Return a JSON object with this exact schema:
 {
@@ -549,7 +562,13 @@ Rules:
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     temperature: 0.3,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -565,16 +584,12 @@ export async function generateTargetedQuestions(
 ): Promise<UsageResult<QuizQuestion[]>> {
   const content = sampleContent(chapterContent ?? '', 60_000);
 
-  const prompt = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–12).
+  const instructions = `You are an expert teacher generating targeted practice questions for an Indian school student (grades 8–12).
 
 The student got the following questions WRONG in a quiz. Generate 5 new practice questions specifically on these weak areas.
 
-Chapter: "${chapterName}"
 Questions the student got wrong:
 ${wrongQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-
-Chapter Content:
-${content}
 
 Generate exactly 5 questions focused on those weak areas. Use MCQ and True/False types only.
 Rules:
@@ -596,7 +611,13 @@ Return ONLY valid JSON array.`;
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     temperature: 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -717,13 +738,9 @@ export async function extractChapterSections(
 ): Promise<string[]> {
   const content = sampleContent(chapterContent, 12_000);
 
-  const prompt = `You are planning a study schedule for a school student.
+  const instructions = `You are planning a study schedule for a school student.
 Extract the distinct sections/topics a student must study from this chapter.
 Cover ALL parts of the chapter — beginning, middle, and end.
-
-Chapter: "${chapterName}"
-Content:
-${content}
 
 Rules:
 - Return 4–8 section names that span the entire chapter
@@ -737,7 +754,13 @@ Example: ["Introduction to Acids and Bases", "pH Scale and Indicators", "Neutral
   const message = await getClaude().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 512,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        cachedChapterBlock(chapterName, content),
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;

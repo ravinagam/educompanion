@@ -57,14 +57,9 @@ export async function splitChapterIntoSections(
 ): Promise<UsageResult<ChapterSection[]>> {
   const content = contentText.slice(0, 120_000);
 
-  const prompt = `You are an expert curriculum designer for Indian school students (grades 8–12).
+  const instructions = `You are an expert curriculum designer for Indian school students (grades 8–12).
 
 Identify 3–8 logical, self-contained sections in this chapter that a student can study one at a time.
-
-Chapter: "${chapterName}"
-
-Content:
-${content}
 
 For each section return:
 - title: short descriptive title (≤ 8 words)
@@ -85,7 +80,17 @@ Return ONLY a JSON array, no markdown, no explanation:
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `Chapter: "${chapterName}"\n\nContent:\n${content}`,
+          cache_control: { type: 'ephemeral' },
+        },
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
@@ -108,15 +113,9 @@ export async function generateSectionMiniQuiz(
 ): Promise<UsageResult<SectionMiniQuizQuestion[]>> {
   const content = sectionContent.slice(0, 20_000);
 
-  const prompt = `You are an expert teacher for Indian school students (grades 8–12).
+  const instructions = `You are an expert teacher for Indian school students (grades 8–12).
 
-Generate exactly 4 quiz questions for the following section of a chapter. The questions must test understanding of THIS section only.
-
-Chapter: "${chapterName}"
-Section: "${sectionTitle}"
-
-Content:
-${content}
+Generate exactly 4 quiz questions for the section described above. The questions must test understanding of THIS section only.
 
 Rules:
 - Generate 3 MCQ (4 options each: A, B, C, D) and 1 True/False
@@ -149,7 +148,17 @@ Return ONLY a JSON array, no markdown:
   const message = await getClaude().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `Chapter: "${chapterName}"\nSection: "${sectionTitle}"\n\nContent:\n${content}`,
+          cache_control: { type: 'ephemeral' },
+        },
+        { type: 'text', text: instructions },
+      ],
+    }],
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
