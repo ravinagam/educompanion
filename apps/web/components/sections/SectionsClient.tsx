@@ -53,6 +53,13 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
   const [generationKey, setGenerationKey] = useState(0);
   const [generating, setGenerating] = useState(false);
 
+  // While the chapter is still processing (upload or reprocess), poll until it becomes ready
+  useEffect(() => {
+    if (chapter.upload_status === 'ready') return;
+    const id = setInterval(() => router.refresh(), 5000);
+    return () => clearInterval(id);
+  }, [chapter.upload_status, router]);
+
   // When sections are missing for a ready chapter, auto-trigger generation once, then poll
   useEffect(() => {
     setPollAttempts(0);
@@ -108,10 +115,16 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
         <Link href={`/chapters?subject=${encodeURIComponent(subjectName)}`} className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1">
           <ArrowLeft className="h-3 w-3" /> Back to Chapters
         </Link>
-        <div className="text-center py-16 text-gray-400">
-          <Layers className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Chapter is still processing</p>
-          <p className="text-sm">Sections will appear once processing is complete.</p>
+        <div className="text-center py-16 text-gray-400 space-y-3">
+          <RefreshCw className="h-10 w-10 mx-auto animate-spin opacity-30" />
+          <p className="font-medium">
+            {chapter.upload_status === 'error' ? 'Processing failed' : 'Re-extracting content…'}
+          </p>
+          <p className="text-sm">
+            {chapter.upload_status === 'error'
+              ? 'Something went wrong. Please re-upload the chapter.'
+              : 'This takes 1–2 minutes. The page will update automatically.'}
+          </p>
         </div>
       </div>
     );
