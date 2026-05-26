@@ -37,10 +37,16 @@ describe('validateContent', () => {
     expect(() => validateContent(text)).not.toThrow();
   });
 
-  it('validates unicode/multilingual text as readable when it contains letters', () => {
-    // Hindi/Devanagari letters — not matched by [a-zA-Z0-9 \n] but the readable ratio check
-    // only fires below 45%. Mostly-Latin text mixed in should still pass.
-    const text = 'Chapter one content about important topics. '.repeat(10);
+  it('passes for a pure Devanagari (Hindi) chapter', () => {
+    // Devanagari chars are NOT in [a-zA-Z0-9] — the old ASCII-only check would wrongly
+    // reject valid Hindi text extracted from a PDF. Unicode \p{L} must be used instead.
+    const hindiWord = 'मीराबाई का जन्म जोधपुर के चोकड़ी गाँव में हुआ था। ';
+    const text = hindiWord.repeat(15); // well over 300 chars, 50+ words
+    expect(() => validateContent(text)).not.toThrow();
+  });
+
+  it('passes for mixed Hindi-English text', () => {
+    const text = ('मीराबाई की भक्ति poetry is studied in Class 10 Hindi. ').repeat(12);
     expect(() => validateContent(text)).not.toThrow();
   });
 });

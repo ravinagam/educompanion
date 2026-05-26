@@ -20,8 +20,10 @@ export function validateContent(text: string): void {
     throw new Error('This document has too few words to create study materials from. Please upload a more detailed document.');
   }
 
-  // Low ratio of readable chars (letters, digits, spaces) suggests garbled extraction
-  const readableChars = (trimmed.match(/[a-zA-Z0-9 \n]/g) ?? []).length;
+  // Low ratio of readable chars suggests garbled extraction.
+  // Use Unicode property escapes so Devanagari, Arabic, CJK, etc. count as letters —
+  // not just ASCII. [a-zA-Z] would reject valid Hindi/regional-language chapters.
+  const readableChars = (trimmed.match(/[\p{L}\p{N} \n]/gu) ?? []).length;
   if (readableChars / trimmed.length < 0.45) {
     throw new Error('Text could not be read clearly from this document — it may be a scanned image PDF without selectable text. Try uploading the pages as photos instead.');
   }
