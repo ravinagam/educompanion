@@ -42,3 +42,16 @@ supabase/.temp/
 # Playwright auth state (contains session tokens — never commit)
 apps/web/e2e/fixtures/.auth/
 apps/web/playwright-report/
+apps/web/test-results/
+
+# Local video/demo assets
+*.mp4
+video_frames*/
+video_out*/
+
+# Local scripts and notes
+fix_concat.py
+make_video*.py
+*.txt
+!apps/**/*.txt
+!packages/**/*.txt
