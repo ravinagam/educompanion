@@ -112,11 +112,13 @@ export async function generateSectionMiniQuiz(
   sectionContent: string,
 ): Promise<UsageResult<SectionMiniQuizQuestion[]>> {
   const content = sectionContent.slice(0, 20_000);
+  // Detect Hindi/Devanagari content so questions are generated in the same language
+  const isHindi = /[ऀ-ॿ]/.test(content);
 
   const instructions = `You are an expert teacher for Indian school students (grades 8–12).
 
 Generate exactly 4 quiz questions for the section described above. The questions must test understanding of THIS section only.
-
+${isHindi ? '\nCRITICAL — LANGUAGE: This section is in Hindi. Write ALL questions, options, and explanations in Hindi (Devanagari script). Do NOT use English.\n' : ''}
 Rules:
 - Generate 3 MCQ (4 options each: A, B, C, D) and 1 True/False
 - Questions must be based ONLY on the section content above
@@ -147,7 +149,7 @@ Return ONLY a JSON array, no markdown:
 
   const message = await getClaude().messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
+    max_tokens: isHindi ? 4096 : 2048,
     messages: [{
       role: 'user',
       content: [

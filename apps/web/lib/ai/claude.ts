@@ -60,8 +60,7 @@ export async function generateQuiz(
 
   const instructions = `You are an expert teacher for Indian school students (grades 8–12).
 Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the chapter content provided above.
-${variationLine}
-Rules:
+${variationLine}${isHindi ? 'CRITICAL — LANGUAGE: This is a Hindi chapter. Write ALL questions, options, and explanations in Hindi (Devanagari script). Do NOT use English.\n' : ''}Rules:
 - Use ONLY information from the provided content. Do not add external facts.
 - IMPORTANT: Cover ALL sections and topics from across the entire chapter — not just the beginning. The content above may include excerpts from start, middle, and end of the chapter.
 - CRITICAL — Self-contained questions: Every question must make complete sense on its own. Do NOT reference "Example 13", "Figure 5", "Table 2", "the above diagram", "as shown", "from the solution table", or any textbook label the student cannot see during the quiz. If a question depends on data from a specific example or table, embed that data directly in the question text (e.g., "Given that point F has coordinates (4, 0)..."), or rephrase it as a concept question instead.
@@ -118,7 +117,8 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
 
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
+    // Hindi Devanagari takes ~1.5× more tokens than English — 15 questions needs up to 7000 tokens
+    max_tokens: isHindi ? 8192 : 4096,
     temperature: 1,
     messages: [{
       role: 'user',
@@ -146,8 +146,7 @@ export async function generateQuizFromImages(
 
   const textPrompt = `You are an expert teacher for Indian school students (grades 8–12).
 Generate exactly ${QUIZ_QUESTIONS_PER_CHAPTER} quiz questions based ONLY on the content shown in the textbook page screenshots above.
-${variationLine}
-Chapter: "${chapterName}"
+${variationLine}${isHindi ? 'CRITICAL — LANGUAGE: This is a Hindi chapter. Write ALL questions, options, and explanations in Hindi (Devanagari script). Do NOT use English.\n' : ''}Chapter: "${chapterName}"
 
 Rules:
 - Use ONLY information visible in the screenshots. Do not add external facts.
@@ -171,7 +170,7 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
 
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
+    max_tokens: isHindi ? 8192 : 4096,
     temperature: 1,
     messages: [{
       role: 'user',

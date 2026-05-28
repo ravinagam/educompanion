@@ -24,6 +24,13 @@ function isWatermarkLine(line: string): boolean {
   const words = trimmed.split(/\s+/).filter(Boolean);
   if (words.length < 2) return false;
 
+  // Lines with substantial non-ASCII script (Devanagari, Arabic, CJK, etc.) are never watermarks.
+  // Without this guard, Devanagari text has upper=0 lower=0, which bypasses the ASCII-only
+  // uppercase check below — causing valid Hindi lines (e.g. any line with "काका") to be
+  // incorrectly deleted because "काका" passes isSelfRepeated() as a repeated-syllable word.
+  const nonAscii = (trimmed.match(/[^\x00-\x7F]/g) ?? []).length;
+  if (nonAscii > trimmed.length * 0.2) return false;
+
   // Must be predominantly uppercase (real headings pass the <30 % lower test too,
   // but they're caught later by SECTION_HEADER_RE / classify, not removed here)
   const upper = (trimmed.match(/[A-Z]/g) ?? []).length;

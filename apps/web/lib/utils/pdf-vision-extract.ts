@@ -7,11 +7,15 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20 MB
 // where Haiku returns too little text (it does not reliably handle the PDF document block type).
 const PRIMARY_MODEL = 'claude-haiku-4-5-20251001';
 const FALLBACK_MODEL = 'claude-sonnet-4-6';
-const VISION_QUALITY_THRESHOLD = 500; // chars below which we retry with the fallback model
+// Minimum chars for Haiku's output to be considered acceptable.
+// 500 was too low — a partial title extraction (600 chars) would pass but produce < 2 chunks.
+// 2000 chars ensures at least one meaningful page of text was extracted before accepting Haiku's output.
+const VISION_QUALITY_THRESHOLD = 2000;
 
 // Tokens budgeted per extraction call.
-// 8 192 covers ~80 dense textbook pages of output text.
-const MAX_OUTPUT_TOKENS = 8192;
+// 16 384 covers ~40–80 dense textbook pages depending on language.
+// Devanagari uses ~1.5× more tokens than English, so 8192 was only covering ~10 Hindi pages.
+const MAX_OUTPUT_TOKENS = 16384;
 
 const EXTRACTION_PROMPT = `You are extracting text from a multi-page Indian school textbook PDF (CBSE/ICSE/State board).
 

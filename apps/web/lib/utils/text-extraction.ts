@@ -30,7 +30,7 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
       const { extractTextFromPdfVision } = await import('@/lib/utils/pdf-vision-extract');
       const claude = new Anthropic({ apiKey });
       const result = await extractTextFromPdfVision(buffer, claude);
-      if (result.text.trim().length > 500) {
+      if (result.text.trim().length > 1000) {
         console.log('[text-extraction] Vision extraction succeeded:', result.input_tokens, 'in /', result.output_tokens, 'out tokens');
         return result.text;
       }

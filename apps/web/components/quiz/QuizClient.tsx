@@ -72,8 +72,10 @@ interface Props {
 
 type Phase = 'intro' | 'quiz' | 'review' | 'results';
 
-export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
+export function QuizClient({ chapter, subjectName, quiz: initialQuiz, attempts }: Props) {
   const router = useRouter();
+  // Local quiz state so UI updates immediately after generation without waiting for router.refresh()
+  const [quiz, setQuiz] = useState(initialQuiz);
   const [phase, setPhase] = useState<Phase>('intro');
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -127,6 +129,16 @@ export function QuizClient({ chapter, subjectName, quiz, attempts }: Props) {
         toast.error(json.error ?? 'Generation failed');
       } else {
         toast.success('Quiz generated!');
+        // Update local quiz state immediately — strip correct_answer so it mirrors server-sanitized props
+        if (json.data) {
+          setQuiz({
+            ...json.data,
+            questions_json: (json.data.questions_json as Array<Record<string, unknown>>).map((q) => ({
+              id: q.id, type: q.type, question: q.question, options: q.options,
+              assertion: q.assertion, reason: q.reason,
+            })) as Question[],
+          });
+        }
         setGeneratedDifficulty(difficulty);
         setShowDifficultyPicker(false);
         setCurrent(0);

@@ -135,11 +135,18 @@ export async function PATCH(
 
   // Score quiz answers server-side
   let quizScore: number | null = existing?.quiz_score ?? null;
+  let quizResults: Array<{ correct: boolean; chosen: string; correct_answer: string; explanation: string }> | null = null;
   if (body.quiz_answers && section.mini_quiz_json) {
-    const questions = section.mini_quiz_json as Array<{ id: string; correct_answer: string }>;
+    const questions = section.mini_quiz_json as Array<{ id: string; correct_answer: string; explanation: string }>;
     const total = questions.length;
-    const correct = questions.filter((q, i) => answersMatch(body.quiz_answers![i] ?? '', q.correct_answer)).length;
-    quizScore = Math.round((correct / total) * 100);
+    let correctCount = 0;
+    quizResults = questions.map((q, i) => {
+      const chosen = body.quiz_answers![i] ?? '';
+      const correct = answersMatch(chosen, q.correct_answer);
+      if (correct) correctCount++;
+      return { correct, chosen, correct_answer: q.correct_answer, explanation: q.explanation };
+    });
+    quizScore = Math.round((correctCount / total) * 100);
     update.quiz_score = quizScore;
   }
 
@@ -170,6 +177,7 @@ export async function PATCH(
   return NextResponse.json({
     progress: updatedProgress,
     quiz_score: quizScore,
+    quiz_results: quizResults,
     xp_awarded: update.completed_at && !existing?.completed_at
       ? SECTION_COMPLETE_XP + (quizScore !== null && quizScore >= 80 ? SECTION_QUIZ_BONUS_XP : 0)
       : 0,

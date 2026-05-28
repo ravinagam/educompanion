@@ -21,6 +21,8 @@ interface Question {
   type: string;
   question: string;
   options: string[];
+  correct_answer: string;
+  explanation: string;
 }
 
 interface Progress {
@@ -260,7 +262,8 @@ export function SectionDetailClient({ chapter, subjectName, section, progress: i
     return () => clearInterval(id);
   }, [step, section.mini_quiz, router]);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
-  const [quizResult, setQuizResult] = useState<{ score: number; xp: number } | null>(
+  type QuizResultItem = { correct: boolean; chosen: string; correct_answer: string; explanation: string };
+  const [quizResult, setQuizResult] = useState<{ score: number; xp: number; results?: QuizResultItem[] } | null>(
     initialProgress?.quiz_score != null
       ? { score: initialProgress.quiz_score, xp: 0 }
       : null
@@ -365,7 +368,7 @@ ${questionsHtml}
     const res = await patch({ quiz_answers: quizAnswers });
     if (res) {
       setProgress(p => ({ ...p, quiz_score: res.quiz_score, completed_at: new Date().toISOString() }));
-      setQuizResult({ score: res.quiz_score, xp: res.xp_awarded });
+      setQuizResult({ score: res.quiz_score, xp: res.xp_awarded, results: res.quiz_results ?? undefined });
       setStep('done');
       if (res.xp_awarded > 0) setXpToast({ xp: res.xp_awarded });
     }
@@ -612,6 +615,35 @@ ${questionsHtml}
                 />
               ))}
             </div>
+
+            {/* Per-question answer review — shown on fresh submission */}
+            {quizResult?.results && section.mini_quiz && (
+              <div className="text-left space-y-3 pt-2 border-t border-emerald-200">
+                {section.mini_quiz.map((q, i) => {
+                  const r = quizResult.results![i];
+                  if (!r) return null;
+                  return (
+                    <div key={i} className={`rounded-lg border px-4 py-3 text-sm ${r.correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                      <div className="flex items-start gap-2">
+                        <span className={`mt-0.5 shrink-0 font-bold ${r.correct ? 'text-green-600' : 'text-red-500'}`}>
+                          {r.correct ? '✓' : '✗'}
+                        </span>
+                        <div className="space-y-1 min-w-0">
+                          <p className="font-medium text-gray-900">{renderText(`Q${i + 1}. ${q.question}`)}</p>
+                          {!r.correct && (
+                            <>
+                              <p className="text-red-600">Your answer: {renderText(r.chosen || '(no answer)')}</p>
+                              <p className="text-green-700 font-medium">Correct: {renderText(r.correct_answer)}</p>
+                            </>
+                          )}
+                          <p className="text-gray-600 italic">{renderText(r.explanation)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 pt-2">
               {nextSection ? (

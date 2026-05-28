@@ -98,7 +98,7 @@ export default async function SectionDetailPage({
         content_text: section.content_text,
         order_index: section.order_index,
         estimated_minutes: section.estimated_minutes,
-        mini_quiz: safeQuiz as Array<{ id: string; type: string; question: string; options: string[] }> | null,
+        mini_quiz: safeQuiz as Array<{ id: string; type: string; question: string; options: string[]; correct_answer: string; explanation: string }> | null,
         quiz_generating: !section.mini_quiz_json,
         total_sections: allSections.length,
       }}
