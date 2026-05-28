@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { MathText } from '@/components/sections/MathText';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -302,7 +303,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
               className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-8"
             >
               <Badge variant="outline" className="mb-4 text-xs">Term</Badge>
-              <p className="text-2xl font-bold text-center text-gray-900">{currentCard.term}</p>
+              <p className="text-2xl font-bold text-center text-gray-900"><MathText text={currentCard.term} /></p>
               <p className="text-sm text-gray-400 mt-4">Tap to reveal definition</p>
             </div>
 
@@ -316,7 +317,7 @@ export function FlashcardsClient({ chapter, subjectName, flashcards: initialCard
               className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-8"
             >
               <Badge variant="outline" className="mb-4 text-xs">Definition</Badge>
-              <p className="text-lg text-center text-gray-900 leading-relaxed">{currentCard.definition}</p>
+              <p className="text-lg text-center text-gray-900 leading-relaxed"><MathText text={currentCard.definition} /></p>
               {currentCard.progress?.review_count ? (
                 <p className="text-xs text-gray-400 mt-4">Reviewed {currentCard.progress.review_count}×</p>
               ) : null}

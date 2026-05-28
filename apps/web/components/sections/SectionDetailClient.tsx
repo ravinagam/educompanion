@@ -91,7 +91,7 @@ function renderPara(para: ReturnType<typeof normalisePdfText>[number], key: stri
   if (para.kind === 'definition') {
     return (
       <div key={key} className="border-l-4 border-indigo-400 bg-indigo-50 rounded-r-xl px-4 py-2.5">
-        <span className="font-bold text-indigo-900 text-sm">{para.term}</span>
+        <span className="font-bold text-indigo-900 text-sm">{renderText(para.term)}</span>
         <span className="text-gray-400 mx-1.5 text-sm">—</span>
         {renderText(para.def, 'text-gray-700 text-sm leading-relaxed')}
       </div>

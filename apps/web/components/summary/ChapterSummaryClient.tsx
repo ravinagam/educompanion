@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { MathText } from '@/components/sections/MathText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -110,7 +111,7 @@ export function ChapterSummaryClient({ chapter, subjectName, initialSummary }: P
               <BookOpen className="h-4 w-4" /> Quick Recap
             </div>
             <CardContent className="p-4">
-              <p className="text-gray-800 text-sm leading-relaxed">{summary.quick_recap}</p>
+              <p className="text-gray-800 text-sm leading-relaxed"><MathText text={summary.quick_recap} /></p>
             </CardContent>
           </Card>
 
@@ -124,7 +125,7 @@ export function ChapterSummaryClient({ chapter, subjectName, initialSummary }: P
                 {summary.key_points.map((pt, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-gray-800">
                     <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                    {pt}
+                    <MathText text={pt} />
                   </li>
                 ))}
               </ul>
@@ -140,8 +141,8 @@ export function ChapterSummaryClient({ chapter, subjectName, initialSummary }: P
               <div className="space-y-2.5">
                 {summary.key_concepts.map((c, i) => (
                   <div key={i} className="rounded-lg bg-violet-50 border border-violet-100 px-3 py-2.5">
-                    <p className="text-xs font-bold text-violet-700 uppercase tracking-wide">{c.term}</p>
-                    <p className="text-sm text-gray-700 mt-0.5">{c.explanation}</p>
+                    <p className="text-xs font-bold text-violet-700 uppercase tracking-wide"><MathText text={c.term} /></p>
+                    <p className="text-sm text-gray-700 mt-0.5"><MathText text={c.explanation} /></p>
                   </div>
                 ))}
               </div>
@@ -160,7 +161,7 @@ export function ChapterSummaryClient({ chapter, subjectName, initialSummary }: P
                     <span className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                       {i + 1}
                     </span>
-                    {tip}
+                    <MathText text={tip} />
                   </li>
                 ))}
               </ul>
