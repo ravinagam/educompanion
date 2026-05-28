@@ -161,9 +161,11 @@ describe('extractTextFromPdfVision', () => {
   });
 
   it('returns extracted text and usage from Claude response', async () => {
-    // Text must exceed 2000 chars so Haiku is accepted and no Sonnet fallback fires
-    const richText = 'Chapter one content with $x^2$ formula. '.padEnd(2100, 'x');
-    mockCreate.mockResolvedValue({
+    // 2100 chars, 50 repetitions of a realistic sentence → well above the 2000-char
+    // quality threshold and has enough words so isKrutiDevEncoded() doesn't short-circuit
+    const sentence = 'Chapter content includes formula for calculation. ';
+    const richText = sentence.repeat(50); // 50 chars × 50 = 2500 chars, 350 words
+    mockCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: richText }],
       usage: { input_tokens: 1500, output_tokens: 200 },
       model: 'claude-haiku-4-5-20251001',
@@ -171,8 +173,9 @@ describe('extractTextFromPdfVision', () => {
 
     const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
 
-    expect(result.text).toContain('x^2');
-    expect(result.text.length).toBeGreaterThan(500);
+    // Haiku accepted the text — Sonnet fallback must NOT have fired
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(result.text).toBe(richText);
     expect(result.input_tokens).toBe(1500);
     expect(result.output_tokens).toBe(200);
     expect(result.model).toBe('claude-haiku-4-5-20251001');
