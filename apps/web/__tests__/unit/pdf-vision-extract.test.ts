@@ -161,8 +161,8 @@ describe('extractTextFromPdfVision', () => {
   });
 
   it('returns extracted text and usage from Claude response', async () => {
-    // Text must exceed 500 chars so Haiku is accepted and no Sonnet fallback fires
-    const richText = 'Chapter one content with $x^2$ formula. '.padEnd(600, 'x');
+    // Text must exceed 2000 chars so Haiku is accepted and no Sonnet fallback fires
+    const richText = 'Chapter one content with $x^2$ formula. '.padEnd(2100, 'x');
     mockCreate.mockResolvedValue({
       content: [{ type: 'text', text: richText }],
       usage: { input_tokens: 1500, output_tokens: 200 },

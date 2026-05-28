@@ -6,8 +6,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('How to Use page', () => {
   test('loads and shows student and parent sections', async ({ page }) => {
-    await page.goto('/how-to-use');
-    await expect(page).toHaveURL(/\/how-to-use/);
+    await page.goto('/guide');
+    await expect(page).toHaveURL(/\/guide/);
     await expect(page.getByRole('heading', { name: /see how easestudy works/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /for students/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /for parents/i })).toBeVisible();
@@ -15,11 +15,11 @@ test.describe('How to Use page', () => {
 
   test('nav link is visible in the sidebar', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByRole('link', { name: /how to use/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /how to use/i }).first()).toBeVisible();
   });
 
   test('student Sign Up Free link points to /auth/signup', async ({ page }) => {
-    await page.goto('/how-to-use');
+    await page.goto('/guide');
     // First "Sign Up Free" is in the student section
     const cta = page.getByRole('link', { name: /sign up free/i }).first();
     await expect(cta).toBeVisible();

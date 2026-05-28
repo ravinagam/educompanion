@@ -21,7 +21,7 @@ const mainNav = [
 ];
 
 const bottomNav = [
-  { label: 'How to Use',  href: '/how-to-use',   icon: HelpCircle },
+  { label: 'How to Use',  href: '/guide',   icon: HelpCircle },
   { label: 'Refer & Earn', href: '/rewards', icon: Gift },
 ];
 
