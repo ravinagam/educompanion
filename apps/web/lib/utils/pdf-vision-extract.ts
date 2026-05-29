@@ -65,6 +65,11 @@ export interface VisionExtractionResult {
 export async function extractTextFromPdfVision(
   buffer: Buffer,
   claude: Anthropic,
+  // KrutiDev detection is done by the caller (text-extraction.ts) using pdf-parse
+  // before this function is called. pdf-parse uses Node.js `fs` and cannot be
+  // imported here because this file is also imported by client components
+  // (for hasMathDelimiters / parseMathSegments) and would break the browser bundle.
+  isKrutiDev = false,
 ): Promise<VisionExtractionResult> {
   if (buffer.byteLength > MAX_PDF_BYTES) {
     throw new Error(
@@ -73,20 +78,7 @@ export async function extractTextFromPdfVision(
     );
   }
 
-  // Use pdf-parse to detect KrutiDev encoding from the embedded text layer.
-  // This is fast (< 1s, no API cost) and tells us whether to add the Unicode supplement
-  // to the prompt — without needing a wasted Haiku pre-flight call.
-  let isKruti = false;
-  try {
-    const { default: pdfParse } = await import('pdf-parse');
-    const parsed = await pdfParse(buffer);
-    isKruti = isKrutiDevEncoded(parsed.text ?? '');
-    if (isKruti) console.log('[pdf-vision] KrutiDev encoding detected — adding Unicode supplement to prompt');
-  } catch {
-    // pdf-parse failure is non-fatal; extraction proceeds without the supplement
-  }
-
-  const prompt = isKruti
+  const prompt = isKrutiDev
     ? EXTRACTION_PROMPT + EXTRACTION_PROMPT_UNICODE_SUPPLEMENT
     : EXTRACTION_PROMPT;
 

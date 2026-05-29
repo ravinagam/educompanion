@@ -149,12 +149,6 @@ describe('isKrutiDevEncoded', () => {
 
 // ── extractTextFromPdfVision ──────────────────────────────────────────────────
 
-// Mock pdf-parse so KrutiDev detection works without real PDFs.
-// Default: returns empty text (no KrutiDev detected).
-vi.mock('pdf-parse', () => ({
-  default: vi.fn().mockResolvedValue({ text: '' }),
-}));
-
 const mockCreate = vi.fn();
 
 function makeMockClaude(): Anthropic {
@@ -162,11 +156,8 @@ function makeMockClaude(): Anthropic {
 }
 
 describe('extractTextFromPdfVision', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    // Reset pdf-parse mock to default (no KrutiDev) before each test
-    const { default: pdfParse } = await import('pdf-parse');
-    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValue({ text: '' });
   });
 
   it('returns extracted text and usage from Claude response', async () => {
@@ -236,13 +227,9 @@ describe('extractTextFromPdfVision', () => {
     expect(call.model).toContain('sonnet');
   });
 
-  it('adds Unicode supplement when KrutiDev detected by pdf-parse', async () => {
-    // Simulate pdf-parse returning KrutiDev-encoded text layer
-    const krutiText = 'dk dh esa gS osQ ds dks Hkh vkSj gh us gksa gSa Fkk Fkh gks rks ls rd tks lkFk ' +
-      'vkt ge vki oks dk dh esa gS osQ ds dks Hkh vkSj gh us gksa gSa Fkk Fkh gks rks ls';
-    const { default: pdfParse } = await import('pdf-parse');
-    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ text: krutiText });
-
+  it('uses Unicode supplement when isKrutiDev=true is passed by caller', async () => {
+    // KrutiDev detection is done by text-extraction.ts (server-only) before calling this.
+    // The caller passes isKrutiDev=true so this function adds the Unicode supplement.
     const unicodeText = 'मीराबाई की भक्ति कविता हिंदी साहित्य में महत्वपूर्ण है।';
     mockCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: unicodeText }],
@@ -250,9 +237,8 @@ describe('extractTextFromPdfVision', () => {
       model: 'claude-sonnet-4-6',
     });
 
-    const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
+    const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude(), true);
 
-    // Single Sonnet call (no wasted Haiku pre-flight)
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(result.model).toBe('claude-sonnet-4-6');
     expect(result.text).toBe(unicodeText);

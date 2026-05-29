@@ -27,9 +27,23 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {
     try {
-      const { extractTextFromPdfVision } = await import('@/lib/utils/pdf-vision-extract');
+      const { extractTextFromPdfVision, isKrutiDevEncoded } = await import('@/lib/utils/pdf-vision-extract');
+
+      // Detect KrutiDev encoding by reading the embedded text layer with pdf-parse (fast, free).
+      // This must live here rather than inside pdf-vision-extract.ts because pdf-parse uses
+      // Node.js `fs` and that file is also imported by client components.
+      let isKrutiDev = false;
+      try {
+        const { default: pdfParse } = await import('pdf-parse');
+        const parsed = await pdfParse(buffer);
+        isKrutiDev = isKrutiDevEncoded(parsed.text ?? '');
+        if (isKrutiDev) console.log('[text-extraction] KrutiDev encoding detected — Unicode supplement will be added');
+      } catch {
+        // pdf-parse failure is non-fatal; vision extraction proceeds without supplement
+      }
+
       const claude = new Anthropic({ apiKey });
-      const result = await extractTextFromPdfVision(buffer, claude);
+      const result = await extractTextFromPdfVision(buffer, claude, isKrutiDev);
       if (result.text.trim().length > 1000) {
         console.log('[text-extraction] Vision extraction succeeded:', result.input_tokens, 'in /', result.output_tokens, 'out tokens');
         return result.text;
