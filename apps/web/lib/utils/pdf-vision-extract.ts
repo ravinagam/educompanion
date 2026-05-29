@@ -3,19 +3,15 @@ import Anthropic from '@anthropic-ai/sdk';
 // Max PDF size Claude can process (~32 MB base64 decoded; we stay well under)
 const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20 MB
 
-// Haiku is tried first for cost efficiency; Sonnet is the fallback for image/scanned PDFs
-// where Haiku returns too little text (it does not reliably handle the PDF document block type).
-const PRIMARY_MODEL = 'claude-haiku-4-5-20251001';
-const FALLBACK_MODEL = 'claude-sonnet-4-6';
-// Minimum chars for Haiku's output to be considered acceptable.
-// 500 was too low — a partial title extraction (600 chars) would pass but produce < 2 chunks.
-// 2000 chars ensures at least one meaningful page of text was extracted before accepting Haiku's output.
-const VISION_QUALITY_THRESHOLD = 2000;
+// Single Sonnet call — no wasted Haiku attempt.
+// Haiku was tried first for cost, but for Hindi PDFs it almost always failed the quality check,
+// so we always ended up calling Sonnet anyway (double the latency, double the cost).
+// Using Sonnet directly cuts extraction time from 2-4 min to 30-60s.
+const EXTRACTION_MODEL = 'claude-sonnet-4-6';
 
-// Tokens budgeted per extraction call.
-// 16 384 covers ~40–80 dense textbook pages depending on language.
-// Devanagari uses ~1.5× more tokens than English, so 8192 was only covering ~10 Hindi pages.
-const MAX_OUTPUT_TOKENS = 16384;
+// 8192 tokens covers 8-12 Hindi pages — enough for any single NCERT chapter.
+// Reverted from 16384: generating 16384 Devanagari tokens takes 90-180s on Sonnet.
+const MAX_OUTPUT_TOKENS = 8192;
 
 const EXTRACTION_PROMPT = `You are extracting text from a multi-page Indian school textbook PDF (CBSE/ICSE/State board).
 
@@ -77,67 +73,46 @@ export async function extractTextFromPdfVision(
     );
   }
 
-  const base64Data = buffer.toString('base64');
-
-  const buildRequest = (model: string, prompt = EXTRACTION_PROMPT) => ({
-    model,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    messages: [
-      {
-        role: 'user' as const,
-        content: [
-          {
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: base64Data,
-            },
-          } as Anthropic.DocumentBlockParam,
-          {
-            type: 'text',
-            text: prompt,
-          } as Anthropic.TextBlockParam,
-        ],
-      },
-    ],
-  });
-
-  const primary = await claude.messages.create(buildRequest(PRIMARY_MODEL));
-  const primaryText = primary.content[0].type === 'text' ? primary.content[0].text : '';
-
-  const isGoodQuality = primaryText.trim().length > VISION_QUALITY_THRESHOLD;
-  const isKruti = isKrutiDevEncoded(primaryText);
-
-  // Good quality and no encoding issues → done
-  if (isGoodQuality && !isKruti) {
-    return {
-      text: primaryText,
-      input_tokens: primary.usage.input_tokens,
-      output_tokens: primary.usage.output_tokens,
-      model: primary.model,
-    };
+  // Use pdf-parse to detect KrutiDev encoding from the embedded text layer.
+  // This is fast (< 1s, no API cost) and tells us whether to add the Unicode supplement
+  // to the prompt — without needing a wasted Haiku pre-flight call.
+  let isKruti = false;
+  try {
+    const { default: pdfParse } = await import('pdf-parse');
+    const parsed = await pdfParse(buffer);
+    isKruti = isKrutiDevEncoded(parsed.text ?? '');
+    if (isKruti) console.log('[pdf-vision] KrutiDev encoding detected — adding Unicode supplement to prompt');
+  } catch {
+    // pdf-parse failure is non-fatal; extraction proceeds without the supplement
   }
 
-  const reason = isKruti
-    ? 'KrutiDev legacy encoding detected'
-    : `only ${primaryText.trim().length} chars`;
-  console.warn(`[pdf-vision] ${PRIMARY_MODEL} returned ${reason} — retrying with ${FALLBACK_MODEL}`);
-
-  // Use Unicode-aware prompt for KrutiDev PDFs; standard prompt for low-quality fallback
-  const retryPrompt = isKruti
+  const prompt = isKruti
     ? EXTRACTION_PROMPT + EXTRACTION_PROMPT_UNICODE_SUPPLEMENT
     : EXTRACTION_PROMPT;
 
-  const fallback = await claude.messages.create(buildRequest(FALLBACK_MODEL, retryPrompt));
-  const fallbackText = fallback.content[0].type === 'text' ? fallback.content[0].text : '';
+  const base64Data = buffer.toString('base64');
 
+  const response = await claude.messages.create({
+    model: EXTRACTION_MODEL,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: base64Data },
+        } as Anthropic.DocumentBlockParam,
+        { type: 'text', text: prompt } as Anthropic.TextBlockParam,
+      ],
+    }],
+  });
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : '';
   return {
-    text: fallbackText,
-    // Sum tokens from both calls since both were billed
-    input_tokens: primary.usage.input_tokens + fallback.usage.input_tokens,
-    output_tokens: primary.usage.output_tokens + fallback.usage.output_tokens,
-    model: fallback.model,
+    text,
+    input_tokens: response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
+    model: response.model,
   };
 }
 

@@ -149,6 +149,12 @@ describe('isKrutiDevEncoded', () => {
 
 // ── extractTextFromPdfVision ──────────────────────────────────────────────────
 
+// Mock pdf-parse so KrutiDev detection works without real PDFs.
+// Default: returns empty text (no KrutiDev detected).
+vi.mock('pdf-parse', () => ({
+  default: vi.fn().mockResolvedValue({ text: '' }),
+}));
+
 const mockCreate = vi.fn();
 
 function makeMockClaude(): Anthropic {
@@ -156,36 +162,35 @@ function makeMockClaude(): Anthropic {
 }
 
 describe('extractTextFromPdfVision', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Reset pdf-parse mock to default (no KrutiDev) before each test
+    const { default: pdfParse } = await import('pdf-parse');
+    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValue({ text: '' });
   });
 
   it('returns extracted text and usage from Claude response', async () => {
-    // 2100 chars, 50 repetitions of a realistic sentence → well above the 2000-char
-    // quality threshold and has enough words so isKrutiDevEncoded() doesn't short-circuit
-    const sentence = 'Chapter content includes formula for calculation. ';
-    const richText = sentence.repeat(50); // 50 chars × 50 = 2500 chars, 350 words
+    const richText = 'Chapter content with $x^2$ formula. This is educational text. '.repeat(20);
     mockCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: richText }],
       usage: { input_tokens: 1500, output_tokens: 200 },
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
     });
 
     const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
 
-    // Haiku accepted the text — Sonnet fallback must NOT have fired
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(result.text).toBe(richText);
     expect(result.input_tokens).toBe(1500);
     expect(result.output_tokens).toBe(200);
-    expect(result.model).toBe('claude-haiku-4-5-20251001');
+    expect(result.model).toBe('claude-sonnet-4-6');
   });
 
   it('sends the PDF as a base64 document block', async () => {
     mockCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'extracted text' }],
       usage: { input_tokens: 100, output_tokens: 50 },
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
     });
 
     const testBuffer = Buffer.from('fake-pdf-bytes');
@@ -210,64 +215,57 @@ describe('extractTextFromPdfVision', () => {
     mockCreate.mockResolvedValue({
       content: [{ type: 'image' }],
       usage: { input_tokens: 100, output_tokens: 0 },
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
     });
 
     const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
     expect(result.text).toBe('');
   });
 
-  it('uses the haiku model for cost efficiency', async () => {
+  it('uses Sonnet directly for reliable extraction', async () => {
     mockCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'text' }],
       usage: { input_tokens: 100, output_tokens: 50 },
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
     });
 
     await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
 
+    expect(mockCreate).toHaveBeenCalledTimes(1);
     const call = mockCreate.mock.calls[0][0];
-    expect(call.model).toContain('haiku');
+    expect(call.model).toContain('sonnet');
   });
 
-  it('retries with Sonnet and Unicode prompt when KrutiDev encoding is detected', async () => {
-    // First call (Haiku) returns KrutiDev-encoded text (>500 chars but garbled)
-    const krutiText = ('dk dh esa gS osQ ds dks Hkh vkSj gh us gksa gSa Fkk Fkh gks rks ls rd tks lkFk ' +
-      'vkt ge vki oks dk dh esa gS osQ ds dks ').padEnd(600, 'x');
-    const unicodeText = 'का की में है के के को भी और ही ने हों हैं था थी हो तो से तक जो साथ आज हम आप वो'.padEnd(600, 'य');
+  it('adds Unicode supplement when KrutiDev detected by pdf-parse', async () => {
+    // Simulate pdf-parse returning KrutiDev-encoded text layer
+    const krutiText = 'dk dh esa gS osQ ds dks Hkh vkSj gh us gksa gSa Fkk Fkh gks rks ls rd tks lkFk ' +
+      'vkt ge vki oks dk dh esa gS osQ ds dks Hkh vkSj gh us gksa gSa Fkk Fkh gks rks ls';
+    const { default: pdfParse } = await import('pdf-parse');
+    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ text: krutiText });
 
-    mockCreate
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: krutiText }],
-        usage: { input_tokens: 1000, output_tokens: 100 },
-        model: 'claude-haiku-4-5-20251001',
-      })
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: unicodeText }],
-        usage: { input_tokens: 2000, output_tokens: 200 },
-        model: 'claude-sonnet-4-6',
-      });
+    const unicodeText = 'मीराबाई की भक्ति कविता हिंदी साहित्य में महत्वपूर्ण है।';
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: unicodeText }],
+      usage: { input_tokens: 2000, output_tokens: 200 },
+      model: 'claude-sonnet-4-6',
+    });
 
     const result = await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());
 
-    // Should return the Sonnet result
+    // Single Sonnet call (no wasted Haiku pre-flight)
+    expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(result.model).toBe('claude-sonnet-4-6');
     expect(result.text).toBe(unicodeText);
-    // Tokens from both calls are summed
-    expect(result.input_tokens).toBe(3000);
-    expect(result.output_tokens).toBe(300);
-    // Second call should use Sonnet
-    expect(mockCreate.mock.calls[1][0].model).toContain('sonnet');
-    // Second call prompt should include the Unicode supplement
-    const secondPromptBlock = mockCreate.mock.calls[1][0].messages[0].content[1];
-    expect(secondPromptBlock.text).toContain('UNICODE OUTPUT REQUIRED');
+    // Prompt must include the Unicode supplement
+    const promptBlock = mockCreate.mock.calls[0][0].messages[0].content[1];
+    expect(promptBlock.text).toContain('UNICODE OUTPUT REQUIRED');
   });
 
   it('includes math extraction instructions in the prompt', async () => {
     mockCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'text' }],
       usage: { input_tokens: 100, output_tokens: 50 },
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
     });
 
     await extractTextFromPdfVision(Buffer.alloc(100), makeMockClaude());

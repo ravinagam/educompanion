@@ -74,13 +74,13 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
       })
       .catch(err => console.warn('[sections] Auto-generate error:', err));
 
-    // Poll every 5s until sections appear (up to ~60s)
+    // Poll every 5s until sections appear (up to ~120s — Hindi PDFs take longer)
     let attempts = 0;
     const id = setInterval(() => {
       attempts++;
       setPollAttempts(attempts);
       router.refresh();
-      if (attempts >= 12) clearInterval(id); // stop after ~60s
+      if (attempts >= 24) clearInterval(id); // stop after ~120s
     }, 5000);
 
     return () => {
@@ -156,11 +156,11 @@ export function SectionsClient({ chapter, subjectName, sections }: Props) {
       {/* Sections list */}
       {sections.length === 0 ? (
         <div className="text-center py-16 text-gray-400 space-y-3">
-          {pollAttempts < 12 ? (
+          {pollAttempts < 24 ? (
             <>
               <RefreshCw className="h-10 w-10 mx-auto animate-spin opacity-30" />
               <p className="font-medium">Generating sections…</p>
-              <p className="text-sm">This usually takes under 60 seconds.</p>
+              <p className="text-sm">This usually takes 1–2 minutes.</p>
             </>
           ) : (
             <>

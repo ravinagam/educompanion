@@ -148,8 +148,11 @@ Return ONLY a JSON array, no markdown:
 ]`;
 
   const message = await getClaude().messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: isHindi ? 4096 : 2048,
+    // Sonnet for all section quizzes — Haiku produced poor-quality Hindi questions
+    // and was inconsistent about language. The cost difference per 4-question quiz
+    // is negligible (~$0.014 vs $0.005) and quality is substantially better.
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
     messages: [{
       role: 'user',
       content: [
