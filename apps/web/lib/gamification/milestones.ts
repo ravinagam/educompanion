@@ -8,6 +8,7 @@ export const GIFT_MILESTONES: GiftMilestone[] = [
   { xp: 3_000,  voucher_inr: 100, label: '₹100 Amazon Voucher' },
   { xp: 6_000,  voucher_inr: 200, label: '₹200 Amazon Voucher' },
   { xp: 10_000, voucher_inr: 400, label: '₹400 Amazon Voucher' },
+  { xp: 15_000, voucher_inr: 750, label: '₹750 Amazon Voucher' },
 ];
 
 /** Returns the next unclaimed milestone given current XP and already-gifted XP thresholds. */
