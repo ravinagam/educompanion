@@ -7,8 +7,8 @@ import {
 } from '@/lib/gamification/milestones';
 
 describe('GIFT_MILESTONES', () => {
-  it('has exactly three tiers', () => {
-    expect(GIFT_MILESTONES).toHaveLength(3);
+  it('has exactly four tiers', () => {
+    expect(GIFT_MILESTONES).toHaveLength(4);
   });
 
   it('tiers are in ascending XP order', () => {
@@ -35,7 +35,7 @@ describe('nextMilestone', () => {
   });
 
   it('returns null when XP equals the last milestone (not strictly less than)', () => {
-    expect(nextMilestone(10_000, [])).toBeNull();
+    expect(nextMilestone(15_000, [])).toBeNull();
   });
 
   it('skips the claimed first milestone and returns the second', () => {
@@ -92,8 +92,8 @@ describe('pendingMilestones', () => {
     expect(pending.map(m => m.xp)).toEqual([3_000, 6_000]);
   });
 
-  it('returns all three milestones when XP crosses all of them', () => {
-    expect(pendingMilestones(10_000, [])).toHaveLength(3);
+  it('returns all four milestones when XP crosses all of them', () => {
+    expect(pendingMilestones(15_000, [])).toHaveLength(4);
   });
 
   it('excludes already-claimed milestones', () => {
