@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Flame } from 'lucide-react';
-import { calculateLevel, xpForLevel, xpForNextLevel } from '@/lib/gamification';
+import { calculateLevel, xpForLevel, xpForNextLevel, GIFT_MILESTONES } from '@/lib/gamification';
 
 interface GamificationData {
   total_xp: number;
@@ -55,6 +55,19 @@ export function XpBar() {
     ? Math.min(100, Math.round(((d.total_xp - levelStart) / (levelEnd - levelStart)) * 100))
     : 100;
   const isMax = level >= 10;
+  // After hitting MAX level, show progress toward the next XP milestone instead.
+  // This keeps the bar useful and motivates students to keep earning XP for vouchers.
+  const nextMilestoneTarget = isMax
+    ? GIFT_MILESTONES.find(m => d.total_xp < m.xp) ?? null
+    : null;
+  const prevMilestoneXp = isMax && nextMilestoneTarget
+    ? (GIFT_MILESTONES.find(m => m.xp < nextMilestoneTarget.xp && d.total_xp >= m.xp)?.xp ?? 0)
+    : 0;
+  const milestoneProgress = nextMilestoneTarget
+    ? Math.min(100, Math.round(
+        ((d.total_xp - prevMilestoneXp) / (nextMilestoneTarget.xp - prevMilestoneXp)) * 100
+      ))
+    : 100;
 
   return (
     <div className="flex items-center gap-3">
@@ -94,11 +107,15 @@ export function XpBar() {
           <div className="w-16 sm:w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden shrink-0">
             <div
               className="h-full rounded-full bg-blue-500 transition-all duration-500"
-              style={{ width: `${isMax ? 100 : progress}%` }}
+              style={{ width: `${isMax ? milestoneProgress : progress}%` }}
             />
           </div>
           <span className="text-[10px] text-gray-500 tabular-nums whitespace-nowrap">
-            {isMax ? 'MAX' : `${d.total_xp - levelStart} / ${levelEnd - levelStart} XP`}
+            {isMax && nextMilestoneTarget
+              ? `${d.total_xp.toLocaleString()} / ${nextMilestoneTarget.xp.toLocaleString()} XP`
+              : isMax
+              ? 'MAX'
+              : `${d.total_xp - levelStart} / ${levelEnd - levelStart} XP`}
           </span>
         </div>
 
@@ -107,6 +124,9 @@ export function XpBar() {
           <div className="absolute top-8 right-0 z-50 w-52 rounded-lg bg-gray-900 text-white text-xs shadow-xl p-3 space-y-1.5">
             <p className="font-semibold text-white">Level {level} · {d.total_xp.toLocaleString()} XP</p>
             {!isMax && <p className="text-gray-400">{levelEnd - d.total_xp} XP to level {level + 1}</p>}
+            {isMax && nextMilestoneTarget && (
+              <p className="text-amber-400">{(nextMilestoneTarget.xp - d.total_xp).toLocaleString()} XP to {nextMilestoneTarget.label}</p>
+            )}
             <div className="border-t border-white/10 pt-1.5 space-y-0.5 text-gray-300">
               <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1">How to earn XP</p>
               <p>+25 · Upload a chapter</p>
