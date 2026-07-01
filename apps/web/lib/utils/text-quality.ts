@@ -47,12 +47,12 @@ export function assessTextQuality(text: string): TextQualityResult {
   }
 
   // Average word length check (catches OCR jams)
-  const avgWordLen = trimmed.length / words.length;
-  if (avgWordLen > 25) {
+  const avgWordLength = trimmed.length / words.length;
+  if (avgWordLength > 25) {
     return {
       isHighQuality: false,
-      reason: `Words jammed together (avg ${avgWordLen.toFixed(1)} chars > 25)`,
-      metrics: { length: trimmed.length, readableCharRatio, hasMathSymbols: false, avgWordLength: avgWordLen }
+      reason: `Words jammed together (avg ${avgWordLength.toFixed(1)} chars > 25)`,
+      metrics: { length: trimmed.length, readableCharRatio, hasMathSymbols: false, avgWordLength }
     };
   }
 
