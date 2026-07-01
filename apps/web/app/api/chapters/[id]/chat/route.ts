@@ -45,7 +45,7 @@ export async function POST(
       result = await chatWithChapterFromImages(chapter.name, imageData, messages, subjectName);
       logAiUsage(user.id, 'chat-images', result.model, result.input_tokens, result.output_tokens).catch(console.error);
     } else {
-      result = await chatWithChapter(chapter.name, chapter.content_text, messages, subjectName);
+      result = await chatWithChapter(chapter.name, chapter.content_text, messages, subjectName, chapterId);
       logAiUsage(user.id, 'chat', result.model, result.input_tokens, result.output_tokens).catch(console.error);
     }
     return NextResponse.json({ reply: result.data });

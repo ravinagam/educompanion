@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { NextRequest } from 'next/server';
+import { assessTextQuality } from './text-quality';
 
 const MAX_TEXT_CHARS = 120_000; // ~80 pages — enough for any school chapter
 
@@ -23,26 +24,49 @@ async function extractPdfTextFallback(buffer: Buffer): Promise<string> {
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  // Try Claude Vision first — correctly renders mathematical notation as LaTeX
+  // OPTIMIZATION 1: Try pdf-parse first (free) — most PDFs are plain text
+  let pdfParseText: string | null = null;
+  let isKrutiDev = false;
+
+  try {
+    const { default: pdfParse } = await import('pdf-parse');
+    const parsed = await pdfParse(buffer);
+    pdfParseText = parsed.text ?? null;
+
+    if (pdfParseText) {
+      const { isKrutiDevEncoded } = await import('@/lib/utils/pdf-vision-extract');
+      isKrutiDev = isKrutiDevEncoded(pdfParseText);
+
+      // Assess quality of pdf-parse text
+      const quality = assessTextQuality(pdfParseText);
+
+      if (quality.isHighQuality) {
+        console.log('[text-extraction] PDF extracted successfully with pdf-parse (FREE) — quality metrics:', {
+          length: quality.metrics.length,
+          readableCharRatio: (quality.metrics.readableCharRatio * 100).toFixed(0) + '%',
+          avgWordLen: quality.metrics.avgWordLength.toFixed(1)
+        });
+        return pdfParseText;
+      }
+
+      console.log('[text-extraction] pdf-parse text quality insufficient:', quality.reason);
+    }
+  } catch (err) {
+    console.warn('[text-extraction] pdf-parse failed:', err instanceof Error ? err.message : err);
+  }
+
+  // FALLBACK: Use Claude Vision for high-quality extraction (when pdf-parse fails/insufficient)
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {
     try {
-      const { extractTextFromPdfVision, isKrutiDevEncoded } = await import('@/lib/utils/pdf-vision-extract');
-
-      // Detect KrutiDev encoding by reading the embedded text layer with pdf-parse (fast, free).
-      // This must live here rather than inside pdf-vision-extract.ts because pdf-parse uses
-      // Node.js `fs` and that file is also imported by client components.
-      let isKrutiDev = false;
-      try {
-        const { default: pdfParse } = await import('pdf-parse');
-        const parsed = await pdfParse(buffer);
-        isKrutiDev = isKrutiDevEncoded(parsed.text ?? '');
-        if (isKrutiDev) console.log('[text-extraction] KrutiDev encoding detected — Unicode supplement will be added');
-      } catch {
-        // pdf-parse failure is non-fatal; vision extraction proceeds without supplement
-      }
-
+      const { extractTextFromPdfVision } = await import('@/lib/utils/pdf-vision-extract');
       const claude = new Anthropic({ apiKey });
+
+      console.log('[text-extraction] Using Claude Vision (PAID) — pdf-parse was insufficient', {
+        hadText: !!pdfParseText,
+        isKrutiDev
+      });
+
       const result = await extractTextFromPdfVision(buffer, claude, isKrutiDev);
       if (result.text.trim().length > 1000) {
         console.log('[text-extraction] Vision extraction succeeded:', result.input_tokens, 'in /', result.output_tokens, 'out tokens');
@@ -50,9 +74,10 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
       }
       console.warn('[text-extraction] Vision extraction returned too little text:', result.text.trim().length, 'chars — falling back to pdf-parse');
     } catch (err) {
-      console.warn('[text-extraction] Vision extraction failed, falling back to pdf-parse:', err instanceof Error ? err.message : err);
+      console.warn('[text-extraction] Vision extraction failed:', err instanceof Error ? err.message : err);
     }
   }
+
   return extractPdfTextFallback(buffer);
 }
 

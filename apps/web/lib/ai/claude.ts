@@ -115,11 +115,17 @@ Return a JSON array with this exact schema:
 
 Return ONLY valid JSON, no markdown, no explanation outside the array.`;
 
+  // OPTIMIZATION 2: Cache instructions so repeated quiz generation reuses the prompt
   const message = await getClaude().messages.create({
     model: 'claude-sonnet-4-6',
     // Hindi Devanagari takes ~1.5× more tokens than English — 15 questions needs up to 7000 tokens
     max_tokens: isHindi ? 8192 : 4096,
     temperature: 1,
+    system: [{
+      type: 'text',
+      text: 'You are an expert teacher for Indian school students (grades 8–12). Generate quiz questions based ONLY on the chapter content provided.',
+      cache_control: { type: 'ephemeral' }
+    }],
     messages: [{
       role: 'user',
       content: [
@@ -130,7 +136,25 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return { data: parseJSON<QuizQuestion[]>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+  let quizData: QuizQuestion[];
+
+  try {
+    quizData = parseJSON<QuizQuestion[]>(text);
+  } catch (parseErr) {
+    // OPTIMIZATION 3: If Sonnet's JSON is malformed, use cheap Haiku to fix it
+    // instead of re-generating with Sonnet (saves money on retries)
+    console.warn('[generateQuiz] Sonnet JSON parse failed, using Haiku to fix formatting');
+    const { validateAndFixQuiz } = await import('@/lib/ai/validate-quiz');
+    const validation = await validateAndFixQuiz(text, chapterName);
+
+    if (!validation.valid || !validation.data) {
+      throw new Error(`Quiz validation failed: ${validation.error}`);
+    }
+
+    quizData = validation.data;
+  }
+
+  return { data: quizData, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 export async function generateQuizFromImages(
@@ -457,9 +481,39 @@ export async function chatWithChapter(
   chapterName: string,
   chapterContent: string | null | undefined,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  subjectName?: string
+  subjectName?: string,
+  chapterId?: string
 ): Promise<UsageResult<string>> {
-  const content = sampleContent(chapterContent ?? '', 60_000);
+  let content: string;
+
+  // Use RAG retrieval if chapterId is provided
+  if (chapterId && messages.length > 0) {
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    if (lastUserMessage) {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/chapters/${chapterId}/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: lastUserMessage.content }),
+        });
+        if (response.ok) {
+          const { chunks } = await response.json();
+          content = chunks.map((c: { chunk_text: string }) => c.chunk_text).join('\n\n');
+          console.log(`[chat] RAG retrieved ${chunks.length} chunks for chapter ${chapterId}`);
+        } else {
+          content = sampleContent(chapterContent ?? '', 60_000);
+        }
+      } catch (err) {
+        console.warn('[chat] RAG retrieval failed, falling back to full content:', err);
+        content = sampleContent(chapterContent ?? '', 60_000);
+      }
+    } else {
+      content = sampleContent(chapterContent ?? '', 60_000);
+    }
+  } else {
+    content = sampleContent(chapterContent ?? '', 60_000);
+  }
+
   const isHindi = subjectName?.toLowerCase().includes('hindi') ?? false;
 
   const systemPrompt = `You are a friendly and helpful teacher assistant for Indian school students (grades 8–12).
