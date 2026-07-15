@@ -472,7 +472,23 @@ Rules:
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return { data: parseJSON<ChapterSummary>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+  let summaryData: ChapterSummary;
+
+  try {
+    summaryData = parseJSON<ChapterSummary>(text);
+  } catch (parseErr) {
+    console.warn('[generateChapterSummaryFromImages] JSON parse failed, attempting recovery:', parseErr instanceof Error ? parseErr.message : parseErr);
+    // Fallback: Return a minimal but valid summary from the raw text
+    const lines = text.split('\n').filter(l => l.trim());
+    summaryData = {
+      quick_recap: lines[0] || 'Summary generation encountered an issue. Please try again.',
+      key_points: lines.slice(1, 6).filter(l => l.trim()),
+      key_concepts: [{ term: chapterName, explanation: 'Key topic for this chapter' }],
+      exam_tips: ['Review the chapter carefully for exam preparation']
+    };
+  }
+
+  return { data: summaryData, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Chat with Chapter ────────────────────────────────────────────────────────
@@ -625,7 +641,23 @@ Rules:
   });
 
   const text = (message.content[0] as { type: string; text: string }).text;
-  return { data: parseJSON<ChapterSummary>(text), input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
+  let summaryData: ChapterSummary;
+
+  try {
+    summaryData = parseJSON<ChapterSummary>(text);
+  } catch (parseErr) {
+    console.warn('[generateChapterSummary] JSON parse failed, attempting recovery:', parseErr instanceof Error ? parseErr.message : parseErr);
+    // Fallback: Return a minimal but valid summary from the raw text
+    const lines = text.split('\n').filter(l => l.trim());
+    summaryData = {
+      quick_recap: lines[0] || 'Summary generation encountered an issue. Please try again.',
+      key_points: lines.slice(1, 6).filter(l => l.trim()),
+      key_concepts: [{ term: chapterName, explanation: 'Key topic for this chapter' }],
+      exam_tips: ['Review the chapter carefully for exam preparation']
+    };
+  }
+
+  return { data: summaryData, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
 
 // ─── Targeted Practice Questions ──────────────────────────────────────────────
