@@ -477,14 +477,35 @@ Rules:
   try {
     summaryData = parseJSON<ChapterSummary>(text);
   } catch (parseErr) {
-    console.warn('[generateChapterSummaryFromImages] JSON parse failed, attempting recovery:', parseErr instanceof Error ? parseErr.message : parseErr);
+    const errorMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+    console.error('[generateChapterSummaryFromImages] JSON parse failed:', {
+      error: errorMsg,
+      textLength: text.length,
+      textPreview: text.substring(0, 200),
+      chapterName,
+      imageCount: images.length
+    });
+
     // Fallback: Return a minimal but valid summary from the raw text
     const lines = text.split('\n').filter(l => l.trim());
+    console.warn('[generateChapterSummaryFromImages] Using fallback summary from raw text');
+
     summaryData = {
-      quick_recap: lines[0] || 'Summary generation encountered an issue. Please try again.',
-      key_points: lines.slice(1, 6).filter(l => l.trim()),
-      key_concepts: [{ term: chapterName, explanation: 'Key topic for this chapter' }],
-      exam_tips: ['Review the chapter carefully for exam preparation']
+      quick_recap: lines.find(l => l.length > 20) || `Summary of ${chapterName}: Please regenerate for detailed summary.`,
+      key_points: lines
+        .filter(l => l.length > 10 && l.length < 200)
+        .slice(0, 8),
+      key_concepts: [
+        { term: chapterName, explanation: 'Main topic from screenshots' },
+        ...lines
+          .filter(l => l.includes(':') && l.length < 150)
+          .slice(0, 4)
+          .map(l => {
+            const [term, exp] = l.split(':');
+            return { term: term.trim(), explanation: exp.trim() };
+          })
+      ],
+      exam_tips: ['Review the screenshots carefully for exam preparation', 'Focus on key concepts and definitions']
     };
   }
 
@@ -646,14 +667,34 @@ Rules:
   try {
     summaryData = parseJSON<ChapterSummary>(text);
   } catch (parseErr) {
-    console.warn('[generateChapterSummary] JSON parse failed, attempting recovery:', parseErr instanceof Error ? parseErr.message : parseErr);
+    const errorMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+    console.error('[generateChapterSummary] JSON parse failed:', {
+      error: errorMsg,
+      textLength: text.length,
+      textPreview: text.substring(0, 200),
+      chapterName
+    });
+
     // Fallback: Return a minimal but valid summary from the raw text
     const lines = text.split('\n').filter(l => l.trim());
+    console.warn('[generateChapterSummary] Using fallback summary from raw text');
+
     summaryData = {
-      quick_recap: lines[0] || 'Summary generation encountered an issue. Please try again.',
-      key_points: lines.slice(1, 6).filter(l => l.trim()),
-      key_concepts: [{ term: chapterName, explanation: 'Key topic for this chapter' }],
-      exam_tips: ['Review the chapter carefully for exam preparation']
+      quick_recap: lines.find(l => l.length > 20) || `Summary of ${chapterName}: Please regenerate for detailed summary.`,
+      key_points: lines
+        .filter(l => l.length > 10 && l.length < 200)
+        .slice(0, 8),
+      key_concepts: [
+        { term: chapterName, explanation: 'Main topic of this chapter' },
+        ...lines
+          .filter(l => l.includes(':') && l.length < 150)
+          .slice(0, 4)
+          .map(l => {
+            const [term, exp] = l.split(':');
+            return { term: term.trim(), explanation: exp.trim() };
+          })
+      ],
+      exam_tips: ['Review this chapter carefully for exam preparation', 'Focus on key concepts and definitions']
     };
   }
 

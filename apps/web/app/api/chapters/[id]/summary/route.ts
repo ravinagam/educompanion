@@ -87,7 +87,19 @@ export async function POST(
     awardXp(user.id, XP_REWARDS.summary_generated).catch(console.error);
     return NextResponse.json({ summary });
   } catch (e) {
-    console.error('[summary]', e);
-    return NextResponse.json({ error: 'AI error' }, { status: 500 });
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const errorStack = e instanceof Error ? e.stack : '';
+    console.error('[summary] Error generating summary:', {
+      error: errorMessage,
+      stack: errorStack,
+      chapterId,
+      isScreenshots: isScreenshots
+    });
+
+    // Return meaningful error message instead of generic "AI error"
+    return NextResponse.json({
+      error: 'Failed to generate summary. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 });
   }
 }
