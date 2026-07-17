@@ -147,6 +147,28 @@ describe('POST /api/quiz-attempts', () => {
     expect(json.data.results[1].correct).toBe(true);
   });
 
+  it('handles capitalization differences for fill-in-the-blank answers', async () => {
+    const questionsWithFill = [
+      { id: 'q1', question: 'A common entrance way is a ___', correct_answer: 'Door', explanation: 'Door is a common entrance', type: 'fill_blank' },
+    ];
+    sb.getUser.mockResolvedValue({ data: { user: MOCK_USER } });
+    admin.from.mockReturnValue(makeChain({ data: { questions_json: questionsWithFill }, error: null }));
+    sb.from.mockReturnValue(makeChain({
+      data: { id: 'attempt-4', score: 1, total: 1 },
+      error: null,
+    }));
+
+    const { POST } = await import('@/app/api/quiz-attempts/route');
+    const res = await POST(
+      makePostRequest({ quizId: 'quiz-1', answers: { q1: 'door' } }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.results[0].correct).toBe(true); // 'door' matches 'Door'
+    expect(json.data.score).toBe(1);
+  });
+
   it('awards base XP only (50) for score below 80%', async () => {
     sb.getUser.mockResolvedValue({ data: { user: MOCK_USER } });
     admin.from.mockReturnValue(makeChain({ data: { questions_json: SAMPLE_QUESTIONS }, error: null }));
