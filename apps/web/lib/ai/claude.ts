@@ -54,6 +54,14 @@ export async function generateQuiz(
   // Use up to 80k chars sampled from across the whole chapter
   const content = sampleContent(chapterContent ?? '', 80_000);
 
+  // DEBUG: Log what content is being sent to Claude
+  console.log('[generateQuiz] Sending to Claude:', {
+    chapterName,
+    contentLength: content.length,
+    contentPreview: content.substring(0, 300),
+    difficulty
+  });
+
   const variationLine = variationHint
     ? `\nIMPORTANT: ${variationHint} Generate a completely fresh set of questions — different topics, angles, and phrasing from any previous generation.\n`
     : '';
@@ -138,6 +146,9 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
   const text = (message.content[0] as { type: string; text: string }).text;
   let quizData: QuizQuestion[];
 
+  // DEBUG: Log Claude's raw response (first 500 chars)
+  console.log('[generateQuiz] Claude response preview:', text.substring(0, 500));
+
   try {
     quizData = parseJSON<QuizQuestion[]>(text);
   } catch (parseErr) {
@@ -153,6 +164,17 @@ Return ONLY valid JSON, no markdown, no explanation outside the array.`;
 
     quizData = validation.data;
   }
+
+  // DEBUG: Log quiz questions for content validation
+  console.log('[generateQuiz] Generated quiz:', {
+    questionCount: quizData.length,
+    questions: quizData.map(q => ({
+      id: q.id,
+      type: q.type,
+      questionPreview: q.question.substring(0, 80),
+      answerPreview: q.correct_answer.substring(0, 80)
+    }))
+  });
 
   return { data: quizData, input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens, model: message.model };
 }
