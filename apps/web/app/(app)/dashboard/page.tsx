@@ -78,8 +78,16 @@ export default async function DashboardPage() {
     ? Math.round(quizAttempts.reduce((sum, a) => sum + (a.total > 0 ? a.score / a.total : 0), 0) / quizAttempts.length * 100)
     : 0;
 
+  // Deduplicate chapters within each subject (Supabase nested select can return duplicates)
+  const deduplicatedSubjects = (subjectsRes.data ?? []).map((s: any) => ({
+    ...s,
+    chapters: Array.from(
+      new Map((s.chapters ?? []).map((c: any) => [c.id, c])).values()
+    ),
+  }));
+
   // Chapter progress: fetch section counts for recent chapters
-  const recentChapters = (subjectsRes.data ?? [])
+  const recentChapters = deduplicatedSubjects
     .flatMap(s => (s.chapters as Array<{ id: string; name: string; upload_status: string }>)
       .filter(c => c.upload_status === 'complete')
       .map(c => ({ id: c.id, name: c.name }))

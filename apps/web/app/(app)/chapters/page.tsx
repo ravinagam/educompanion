@@ -14,7 +14,15 @@ export default async function ChaptersPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: true });
 
-  const allChapterIds = (subjects ?? []).flatMap(s =>
+  // Deduplicate chapters within each subject (Supabase nested select can return duplicates)
+  const deduplicatedSubjects = (subjects ?? []).map(s => ({
+    ...s,
+    chapters: Array.from(
+      new Map((s.chapters as Array<{ id: string }>).map(c => [c.id, c])).values()
+    ),
+  }));
+
+  const allChapterIds = deduplicatedSubjects.flatMap(s =>
     (s.chapters as Array<{ id: string }>).map(c => c.id)
   );
 
@@ -41,7 +49,7 @@ export default async function ChaptersPage() {
     }
   }
 
-  const subjectsWithProgress = (subjects ?? []).map(s => ({
+  const subjectsWithProgress = deduplicatedSubjects.map(s => ({
     ...s,
     chapters: (s.chapters as Array<{ id: string }>).map(c => ({
       ...c,

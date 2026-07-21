@@ -66,9 +66,20 @@ export default async function AdminPage() {
     user: fullUserMap.get(f.user_id) ?? null,
   }));
 
+  // Deduplicate chapters within each subject (Supabase nested select can return duplicates)
+  const deduplicatedUsers = (usersRes.data ?? []).map(u => ({
+    ...u,
+    subjects: (u.subjects ?? []).map((s: any) => ({
+      ...s,
+      chapters: Array.from(
+        new Map((s.chapters ?? []).map((c: any) => [c.id, c])).values()
+      ),
+    })),
+  }));
+
   // Fetch parent accounts from auth.users
   const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const students = usersRes.data ?? [];
+  const students = deduplicatedUsers;
   const parents = authUsers
     .filter(u => u.email?.endsWith('@parents.educompanion.app'))
     .map(u => {
@@ -82,5 +93,5 @@ export default async function AdminPage() {
     });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <AdminDashboard users={(usersRes.data ?? []) as any} parents={parents} feedback={feedback as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
+  return <AdminDashboard users={deduplicatedUsers as any} parents={parents} feedback={feedback as any} usageLogs={(usageRes.data ?? []) as any} referrals={(referralsRes.data ?? []) as any} referralClicks={(clicksRes.data ?? []) as any} gamification={(gamificationRes.data ?? []) as any} milestones={(milestonesRes.data ?? []) as any} />;
 }

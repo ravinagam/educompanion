@@ -75,7 +75,15 @@ export default async function MyPerformancePage() {
     if (pct > existingPct) bestQuizByChapter.set(chapterId, { score: attempt.score, total: attempt.total, date: attempt.taken_at });
   });
 
-  const subjects: SubjectData[] = (subjectsRaw ?? []).map(subj => {
+  // Deduplicate chapters within each subject (Supabase nested select can return duplicates)
+  const deduplicatedSubjects = (subjectsRaw ?? []).map((s: any) => ({
+    ...s,
+    chapters: Array.from(
+      new Map((s.chapters ?? []).map((c: any) => [c.id, c])).values()
+    ),
+  }));
+
+  const subjects: SubjectData[] = deduplicatedSubjects.map(subj => {
     const chapters = (subj.chapters ?? []) as Array<{ id: string; name: string; upload_status: string }>;
     const readyChapters = chapters.filter(c => c.upload_status === 'ready');
     let totalFlashcards = 0, knownTotal = 0, masteredCount = 0;
@@ -102,7 +110,7 @@ export default async function MyPerformancePage() {
   });
 
   const chapterNameMap = new Map<string, string>();
-  (subjectsRaw ?? []).forEach(subj => {
+  deduplicatedSubjects.forEach(subj => {
     (subj.chapters ?? []).forEach((ch: { id: string; name: string }) => {
       chapterNameMap.set(ch.id, ch.name);
     });
@@ -112,7 +120,7 @@ export default async function MyPerformancePage() {
     .filter(a => a.total > 0)
     .map(a => {
       const chapterId = quizToChapter.get(a.quiz_id) ?? '';
-      const subject = (subjectsRaw ?? []).find(s =>
+      const subject = deduplicatedSubjects.find(s =>
         (s.chapters ?? []).some((c: { id: string }) => c.id === chapterId)
       )?.name ?? 'Other';
       return {

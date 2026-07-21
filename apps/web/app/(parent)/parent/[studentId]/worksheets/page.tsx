@@ -32,7 +32,15 @@ export default async function WorksheetsPage({ params }: Params) {
     .select('name, chapters(id, name, upload_status)')
     .eq('user_id', studentId);
 
-  const hindiChapters = (subjectsRaw ?? [])
+  // Deduplicate chapters within each subject (Supabase nested select can return duplicates)
+  const deduplicatedSubjects = (subjectsRaw ?? []).map((s: any) => ({
+    ...s,
+    chapters: Array.from(
+      new Map((s.chapters ?? []).map((c: any) => [c.id, c])).values()
+    ),
+  }));
+
+  const hindiChapters = deduplicatedSubjects
     .filter(s => s.name.toLowerCase().includes('hindi'))
     .flatMap(s =>
       ((s.chapters ?? []) as Array<{ id: string; name: string; upload_status: string }>)
